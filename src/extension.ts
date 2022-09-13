@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
+	let panel: vscode.WebviewPanel | undefined = undefined;
+
 	console.log('Congratulations, your extension "jigsaw" is now active!');
 
 	let disposable = vscode.commands.registerCommand('jigsaw.helloWorld', () => {
@@ -14,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
 		  return {
 			onWillReceiveMessage(message) {
-				
+				console.log(panel?.webview.postMessage(message));
 			},
 			// onWillReceiveMessage: m => console.log(`> ${JSON.stringify(m, undefined, 2)}`),
 			// onDidSendMessage: m => console.log(`< ${JSON.stringify(m, undefined, 2)}`),
@@ -26,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Webview
 	context.subscriptions.push(
 		vscode.commands.registerCommand('jigsaw.showReactFlow', () => {
-		  const panel = vscode.window.createWebviewPanel(
+		  panel = vscode.window.createWebviewPanel(
 			'showReactFlow',
 			'React Flow Sample View',
 			vscode.ViewColumn.One,
@@ -64,8 +66,6 @@ function getWebviewContent(
 			  </body>
 			  </html>`;
 			  
-	console.log(jigsawView);
-
 	return jigsawView;
   }
 
