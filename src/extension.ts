@@ -15,11 +15,11 @@ export function activate(context: vscode.ExtensionContext) {
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
 		  return {
-			onWillReceiveMessage(message) {
-				console.log(panel?.webview.postMessage(message));
-			},
 			// onWillReceiveMessage: m => console.log(`> ${JSON.stringify(m, undefined, 2)}`),
 			// onDidSendMessage: m => console.log(`< ${JSON.stringify(m, undefined, 2)}`),
+			onDidSendMessage(message) {
+				panel?.webview.postMessage(message);
+			}
 		  };
 		}
 	  });
