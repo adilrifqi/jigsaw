@@ -1,33 +1,44 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import React = require("react");
-import ReactFlow, { Background, Controls, MiniMap } from "react-flow-renderer";
+import ReactFlow, { addEdge, Background, Connection, Controls, Edge, MiniMap, Node, useEdgesState, useNodesState } from "react-flow-renderer";
 import { DebugState } from "./DebugState";
 
 export function FlowComponent() {
-    const [variables, setVariables] = useState(() => DebugState.getInstance().variables);
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const onConnect = useCallback(
+        (connection: Edge<any> | Connection) => setEdges((eds) => addEdge(connection, eds)),
+        [setEdges]
+    );
 
     window.addEventListener('message', event => {
         let data = event.data
         if (data["command"] == "variables") {
             DebugState.getInstance().variables = data["body"]["variables"];
-            setVariables(_ => DebugState.getInstance().variables);
         }
+
+        const varNodes = []
+        for (var variable of DebugState.getInstance().variables) {
+            const varName = variable["name"];
+            varNodes.push({
+                id: varName,
+                type:'input',
+                data: {label: varName + ": " + variable["value"]},
+                position: { x: 250, y: 25 }
+            });
+        }
+        setNodes(varNodes);
     })
 
-    const varNodes = []
-    for (var variable of variables) {
-        const varName = variable["name"];
-        varNodes.push({
-            id: varName,
-            type:'input',
-            data: {label: varName + ": " + variable["value"]},
-            position: { x: 250, y: 25 }
-        });
-    }
+    // return <h1>Hello</h1>;
 
     return (
         <ReactFlow
-          nodes={varNodes}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
           fitView>
             <MiniMap/>
             <Controls/>
