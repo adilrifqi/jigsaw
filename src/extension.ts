@@ -14,21 +14,20 @@ export function activate(context: vscode.ExtensionContext) {
 	// DAP
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
-			// TODO: session.customRequest
 			return {
-				// onWillReceiveMessage: m => console.log(`> ${JSON.stringify(m, undefined, 2)}`),
-				// onDidSendMessage: m => console.log(`< ${JSON.stringify(m, undefined, 2)}`),
+				onWillReceiveMessage(message) {
+					panel?.webview.postMessage(message);
+				},
 				onDidSendMessage(message) {
-					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
-					// if (message["command"] == "variables") {
-					// 	for (var variable of message["body"]["variables"]) {
-					// 		if (variable["value"].includes("@")) {
-					// 			session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
-					// 		}
-					// 	}
-					// }
+					if (message["command"] == "variables") {
+						for (var variable of message["body"]["variables"]) {
+							if (variable["value"].includes("@")) {
+								session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
+							}
+						}
+					}
 				}
 		  	};
 		}

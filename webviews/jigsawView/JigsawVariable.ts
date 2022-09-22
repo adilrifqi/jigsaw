@@ -6,7 +6,7 @@ export class JigsawVariable {
     namedVariables: number;
     indexedVariables: number;
     evaluateName: string;
-    variables: Map<string, string>;
+    variables: Set<string>;
 
     constructor(
         name: string,
@@ -16,7 +16,7 @@ export class JigsawVariable {
         namedVariables: number,
         indexedVariables: number,
         evaluateName: string,
-        variables: Map<string, string> = new Map() // name -> value
+        variables: Set<string> = new Set() // Set of keys of DebugState.getInstance().jigsawVariables
         ) {
             this.name = name;
             this.value = value;
@@ -26,5 +26,13 @@ export class JigsawVariable {
             this.indexedVariables = indexedVariables;
             this.evaluateName = evaluateName;
             this.variables = variables;
+    }
+
+    public addVariable(varKey: string) {
+        this.variables.add(varKey);
+    }
+
+    public deleteVariable(varKey: string) {
+        this.variables.delete(varKey);
     }
 }

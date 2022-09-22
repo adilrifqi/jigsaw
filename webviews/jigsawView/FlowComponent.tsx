@@ -15,28 +15,26 @@ export function FlowComponent() {
 
     // Listen for DAP messages sent from the extension
     window.addEventListener('message', event => {
-        let data = event.data
-
+        const data = event.data;
+        
         // parse and update the DebugState if the message is a "variables" response
         if (data["type"] == "response" && data["command"] == "variables") {
             for (var variable of data["body"]["variables"]) {
                 const parsedVariable: JigsawVariable | undefined = parseVariable(variable);
                 if (parsedVariable) {
-                    DebugState.getInstance().updateVariable(parsedVariable);
+                    DebugState.getInstance().updateVariable(parsedVariable, data["request_seq"]);
                 }
             }
-            console.log(DebugState.getInstance().jigsawVariables);
         }
 
         // Compile the variable nodes and update the view
         const varNodes: React.SetStateAction<Node<any>[]>
             | { id: string; type: string; data: { label: string; }; position: { x: number; y: number; }; }[] = [];
         DebugState.getInstance().jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
-            const varName = variable.name;
             varNodes.push({
-                id: varName,
+                id: key,
                 type:'input',
-                data: {label: varName + ": " + variable.value},
+                data: {label: variable.name + ": " + variable.value},
                 position: { x: 250, y: 25 }
             });
         });
@@ -87,7 +85,6 @@ function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefine
         || indexedVariables == undefined
         || !evaluateName
         ) {
-            console.log("undedededede");
         return undefined;
     }
     return new JigsawVariable(name, value, type, variablesReference, namedVariables, indexedVariables, evaluateName);
