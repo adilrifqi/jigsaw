@@ -35,4 +35,8 @@ export class JigsawVariable {
     public deleteVariable(varKey: string) {
         this.variables.delete(varKey);
     }
+
+    public getVariablesKeys(): Set<string> {
+        return this.variables;
+    }
 }

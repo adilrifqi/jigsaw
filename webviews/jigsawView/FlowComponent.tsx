@@ -27,18 +27,31 @@ export function FlowComponent() {
             }
         }
 
-        // Compile the variable nodes and update the view
+        // Compile the variable nodes and their reference edges
         const varNodes: React.SetStateAction<Node<any>[]>
             | { id: string; type: string; data: { label: string; }; position: { x: number; y: number; }; }[] = [];
+        const varEdges: ((prevState: Edge<any>[]) => Edge<any>[]) | { id: string; source: string; target: string; }[] = [];
         DebugState.getInstance().jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
             varNodes.push({
                 id: key,
-                type:'input',
+                type:'default',
                 data: {label: variable.name + ": " + variable.value},
                 position: { x: 250, y: 25 }
             });
+
+            for (var reffedKey of variable.getVariablesKeys()) {
+                console.log("lmao");
+                varEdges.push({
+                    id: key + "-" + reffedKey,
+                    source: key,
+                    target: reffedKey
+                });
+            }
         });
+
+        // Update the node and edge states
         setNodes(varNodes);
+        setEdges(varEdges);
     })
 
     // return <h1>Hello</h1>;
