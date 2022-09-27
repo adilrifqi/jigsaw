@@ -1,5 +1,5 @@
 import { main } from "./App";
-import { DebugState } from "./DebugState";
+import { DebugState } from "./model/DebugState";
 
 addEventListener('load', main)
 

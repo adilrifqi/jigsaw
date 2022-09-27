@@ -1,8 +1,18 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import React = require("react");
-import ReactFlow, { addEdge, Background, Connection, Controls, Edge, MiniMap, Node, useEdgesState, useNodesState } from "react-flow-renderer";
-import { DebugState } from "./DebugState";
-import { JigsawVariable } from "./JigsawVariable";
+import ReactFlow, {
+    addEdge,
+    Background,
+    Connection,
+    Controls,
+    Edge,
+    MiniMap,
+    Node,
+    useEdgesState,
+    useNodesState
+} from "react-flow-renderer";
+import { DebugState } from "../model/DebugState";
+import { JigsawVariable } from "../model/JigsawVariable";
 
 export function FlowComponent() {
     // Hooks
