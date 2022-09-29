@@ -18,10 +18,10 @@ export function FlowComponent() {
     // Hooks
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const onConnect = useCallback(
-        (connection: Edge<any> | Connection) => setEdges((eds) => addEdge(connection, eds)),
-        [setEdges]
-    );
+    // const onConnect = useCallback(
+    //     (connection: Edge<any> | Connection) => setEdges((eds) => addEdge(connection, eds)),
+    //     [setEdges]
+    // );
 
     // Listen for DAP messages sent from the extension
     window.addEventListener('message', event => {
@@ -72,7 +72,7 @@ export function FlowComponent() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        // onConnect={onConnect}
           fitView>
             <MiniMap/>
             <Controls/>
