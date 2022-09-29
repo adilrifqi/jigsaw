@@ -4,7 +4,8 @@ import { FlowComponent } from "./components/FlowComponent";
 
 export function main() {
     ReactDOM.createRoot(document.getElementById("root")!).render(
-        <div style={{width: "100%", height:"100vh"}}>
+        // TODO: Move the div to FlowComponent
+        <div className="floatingedges" style={{width: "100%", height:"100vh"}}>
             <FlowComponent />
         </div>
     );
