@@ -1,11 +1,9 @@
-import { useCallback } from "react";
 import React = require("react");
 import ReactFlow, {
-    addEdge,
     Background,
-    Connection,
     Controls,
     Edge,
+    MarkerType,
     MiniMap,
     Node,
     useEdgesState,
@@ -13,15 +11,25 @@ import ReactFlow, {
 } from "react-flow-renderer";
 import { DebugState } from "../model/DebugState";
 import { JigsawVariable } from "../model/JigsawVariable";
+import FloatingEdge from './FloatingEdge';
+
+// #region Custom Edge Declaration
+type EdgeData = {
+    id: string;
+    source: string;
+    target: string;
+    markerEnd: MarkerType;
+};
+type FloatingEdge = Node<EdgeData>;
+const edgeTypes = {
+    floating: FloatingEdge,
+};
+// #endregion Custom Edge Declaration
 
 export function FlowComponent() {
     // Hooks
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    // const onConnect = useCallback(
-    //     (connection: Edge<any> | Connection) => setEdges((eds) => addEdge(connection, eds)),
-    //     [setEdges]
-    // );
 
     // Listen for DAP messages sent from the extension
     window.addEventListener('message', event => {
@@ -38,13 +46,11 @@ export function FlowComponent() {
         }
 
         // Compile the variable nodes and their reference edges
-        const varNodes: React.SetStateAction<Node<any>[]>
-            | { id: string; type: string; data: { label: string; }; position: { x: number; y: number; }; }[] = [];
-        const varEdges: ((prevState: Edge<any>[]) => Edge<any>[]) | { id: string; source: string; target: string; }[] = [];
+        const varNodes: React.SetStateAction<Node<any>[]> | { id: string; data: { label: string; }; position: { x: number; y: number; }; }[] = [];
+        const varEdges: React.SetStateAction<Edge<any>[]> | { id: string; source: string; target: string; markerEnd: { type: MarkerType; }; type: string; }[] = [];
         DebugState.getInstance().jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
             varNodes.push({
                 id: key,
-                type:'default',
                 data: {label: variable.name + ": " + variable.value},
                 position: { x: 250, y: 25 }
             });
@@ -54,7 +60,9 @@ export function FlowComponent() {
                 varEdges.push({
                     id: key + "-" + reffedKey,
                     source: key,
-                    target: reffedKey
+                    target: reffedKey,
+                    markerEnd: { type: MarkerType.Arrow },
+                    type:'floating'
                 });
             }
         });
@@ -72,7 +80,7 @@ export function FlowComponent() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        // onConnect={onConnect}
+        edgeTypes={edgeTypes}
           fitView>
             <MiniMap/>
             <Controls/>
