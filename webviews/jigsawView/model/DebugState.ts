@@ -41,4 +41,10 @@ export class DebugState {
     public addSeq(seq: number, varsRef: number) {
         this.seqRefMap.set(seq, varsRef);
     }
+
+    public clearVariables() {
+        this.jigsawVariables.clear();
+        this.refKeyMap.clear();
+        this.seqRefMap.clear();
+    }
 }

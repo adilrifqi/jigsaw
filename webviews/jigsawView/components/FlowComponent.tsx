@@ -34,6 +34,11 @@ export function FlowComponent() {
     // Listen for DAP messages sent from the extension
     window.addEventListener('message', event => {
         const data = event.data;
+
+        // Clear to refresh stored variables in case scope(s) has been exited.
+        if (data["type"] == "response" && data["command"] == "scopes") {
+            DebugState.getInstance().clearVariables();
+        }
         
         // parse and update the DebugState if the message is a "variables" response
         if (data["type"] == "response" && data["command"] == "variables") {
