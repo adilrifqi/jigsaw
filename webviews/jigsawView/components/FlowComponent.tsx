@@ -13,6 +13,7 @@ import { DebugState } from "../model/DebugState";
 import { JigsawVariable } from "../model/JigsawVariable";
 import FloatingEdge from './FloatingEdge';
 import ObjectNode from "./ObjectNode";
+import "./styles.css";
 
 // #region Custom Node Declaration
 type NodeData = {
@@ -41,7 +42,6 @@ const edgeTypes = {
 // #endregion Custom Edge Declaration
 
 // TODO: Make references have the names of the variables on the edges
-// TODO: Custom node for objects
 export function FlowComponent() {
     // Hooks
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -102,18 +102,20 @@ export function FlowComponent() {
     // return <h1>Hello</h1>;
 
     return (
-        <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-          fitView>
-            <MiniMap/>
-            <Controls/>
-            <Background/>
-          </ReactFlow>
+        <div className="floatingedges" style={{width: "100%", height:"100vh"}}>
+            <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+              fitView>
+                <MiniMap/>
+                <Controls/>
+                <Background/>
+              </ReactFlow>
+        </div>
     );
 }
 

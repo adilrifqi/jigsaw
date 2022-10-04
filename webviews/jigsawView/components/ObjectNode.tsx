@@ -2,6 +2,7 @@ import React = require("react");
 import { Handle, Position } from "react-flow-renderer";
 import { DebugState } from "../model/DebugState";
 import { JigsawVariable } from "../model/JigsawVariable";
+import "./styles.css";
 
 function ObjectNode(
     {data, isConnectable, targetPosition=Position.Top, sourcePosition=Position.Bottom}:
@@ -16,16 +17,17 @@ function ObjectNode(
                     const varsVar: JigsawVariable | undefined = ds.jigsawVariables.get(varsVarKey);
                     if (varsVar)
                         rows.push(<p
-                            key={variable.name + "-" + varsVarKey}>
+                            key={variable.name + "-" + varsVarKey}
+                            className="unstructured-field">
                                 {varsVar.name + "(" + varsVar.type + "): " + varsVar.value}
                             </p>)
                 }
             }
 
             return (
-                <div>
+                <div className="object-node">
                     <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
-                    <p>{variable.name + "(" + variable.type + ")"}</p>
+                    <p className="title">{variable.name + "(" + variable.type + ")"}</p>
                     <hr/>
                     {rows}
                     <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
@@ -33,9 +35,9 @@ function ObjectNode(
             )
         } else {
             return (
-                <div>
+                <div className="object-node">
                     <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
-                    <p>{variable.name + "(" + variable.type + "): " + variable.value}</p>
+                    <p className="title">{variable.name + "(" + variable.type + "): " + variable.value}</p>
                     <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
                 </div>
             )
