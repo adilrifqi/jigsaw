@@ -12,6 +12,20 @@ import ReactFlow, {
 import { DebugState } from "../model/DebugState";
 import { JigsawVariable } from "../model/JigsawVariable";
 import FloatingEdge from './FloatingEdge';
+import ObjectNode from "./ObjectNode";
+
+// #region Custom Node Declaration
+type NodeData = {
+    data: object,
+    isConnectable: boolean,
+    targetPosition: string,
+    sourcePosition: string
+}
+type ObjectNode = Node<NodeData>;
+const nodeTypes = {
+    object: ObjectNode,
+}
+// #endregion Custom Node Declaration
 
 // #region Custom Edge Declaration
 type EdgeData = {
@@ -20,12 +34,14 @@ type EdgeData = {
     target: string;
     markerEnd: MarkerType;
 };
-type FloatingEdge = Node<EdgeData>;
+type FloatingEdge = Edge<EdgeData>;
 const edgeTypes = {
     floating: FloatingEdge,
 };
 // #endregion Custom Edge Declaration
 
+// TODO: Make references have the names of the variables on the edges
+// TODO: Custom node for objects
 export function FlowComponent() {
     // Hooks
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -51,24 +67,30 @@ export function FlowComponent() {
         }
 
         // Compile the variable nodes and their reference edges
-        const varNodes: React.SetStateAction<Node<any>[]> | { id: string; data: { label: string; }; position: { x: number; y: number; }; }[] = [];
+        const varNodes: React.SetStateAction<Node<any>[]> | { id: string; data: { variable: JigsawVariable; }; position: { x: number; y: number; }; type: string; }[] = [];
         const varEdges: React.SetStateAction<Edge<any>[]> | { id: string; source: string; target: string; markerEnd: { type: MarkerType; }; type: string; }[] = [];
         DebugState.getInstance().jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
-            varNodes.push({
-                id: key,
-                data: {label: variable.name + ": " + variable.value},
-                position: { x: 250, y: 25 }
-            });
-
-            for (var reffedKey of variable.getVariablesKeys()) {
-                console.log("lmao");
-                varEdges.push({
-                    id: key + "-" + reffedKey,
-                    source: key,
-                    target: reffedKey,
-                    markerEnd: { type: MarkerType.Arrow },
-                    type:'floating'
+            // Only add a node and its outgoing edges if the variable is structured
+            if (!key.includes(".")) {
+                varNodes.push({
+                    id: key,
+                    data: {variable: variable},
+                    position: { x: 250, y: 25 },
+                    type: 'object'
                 });
+
+                for (var reffedKey of variable.getVariablesKeys()) {
+                    // Only add outgoing edges to structured references
+                    if (!reffedKey.includes(".")) {
+                        varEdges.push({
+                            id: key + "-" + reffedKey,
+                            source: key,
+                            target: reffedKey,
+                            markerEnd: { type: MarkerType.Arrow },
+                            type:'floating'
+                        });
+                    }
+                }
             }
         });
 
@@ -85,6 +107,7 @@ export function FlowComponent() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
           fitView>
             <MiniMap/>

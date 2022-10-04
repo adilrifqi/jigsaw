@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
+// TODO: Viewlet for call stack
 export function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
 
@@ -16,9 +17,11 @@ export function activate(context: vscode.ExtensionContext) {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
 			return {
 				onWillReceiveMessage(message) {
+					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 				},
 				onDidSendMessage(message) {
+					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					if (message["command"] == "variables") {
