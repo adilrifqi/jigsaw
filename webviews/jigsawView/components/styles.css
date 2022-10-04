@@ -1,0 +1,28 @@
+.floatingedges {
+    flex-direction: column;
+    display: flex;
+    flex-grow: 1;
+    height: 100%;
+  }
+  
+  .floatingedges .react-flow__handle {
+    opacity: 0;
+  }
+
+.object-node {
+  border: 1px solid #eee;
+  padding: 12.5px 25px 12.5px 25px;
+  border-radius: 5px;
+  background: white;
+}
+
+  .object-node .title {
+    font-weight: bold;
+    text-align: center;
+    margin: 0;
+  }
+
+  .object-node .unstructured-field {
+    text-align: left;
+    margin: 0;
+  }
