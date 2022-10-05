@@ -12,7 +12,8 @@
   "activationEvents": [
     "onCommand:jigsaw.helloWorld",
     "onCommand:jigsaw.showReactFlow",
-    "onDebugAdapterProtocolTracker:*"
+    "onDebugAdapterProtocolTracker:*",
+    "onView:stackFrames"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -25,7 +26,15 @@
         "command": "jigsaw.showReactFlow",
         "title": "Show JIGSAW View"
       }
-    ]
+    ],
+    "views": {
+      "debug": [
+        {
+          "id": "stackFrames",
+          "name": "Stack Frames"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

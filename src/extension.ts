@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { StackFrameProvider } from './StackFrameProvider';
 
 // TODO: Viewlet for call stack
+// 	stackTrace -> scopes -> variables
 export function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
 
@@ -12,16 +14,20 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposable);
 
+	// TreeView
+	const stackFrameProvider: StackFrameProvider = new StackFrameProvider();
+	vscode.window.registerTreeDataProvider('stackFrames', stackFrameProvider);
+
 	// DAP
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
 			return {
 				onWillReceiveMessage(message) {
-					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
+					console.log(`> ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 				},
 				onDidSendMessage(message) {
-					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
+					console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					if (message["command"] == "variables") {
@@ -30,6 +36,14 @@ export function activate(context: vscode.ExtensionContext) {
 								session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
 							}
 						}
+					}
+
+					if (message["command"] == "stackTrace") {
+						const stackFrameNames: string[] = [];
+						for (var stackFrame of message["body"]["stackFrames"]) {
+							stackFrameNames.push(stackFrame["name"]);
+						}
+						stackFrameProvider.updateStackFrameNames(stackFrameNames);
 					}
 				}
 		  	};
