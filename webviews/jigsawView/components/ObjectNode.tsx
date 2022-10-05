@@ -6,38 +6,40 @@ import "./styles.css";
 
 function ObjectNode(
     {data, isConnectable, targetPosition=Position.Top, sourcePosition=Position.Bottom}:
-    {data:{variable: JigsawVariable}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
+    {data:{variable: JigsawVariable, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
         const variable: JigsawVariable = data.variable;
         const ds: DebugState = DebugState.getInstance();
+        let titleString: string = data.scopeTopVar ? variable.name + "(" + variable.type + ")" : variable.type;
 
         if (variable.value.includes("@")){
-            const rows = [];
-            for (var varsVarKey of variable.getVariablesKeys()) {
+            const rows: any[] = [];
+            variable.getFields().forEach((varsVarKey:string, fieldName:string) => {
                 if (varsVarKey.includes(".")) {
                     const varsVar: JigsawVariable | undefined = ds.jigsawVariables.get(varsVarKey);
                     if (varsVar)
                         rows.push(<p
                             key={variable.name + "-" + varsVarKey}
                             className="unstructured-field">
-                                {varsVar.name + "(" + varsVar.type + "): " + varsVar.value}
+                                {fieldName + "(" + varsVar.type + "): " + varsVar.value}
                             </p>)
                 }
-            }
+            });
 
             return (
                 <div className="object-node">
                     <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
-                    <p className="title">{variable.name + "(" + variable.type + ")"}</p>
+                    <p className="title">{titleString}</p>
                     <hr/>
                     {rows}
                     <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
                 </div>
             )
         } else {
+            titleString += ": " + variable.value;
             return (
                 <div className="object-node">
                     <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
-                    <p className="title">{variable.name + "(" + variable.type + "): " + variable.value}</p>
+                    <p className="title">{titleString}</p>
                     <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
                 </div>
             )

@@ -33,6 +33,7 @@ type EdgeData = {
     id: string;
     source: string;
     target: string;
+    label: string;
     markerEnd: MarkerType;
 };
 type FloatingEdge = Edge<EdgeData>;
@@ -64,33 +65,34 @@ export function FlowComponent() {
                     DebugState.getInstance().updateVariable(parsedVariable, data["request_seq"]);
                 }
             }
+            DebugState.getInstance().scopeTopToggleOff();
         }
 
         // Compile the variable nodes and their reference edges
-        const varNodes: React.SetStateAction<Node<any>[]> | { id: string; data: { variable: JigsawVariable; }; position: { x: number; y: number; }; type: string; }[] = [];
-        const varEdges: React.SetStateAction<Edge<any>[]> | { id: string; source: string; target: string; markerEnd: { type: MarkerType; }; type: string; }[] = [];
+        const varNodes: any[] = [];
+        const varEdges: any[] = [];
         DebugState.getInstance().jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
             // Only add a node and its outgoing edges if the variable is structured
             if (!key.includes(".")) {
                 varNodes.push({
                     id: key,
-                    data: {variable: variable},
+                    data: {variable: variable, scopeTopVar: DebugState.getInstance().isScopeTopVar(key)},
                     position: { x: 250, y: 25 },
                     type: 'object'
                 });
 
-                for (var reffedKey of variable.getVariablesKeys()) {
-                    // Only add outgoing edges to structured references
+                variable.getFields().forEach((reffedKey:string, fieldName:string) => {
                     if (!reffedKey.includes(".")) {
                         varEdges.push({
                             id: key + "-" + reffedKey,
                             source: key,
                             target: reffedKey,
-                            markerEnd: { type: MarkerType.Arrow },
+                            label: fieldName,
+                            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
                             type:'floating'
                         });
                     }
-                }
+                });
             }
         });
 

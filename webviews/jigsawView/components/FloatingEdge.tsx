@@ -1,14 +1,12 @@
 import { useCallback } from 'react';
 import React = require('react');
-import { useStore, getBezierPath, MarkerType } from 'react-flow-renderer';
+import { useStore, getBezierPath, MarkerType, EdgeText, getBezierEdgeCenter } from 'react-flow-renderer';
 
 import { getEdgeParams } from './utils';
 
 function FloatingEdge(
-  { id, source, target, markerEnd
-    // , style 
-  }:
-  {id:string, source:string, target:string, markerEnd:MarkerType}
+  { id, source, target, label, markerEnd}:
+  {id:string, source:string, target:string, label:string, markerEnd:MarkerType}
   ) {
   const sourceNode = useStore(useCallback((store) => store.nodeInternals.get(source), [source]));
   const targetNode = useStore(useCallback((store) => store.nodeInternals.get(target), [target]));
@@ -28,10 +26,26 @@ function FloatingEdge(
     targetY: ty,
   });
 
+  const [labelX, labelY, offsetX, offsetY] = getBezierEdgeCenter({
+    sourceX: sx,
+    sourceY: sy,
+    sourcePosition: sourcePos,
+    targetX: tx,
+    targetY: ty,
+    targetPosition: targetPos,
+  });
+
   return (
-    <path id={id} className="react-flow__edge-path" d={d} markerEnd={markerEnd}
-    // style={style}
+    <>
+      <path id={id} className="react-flow__edge-path" d={d} markerEnd={markerEnd}
+      style={{strokeWidth:2}}
+      />
+      <EdgeText
+      x={labelX}
+      y={labelY}
+      label={label}
     />
+    </>
   );
 }
 

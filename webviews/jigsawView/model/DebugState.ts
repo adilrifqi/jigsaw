@@ -15,6 +15,9 @@ export class DebugState {
     private refKeyMap: Map<number, string> = new Map();
     private seqRefMap: Map<number, number> = new Map();
 
+    private scopeTopVars: Set<string> = new Set();
+    private scopeTopToggle: boolean = false;
+
     public updateVariable(variable: JigsawVariable, seq: number = -1) {
         const varValue: string = variable.value;
         let keyString: string = varValue.includes("@") ? varValue : variable.evaluateName;
@@ -28,7 +31,7 @@ export class DebugState {
             // If the maps chain correctly, the update should succeed
             if (reffer) {
                 keyString = keyString.includes("@") ? keyString : reffer.value + "." + variable.name;
-                reffer.addVariable(keyString);
+                reffer.setVariable(variable.name, keyString);
             }
         }
 
@@ -36,6 +39,8 @@ export class DebugState {
 
         // Associate the ref with the variable
         this.refKeyMap.set(variable.variablesReference, keyString);
+
+        if (this.scopeTopToggle) this.scopeTopVars.add(keyString);
     }
 
     public addSeq(seq: number, varsRef: number) {
@@ -46,5 +51,15 @@ export class DebugState {
         this.jigsawVariables.clear();
         this.refKeyMap.clear();
         this.seqRefMap.clear();
+
+        this.scopeTopToggle = true;
+    }
+
+    public scopeTopToggleOff() {
+        this.scopeTopToggle = false;
+    }
+
+    public isScopeTopVar(varKey: string): boolean {
+        return this.scopeTopVars.has(varKey);
     }
 }
