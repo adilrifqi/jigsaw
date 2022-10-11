@@ -1,6 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { StackFrameProvider } from './StackFrameProvider';
 
 // TODO: Viewlet for call stack
 // 	stackTrace -> scopes -> variables
@@ -14,22 +12,36 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposable);
 
-	// TreeView
-	const stackFrameProvider: StackFrameProvider = new StackFrameProvider();
-	vscode.window.registerTreeDataProvider('stackFrames', stackFrameProvider);
+	// Debug Call Stack
+	vscode.commands.registerCommand('stackFrames.visualizeFrame', (...args: any[]) => {
+		panel?.webview.postMessage({"command": "jigsaw:visualizeFrame", "body": args[1]});
+	})
+
+	// Keep track to not requests for the first frames of stacks so as not to send duplicates
+	var firstFrameId: number = -1;
+	var firstFrameSeq: number = -1;
 
 	// DAP
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
 			return {
 				onWillReceiveMessage(message) {
-					console.log(`> ${JSON.stringify(message, undefined, 2)}`)
-					panel?.webview.postMessage(message);
-				},
-				onDidSendMessage(message) {
-					console.log(`< ${JSON.stringify(message, undefined, 2)}`)
+					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
+					if (message["command"] == "scopes") {
+						const frameId: number = message["arguments"]["frameId"];
+						if (frameId == firstFrameId) {
+							firstFrameId = -1;
+							firstFrameSeq = message["seq"];
+						}
+					}
+				},
+				onDidSendMessage(message) {
+					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
+					panel?.webview.postMessage(message);
+
+					// If a variable is structured, request the strucure
 					if (message["command"] == "variables") {
 						for (var variable of message["body"]["variables"]) {
 							if (variable["value"].includes("@")) {
@@ -38,12 +50,25 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 					}
 
+					// Store the id of the first frame to not send multiple requests. Send requests for the rest
 					if (message["command"] == "stackTrace") {
-						const stackFrameNames: string[] = [];
-						for (var stackFrame of message["body"]["stackFrames"]) {
-							stackFrameNames.push(stackFrame["name"]);
+						const stackFrames: any[] = message["body"]["stackFrames"];
+						firstFrameId = stackFrames[0]["id"];
+
+						for (var i = 1; i < stackFrames.length; i++) {
+							session.customRequest("scopes", {"frameId": stackFrames[i]["id"]});
 						}
-						stackFrameProvider.updateStackFrameNames(stackFrameNames);
+					}
+
+					// Send a variables request for all but the first of the scopes
+					if (message["command"] == "scopes") {
+						if (message["request_seq"] == firstFrameSeq)
+							firstFrameSeq = -1
+						else {
+							for (var scope of message["body"]["scopes"]) {
+								session.customRequest("variables", {"variablesReference": scope["variablesReference"]});
+							}
+						}
 					}
 				}
 		  	};

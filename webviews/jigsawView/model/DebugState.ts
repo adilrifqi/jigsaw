@@ -1,4 +1,5 @@
 import { JigsawVariable } from "./JigsawVariable";
+import { StackFrame } from "./StackFrame";
 
 export class DebugState {
     // #region singleton
@@ -11,55 +12,66 @@ export class DebugState {
     }
     // #endregion
 
-    jigsawVariables: Map<string, JigsawVariable> = new Map();
-    private refKeyMap: Map<number, string> = new Map();
-    private seqRefMap: Map<number, number> = new Map();
+    callStack: Map<number, StackFrame> = new Map(); // frameId -> StackFrame
+    private currentSmallestFrameId: number = -1;
 
-    private scopeTopVars: Set<string> = new Set();
-    private scopeTopToggle: boolean = false;
+    private scopesSeqToFrameId: Map<number, number> = new Map();
+    private scopesVarRefToFrameId: Map<number, number> = new Map();
 
-    public updateVariable(variable: JigsawVariable, seq: number = -1) {
-        const varValue: string = variable.value;
-        let keyString: string = varValue.includes("@") ? varValue : variable.evaluateName;
+    private variablesSeqToFrameId: Map<number, number> = new Map();
+    private variablesVarRefToFrameId: Map<number, number> = new Map();
 
-        // If seq is given, update the existing variable that refers to the provided variable
-        if (seq >= 0) {
-            const ref: number | undefined = this.seqRefMap.get(seq);
-            const varKey: string | undefined = ref == undefined ? undefined : this.refKeyMap.get(ref);
-            const reffer: JigsawVariable | undefined = varKey ? this.jigsawVariables.get(varKey) : undefined;
+    public setCallStack(newCallStack: Map<number, StackFrame>) {
+        this.callStack = newCallStack;
+        this.currentSmallestFrameId = Math.min(...this.callStack.keys());
+    }
 
-            // If the maps chain correctly, the update should succeed
-            if (reffer) {
-                keyString = keyString.includes("@") ? keyString : reffer.value + "." + variable.name;
-                reffer.setVariable(variable.name, keyString);
-            }
+    public setScopesSeqToFrameId(seq: number, frameId: number) {
+        this.scopesSeqToFrameId.set(seq, frameId);
+    }
+
+    public setScopesVarRefToFrameId(variablesReference: number, requestSeq: number) {
+        const frameId: number | undefined = this.scopesSeqToFrameId.get(requestSeq);
+        if (frameId)
+            this.scopesVarRefToFrameId.set(variablesReference, frameId);
+    }
+
+    public setVariablesSeqToFrameId(seq: number, variablesReference: number) {
+        var frameId: number | undefined = this.scopesVarRefToFrameId.get(variablesReference);
+        frameId = frameId == undefined ? this.variablesVarRefToFrameId.get(variablesReference) : frameId;
+        if (frameId) {
+            this.variablesSeqToFrameId.set(seq, frameId);
+            this.callStack.get(frameId)?.addSeqRef(seq, variablesReference);
         }
-
-        this.jigsawVariables.set(keyString, variable);
-
-        // Associate the ref with the variable
-        this.refKeyMap.set(variable.variablesReference, keyString);
-
-        if (this.scopeTopToggle) this.scopeTopVars.add(keyString);
     }
 
-    public addSeq(seq: number, varsRef: number) {
-        this.seqRefMap.set(seq, varsRef);
+    public setVariableToFrame(jigsawVariable: JigsawVariable, requestSeq: number): number {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(requestSeq);
+        if (frameId) {
+            this.callStack.get(frameId)?.setVariable(jigsawVariable, requestSeq);
+            this.variablesVarRefToFrameId.set(jigsawVariable.variablesReference, frameId);
+            return frameId;
+        }
+        return -1;
     }
 
-    public clearVariables() {
-        this.jigsawVariables.clear();
-        this.refKeyMap.clear();
-        this.seqRefMap.clear();
 
-        this.scopeTopToggle = true;
+    public getFrameByPos(stackPos: number): StackFrame | undefined {
+        return this.callStack.get(this.currentSmallestFrameId + stackPos);
     }
 
-    public scopeTopToggleOff() {
-        this.scopeTopToggle = false;
+    public getFrameById(frameId: number): StackFrame | undefined {
+        return this.callStack.get(frameId);
     }
 
-    public isScopeTopVar(varKey: string): boolean {
-        return this.scopeTopVars.has(varKey);
+
+    public clear() {
+        this.callStack.clear();
+        this.currentSmallestFrameId = -1;
+        
+        this.scopesSeqToFrameId.clear();
+        this.scopesVarRefToFrameId.clear();
+        this.variablesSeqToFrameId.clear();
+        this.variablesVarRefToFrameId.clear();
     }
 }

@@ -25,14 +25,18 @@
       {
         "command": "jigsaw.showReactFlow",
         "title": "Show JIGSAW View"
-      }
+      },
+      {
+				"command": "stackFrames.visualizeFrame",
+				"title": "Visualize"
+			}
     ],
-    "views": {
-      "debug": [
+    "menus": {
+      "debug/callstack/context": [
         {
-          "id": "stackFrames",
-          "name": "Stack Frames"
-        }
+					"command": "stackFrames.visualizeFrame",
+					"when": "inDebugMode && debugType == java && callStackItemType == 'stackFrame'"
+				}
       ]
     }
   },
