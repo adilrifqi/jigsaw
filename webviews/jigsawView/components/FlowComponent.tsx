@@ -11,6 +11,7 @@ import ReactFlow, {
 } from "react-flow-renderer";
 import { DebugState } from "../model/DebugState";
 import { JigsawVariable } from "../model/JigsawVariable";
+import { StackFrame } from "../model/StackFrame";
 import FloatingEdge from './FloatingEdge';
 import ObjectNode from "./ObjectNode";
 import "./styles.css";
@@ -42,7 +43,10 @@ const edgeTypes = {
 };
 // #endregion Custom Edge Declaration
 
-// TODO: Make references have the names of the variables on the edges
+// Position of currently viewed stack frame
+var currentStackPos = 0;
+
+// TODO: Make it possible to receive info to change the recent frameId of DebugState
 export function FlowComponent() {
     // Hooks
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -52,31 +56,58 @@ export function FlowComponent() {
     window.addEventListener('message', event => {
         const data = event.data;
 
-        // Clear to refresh stored variables in case scope(s) has been exited.
-        if (data["type"] == "response" && data["command"] == "scopes") {
-            DebugState.getInstance().clearVariables();
+        // Received command from the extension to switch views
+        if (data["command"] == "jigsaw:visualizeFrame") {
+            const frameId: string = data["body"]["frameId"];
+            const frameIdSplitColon: string[] = frameId.split(':');
+            const stackPos: number = +frameIdSplitColon[frameIdSplitColon.length - 2];
+            // DebugState.getInstance().setRecentStackPos(stackPos);
+            currentStackPos = stackPos;
         }
-        
-        // parse and update the DebugState if the message is a "variables" response
+
+        // New halt, clear everything from previous halt and repopulate the DebugState with the current state
+        if (data["type"] == "response" && data["command"] == "stackTrace") {
+            currentStackPos = 0; // Reset the viewed stack position
+            DebugState.getInstance().clear();
+
+            const callStack: Map<number, StackFrame> = new Map();
+            for (var stackFrame of data["body"]["stackFrames"]) {
+                const frameId: number = stackFrame["id"];
+                callStack.set(frameId, new StackFrame(frameId));
+            }
+            DebugState.getInstance().setCallStack(callStack);
+        }
+
+        // Link the command stackTrace with the variables command
+        if (data["type"] == "response" && data["command"] == "scopes") {
+            const variablesReference: number = data["body"]["scopes"][0]["variablesReference"];
+            DebugState.getInstance().setScopesVarRefToFrameId(variablesReference, data["request_seq"]);
+        }
+
+        // Set variables to the DebugState
         if (data["type"] == "response" && data["command"] == "variables") {
             for (var variable of data["body"]["variables"]) {
-                const parsedVariable: JigsawVariable | undefined = parseVariable(variable);
-                if (parsedVariable) {
-                    DebugState.getInstance().updateVariable(parsedVariable, data["request_seq"]);
+                const involvedFrames: Set<number> = new Set();
+                const jigsawVariable: JigsawVariable | undefined = parseVariable(variable);
+                if (jigsawVariable) {
+                    const involvedFrameId: number = DebugState.getInstance().setVariableToFrame(jigsawVariable, data["request_seq"]);
+                    if (involvedFrameId > -1) involvedFrames.add(involvedFrameId);
+                }
+                for (var involvedFrameId of involvedFrames) {
+                    DebugState.getInstance().getFrameById(involvedFrameId)?.scopeTopToggleOff();
                 }
             }
-            DebugState.getInstance().scopeTopToggleOff();
         }
 
         // Compile the variable nodes and their reference edges
         const varNodes: any[] = [];
         const varEdges: any[] = [];
-        DebugState.getInstance().jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
+        DebugState.getInstance().getFrameByPos(currentStackPos)?.jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
             // Only add a node and its outgoing edges if the variable is structured
             if (!key.includes(".")) {
                 varNodes.push({
                     id: key,
-                    data: {variable: variable, scopeTopVar: DebugState.getInstance().isScopeTopVar(key)},
+                    data: {variable: variable, stackPos: currentStackPos, scopeTopVar: DebugState.getInstance().getFrameByPos(currentStackPos)?.isScopeTopVar(key)},
                     position: { x: 250, y: 25 },
                     type: 'object'
                 });

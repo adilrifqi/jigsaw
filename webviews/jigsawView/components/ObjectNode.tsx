@@ -6,7 +6,7 @@ import "./styles.css";
 
 function ObjectNode(
     {data, isConnectable, targetPosition=Position.Top, sourcePosition=Position.Bottom}:
-    {data:{variable: JigsawVariable, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
+    {data:{variable: JigsawVariable, stackPos: number, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
         const variable: JigsawVariable = data.variable;
         const ds: DebugState = DebugState.getInstance();
         let titleString: string = data.scopeTopVar ? variable.name + "(" + variable.type + ")" : variable.type;
@@ -15,7 +15,7 @@ function ObjectNode(
             const rows: any[] = [];
             variable.getFields().forEach((varsVarKey:string, fieldName:string) => {
                 if (varsVarKey.includes(".")) {
-                    const varsVar: JigsawVariable | undefined = ds.jigsawVariables.get(varsVarKey);
+                    const varsVar: JigsawVariable | undefined = ds.getFrameByPos(data.stackPos)?.jigsawVariables.get(varsVarKey);
                     if (varsVar)
                         rows.push(<p
                             key={variable.name + "-" + varsVarKey}
