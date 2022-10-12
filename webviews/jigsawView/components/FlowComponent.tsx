@@ -1,3 +1,4 @@
+import * as dagre from "dagre";
 import React = require("react");
 import ReactFlow, {
     Background,
@@ -46,11 +47,16 @@ const edgeTypes = {
 // Position of currently viewed stack frame
 var currentStackPos = 0;
 
+// Keep track of the dimensions of nodes for dagre and
+//  in case dimension info doesn't appear in the layouting below.
+const nodeDims: Map<string, { width: number, height: number }> = new Map();
+
 export function FlowComponent() {
     // Hooks
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+    // #region eventListener
     // Listen for DAP messages sent from the extension
     window.addEventListener('message', event => {
         const data = event.data;
@@ -125,15 +131,20 @@ export function FlowComponent() {
                 });
             }
         });
+        // #endregion eventListener
 
         // Update the node and edge states
-        setNodes(varNodes);
-        setEdges(varEdges);
+        setNodes(Array.from(varNodes.values()));
+        setEdges(Array.from(varEdges.values()));
     })
+    // #endregion eventListener
 
     // return <h1>Hello</h1>;
 
-    return (
+    // #region dagre layouting
+    // Get the element to get the dimensions of the nodes for dagre layouting,
+    //  since dimensions are calculated depending on parent
+    var element: JSX.Element =
         <div className="floatingedges" style={{width: "100%", height:"100vh"}}>
             <ReactFlow
             nodes={nodes}
@@ -148,7 +159,50 @@ export function FlowComponent() {
                 <Background/>
               </ReactFlow>
         </div>
-    );
+    const nodeElements: any[] = element["props"]["children"]["props"]["nodes"];
+
+    // Use the dagre library with the dimensions info to determine the layout
+    var g = new dagre.graphlib.Graph();
+    g.setGraph({});
+    g.setDefaultEdgeLabel(function() { return {}; });
+    for (var nodeElement of nodeElements) {
+        const nodeElementId: string = nodeElement["id"];
+        const nodeDim: {height: number, width: number} | undefined = nodeDims.get(nodeElementId);
+        const height: number | undefined = nodeElement["height"] != undefined ?
+            nodeElement["height"]
+            : (nodeDim ? nodeDim.height : undefined);
+        const width: number | undefined = nodeElement["width"] != undefined ?
+            nodeElement["width"]
+            : (nodeDim ? nodeDim.width : undefined);
+
+        if (height != undefined && width != undefined) {
+            g.setNode(nodeElementId, { width: width, height: height });
+            nodeDims.set(nodeElementId, { width: width, height: height });
+        }
+    }
+    for (var edge of edges) {
+        const source: string = edge.source;
+        const target: string = edge.target;
+        if (g.nodes().includes(source) && g.nodes().includes(target)) {
+            g.setEdge(source, target);
+        }
+    }
+    console.log(DebugState.getInstance().callStack);
+    dagre.layout(g);
+
+    // Update the position of the actual nodes with info from the dagre layout
+    g.nodes().forEach(function(nodeId) {
+        const dagreNode = g.node(nodeId);
+        for (var elementNode of element["props"]["children"]["props"]["nodes"]) {
+            if (elementNode.id == nodeId) {
+                elementNode.position = { x: dagreNode.x, y: dagreNode.y };
+                break;
+            }
+        }
+    });
+    // #endregion dagre layouting
+
+    return element;
 }
 
 function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
