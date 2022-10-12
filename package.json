@@ -27,16 +27,16 @@
         "title": "Show JIGSAW View"
       },
       {
-				"command": "stackFrames.visualizeFrame",
-				"title": "Visualize"
-			}
+        "command": "stackFrames.visualizeFrame",
+        "title": "Visualize"
+      }
     ],
     "menus": {
       "debug/callstack/context": [
         {
-					"command": "stackFrames.visualizeFrame",
-					"when": "inDebugMode && debugType == java && callStackItemType == 'stackFrame'"
-				}
+          "command": "stackFrames.visualizeFrame",
+          "when": "inDebugMode && debugType == java && callStackItemType == 'stackFrame'"
+        }
       ]
     }
   },
@@ -70,11 +70,13 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "@types/dagre": "^0.7.48",
     "@types/react": "^18.0.19",
     "@types/react-dom": "^18.0.6",
     "@types/vscode-webview": "^1.57.0",
     "@vscode/debugadapter": "^1.57.0",
     "@vscode/debugadapter-testsupport": "^1.57.0",
+    "dagre": "^0.8.5",
     "react": "^18.2.0",
     "react-contenteditable": "^3.3.6",
     "react-dom": "^18.2.0",
