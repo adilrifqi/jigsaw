@@ -1,4 +1,4 @@
-import * as dagre from "dagre";
+import { useState } from "react";
 import React = require("react");
 import ReactFlow, {
     Background,
@@ -8,7 +8,7 @@ import ReactFlow, {
     MiniMap,
     Node,
     useEdgesState,
-    useNodesState
+    useNodesState,
 } from "react-flow-renderer";
 import { DebugState } from "../model/DebugState";
 import { JigsawVariable } from "../model/JigsawVariable";
@@ -16,6 +16,7 @@ import { StackFrame } from "../model/StackFrame";
 import FloatingEdge from './FloatingEdge';
 import ObjectNode from "./ObjectNode";
 import "./styles.css";
+import { layoutDiagram } from "./utils";
 
 // #region Custom Node Declaration
 type NodeData = {
@@ -47,19 +48,18 @@ const edgeTypes = {
 // Position of currently viewed stack frame
 var currentStackPos = 0;
 
-// Keep track of the dimensions of nodes for dagre and
-//  in case dimension info doesn't appear in the layouting below.
-const nodeDims: Map<string, { width: number, height: number }> = new Map();
-
 export function FlowComponent() {
     // Hooks
+    const flowRef = React.useRef<HTMLDivElement>(null);
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [layedOut, setLayedOut] = useState(false);
 
     // #region eventListener
     // Listen for DAP messages sent from the extension
     window.addEventListener('message', event => {
         const data = event.data;
+        var update: boolean = false;
 
         // Received command from the extension to switch views
         if (data["command"] == "jigsaw:visualizeFrame") {
@@ -68,6 +68,7 @@ export function FlowComponent() {
             const stackPos: number = +frameIdSplitColon[frameIdSplitColon.length - 2];
             // DebugState.getInstance().setRecentStackPos(stackPos);
             currentStackPos = stackPos;
+            update = true;
         }
 
         // New halt, clear everything from previous halt and repopulate the DebugState with the current state
@@ -102,50 +103,107 @@ export function FlowComponent() {
             for (var involvedFrameId of involvedFrames) {
                 DebugState.getInstance().getFrameById(involvedFrameId)?.scopeTopToggleOff();
             }
+            update = true;
         }
 
-        // Compile the variable nodes and their reference edges
-        const varNodes: any[] = [];
-        const varEdges: any[] = [];
-        DebugState.getInstance().getFrameByPos(currentStackPos)?.jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
-            // Only add a node and its outgoing edges if the variable is structured
-            if (!key.includes(".")) {
-                varNodes.push({
-                    id: key,
-                    data: {variable: variable, stackPos: currentStackPos, scopeTopVar: DebugState.getInstance().getFrameByPos(currentStackPos)?.isScopeTopVar(key)},
-                    position: { x: 250, y: 25 },
-                    type: 'object'
-                });
+        if (update) {
+            // Compile the variable nodes and their reference edges
+            const varNodes: any[] = [];
+            const varEdges: any[] = [];
+            DebugState.getInstance().getFrameByPos(currentStackPos)?.jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
+                // Only add a node and its outgoing edges if the variable is structured
+                if (!key.includes(".")) {
+                    varNodes.push({
+                        id: key,
+                        data: {variable: variable, stackPos: currentStackPos, scopeTopVar: DebugState.getInstance().getFrameByPos(currentStackPos)?.isScopeTopVar(key)},
+                        position: { x: 0, y: 0 },
+                        type: 'object'
+                    });
 
-                variable.getFields().forEach((reffedKey:string, fieldName:string) => {
-                    if (!reffedKey.includes(".")) {
-                        varEdges.push({
-                            id: key + "-" + reffedKey,
-                            source: key,
-                            target: reffedKey,
-                            label: fieldName,
-                            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
-                            type:'floating'
-                        });
-                    }
-                });
-            }
-        });
-        // #endregion eventListener
+                    variable.getFields().forEach((reffedKey:string, fieldName:string) => {
+                        if (!reffedKey.includes(".")) {
+                            varEdges.push({
+                                id: key + "-" + reffedKey,
+                                source: key,
+                                target: reffedKey,
+                                label: fieldName,
+                                markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
+                                type:'floating'
+                            });
+                        }
+                    });
+                }
+            });
 
-        // Update the node and edge states
-        setNodes(Array.from(varNodes.values()));
-        setEdges(Array.from(varEdges.values()));
+            // Update the node and edge states
+            setNodes(varNodes);
+            setEdges(varEdges);
+            setLayedOut(false);
+        }
     })
     // #endregion eventListener
 
     // return <h1>Hello</h1>;
 
-    // #region dagre layouting
-    // Get the element to get the dimensions of the nodes for dagre layouting,
-    //  since dimensions are calculated depending on parent
-    var element: JSX.Element =
-        <div className="floatingedges" style={{width: "100%", height:"100vh"}}>
+    React.useLayoutEffect(() => {
+        var active: boolean = true;
+        var update: boolean = false;
+        const nodesCopy: any[] = [];
+        for (var node of nodes) nodesCopy.push(node);
+
+        if (flowRef.current) {
+            // Gets the div encompassing all the nodes' divs
+            const htmlNodes: HTMLCollection | undefined =
+                flowRef.current.firstElementChild?.firstElementChild?.firstElementChild?.lastElementChild?.children;
+
+            if (htmlNodes) {
+                for (var htmlNode of Array.from(htmlNodes)) {
+                    const divHtmlNode: HTMLDivElement = htmlNode as HTMLDivElement;
+                    const htmlNodeID: string | null = htmlNode.getAttribute("data-id");
+                    const htmlNodeWidth: number = divHtmlNode.offsetWidth;
+                    const htmlNodeHeight: number = divHtmlNode.offsetHeight;
+
+                    const flowNode: any = nodesCopy.find(node => node.id == htmlNodeID)
+                    if (htmlNodeID && flowNode) {
+                        const flowNodeWidth = flowNode["width"];
+                        const flowNodeHeight = flowNode["height"];
+                        const flowNodeHasWidth: boolean = flowNodeWidth != undefined && flowNodeWidth != null;
+                        const flowNodeHasHeight: boolean = flowNodeHeight != undefined && flowNodeHeight != null;
+                        if (flowNodeHasWidth && flowNodeHasHeight) {
+                            if (flowNodeWidth != htmlNodeWidth || flowNodeHeight != htmlNodeHeight) {
+                                update = true;
+                            }
+                        } else {
+                            update = true;
+                        }
+
+                        flowNode["width"] = htmlNodeWidth;
+                        flowNode["height"] = htmlNodeHeight;
+                    }
+                }
+            }
+        }
+
+        update = update || !layedOut;
+        if (update) {
+            layoutDiagram(nodesCopy, edges).then((nodePositions: Map<string, {x: number, y: number}>) => {
+                for (var nodeCopy of nodesCopy) {
+                    const nodePosition: {x: number, y:number} | undefined = nodePositions.get(nodeCopy["id"]);
+                    if (nodePosition) nodeCopy["position"] = {x: nodePosition.x, y: nodePosition.y};
+                }
+                if (!active) return;
+                setNodes(nodesCopy);
+                setLayedOut(true);
+            });
+        }
+
+        return () => {
+            active = false;
+        };
+    });
+
+    return (
+        <div ref={flowRef} className="floatingedges" style={{width: "100%", height:"100vh"}}>
             <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -159,50 +217,7 @@ export function FlowComponent() {
                 <Background/>
               </ReactFlow>
         </div>
-    const nodeElements: any[] = element["props"]["children"]["props"]["nodes"];
-
-    // Use the dagre library with the dimensions info to determine the layout
-    var g = new dagre.graphlib.Graph();
-    g.setGraph({});
-    g.setDefaultEdgeLabel(function() { return {}; });
-    for (var nodeElement of nodeElements) {
-        const nodeElementId: string = nodeElement["id"];
-        const nodeDim: {height: number, width: number} | undefined = nodeDims.get(nodeElementId);
-        const height: number | undefined = nodeElement["height"] != undefined ?
-            nodeElement["height"]
-            : (nodeDim ? nodeDim.height : undefined);
-        const width: number | undefined = nodeElement["width"] != undefined ?
-            nodeElement["width"]
-            : (nodeDim ? nodeDim.width : undefined);
-
-        if (height != undefined && width != undefined) {
-            g.setNode(nodeElementId, { width: width, height: height });
-            nodeDims.set(nodeElementId, { width: width, height: height });
-        }
-    }
-    for (var edge of edges) {
-        const source: string = edge.source;
-        const target: string = edge.target;
-        if (g.nodes().includes(source) && g.nodes().includes(target)) {
-            g.setEdge(source, target);
-        }
-    }
-    console.log(DebugState.getInstance().callStack);
-    dagre.layout(g);
-
-    // Update the position of the actual nodes with info from the dagre layout
-    g.nodes().forEach(function(nodeId) {
-        const dagreNode = g.node(nodeId);
-        for (var elementNode of element["props"]["children"]["props"]["nodes"]) {
-            if (elementNode.id == nodeId) {
-                elementNode.position = { x: dagreNode.x, y: dagreNode.y };
-                break;
-            }
-        }
-    });
-    // #endregion dagre layouting
-
-    return element;
+    );
 }
 
 function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
