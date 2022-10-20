@@ -221,6 +221,7 @@ export function FlowComponent() {
                 <Background/>
               </ReactFlow>
         </div>
+    );
 }
 
 function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
