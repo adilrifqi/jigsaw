@@ -48,6 +48,10 @@ const edgeTypes = {
 // Position of currently viewed stack frame
 var currentStackPos = 0;
 
+// Keep track of the dimensions of nodes for dagre and
+//  in case dimension info doesn't appear in the layouting below.
+const nodeDims: Map<string, { width: number, height: number }> = new Map();
+
 export function FlowComponent() {
     // Hooks
     const flowRef = React.useRef<HTMLDivElement>(null);
@@ -217,7 +221,6 @@ export function FlowComponent() {
                 <Background/>
               </ReactFlow>
         </div>
-    );
 }
 
 function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
