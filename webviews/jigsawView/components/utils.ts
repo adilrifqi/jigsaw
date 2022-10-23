@@ -77,7 +77,15 @@ export const layoutDiagram = async (nodes: any[], edges: any[]):
     Promise<Map<string, {x: number, y: number}>> => {
     const elkNodes = [];
     const elkEdges = [];
-    for (var node of nodes) elkNodes.push({ id: node["id"], width: node["width"], height: node["height"] });
+    for (var node of nodes) {
+        const fixed: boolean = node["data"]["layedOut"];
+        const toPush: any = { id: node["id"], width: node["width"], height: node["height"] };
+        if (fixed) {
+            toPush["x"] = node["position"]["x"];
+            toPush["y"] = node["position"]["y"];
+        }
+        elkNodes.push(toPush);
+    }
     for (var edge of edges)
         elkEdges.push({
             id: edge["source"] + "-" + edge["target"],

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import React = require("react");
 import ReactFlow, {
     Background,
@@ -57,7 +56,6 @@ export function FlowComponent() {
     const flowRef = React.useRef<HTMLDivElement>(null);
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const [layedOut, setLayedOut] = useState(false);
 
     // #region eventListener
     // Listen for DAP messages sent from the extension
@@ -117,10 +115,16 @@ export function FlowComponent() {
             DebugState.getInstance().getFrameByPos(currentStackPos)?.jigsawVariables.forEach((variable: JigsawVariable, key: string) => {
                 // Only add a node and its outgoing edges if the variable is structured
                 if (!key.includes(".")) {
+                    const prevNode: Node<any> | undefined = nodes.find(prevNode => prevNode.id == key);
                     varNodes.push({
                         id: key,
-                        data: {variable: variable, stackPos: currentStackPos, scopeTopVar: DebugState.getInstance().getFrameByPos(currentStackPos)?.isScopeTopVar(key)},
-                        position: { x: 0, y: 0 },
+                        data: {
+                            layedOut: prevNode ? prevNode.data["layedOut"] : false,
+                            variable: variable,
+                            stackPos: currentStackPos,
+                            scopeTopVar: DebugState.getInstance().getFrameByPos(currentStackPos)?.isScopeTopVar(key)
+                        },
+                        position: prevNode ? prevNode.position : { x: 0, y: 0 },
                         type: 'object'
                     });
 
@@ -142,7 +146,6 @@ export function FlowComponent() {
             // Update the node and edge states
             setNodes(varNodes);
             setEdges(varEdges);
-            setLayedOut(false);
         }
     })
     // #endregion eventListener
@@ -153,7 +156,10 @@ export function FlowComponent() {
         var active: boolean = true;
         var update: boolean = false;
         const nodesCopy: any[] = [];
-        for (var node of nodes) nodesCopy.push(node);
+        for (var node of nodes) {
+            nodesCopy.push(node);
+            update = update || !node.data["layedOut"];
+        }
 
         if (flowRef.current) {
             // Gets the div encompassing all the nodes' divs
@@ -188,16 +194,15 @@ export function FlowComponent() {
             }
         }
 
-        update = update || !layedOut;
         if (update) {
             layoutDiagram(nodesCopy, edges).then((nodePositions: Map<string, {x: number, y: number}>) => {
                 for (var nodeCopy of nodesCopy) {
                     const nodePosition: {x: number, y:number} | undefined = nodePositions.get(nodeCopy["id"]);
                     if (nodePosition) nodeCopy["position"] = {x: nodePosition.x, y: nodePosition.y};
+                    nodeCopy["data"]["layedOut"] = true;
                 }
                 if (!active) return;
                 setNodes(nodesCopy);
-                setLayedOut(true);
             });
         }
 
