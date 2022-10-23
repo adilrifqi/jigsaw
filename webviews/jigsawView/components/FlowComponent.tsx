@@ -95,17 +95,23 @@ export function FlowComponent() {
         // Set variables to the DebugState
         if (data["type"] == "response" && data["command"] == "variables") {
             const involvedFrames: Set<number> = new Set();
+            const involvedSeqs: Set<number> = new Set();
             for (var variable of data["body"]["variables"]) {
                 const jigsawVariable: JigsawVariable | undefined = parseVariable(variable);
                 if (jigsawVariable) {
-                    const involvedFrameId: number = DebugState.getInstance().setVariableToFrame(jigsawVariable, data["request_seq"]);
+                    const seq: number = data["request_seq"];
+                    const involvedFrameId: number = DebugState.getInstance().setVariableToFrame(jigsawVariable, seq);
+                    involvedSeqs.add(seq);
                     if (involvedFrameId > -1) involvedFrames.add(involvedFrameId);
                 }
             }
             for (var involvedFrameId of involvedFrames) {
                 DebugState.getInstance().getFrameById(involvedFrameId)?.scopeTopToggleOff();
             }
-            update = true;
+            for (var involvedSeq of involvedSeqs) {
+                DebugState.getInstance().removeSeqFromFrame(involvedSeq);
+            }
+            update = DebugState.getInstance().complete();
         }
 
         if (update) {

@@ -50,4 +50,12 @@ export class StackFrame {
     public isScopeTopVar(varKey: string): boolean {
         return this.scopeTopVars.has(varKey);
     }
+
+    public complete(): boolean {
+        return this.seqRefMap.size == 0;
+    }
+
+    public removeSeq(seq: number) {
+        this.seqRefMap.delete(seq);
+    }
 }

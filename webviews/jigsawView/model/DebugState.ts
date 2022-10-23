@@ -64,6 +64,20 @@ export class DebugState {
         return this.callStack.get(frameId);
     }
 
+    public complete(): boolean {
+        this.callStack.forEach((stackFrame: StackFrame, frameId: number) => {
+            if (!stackFrame.complete()) {
+                return false;
+            }
+        });
+        return true;
+    }
+    
+    public removeSeqFromFrame(seq: number) {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        if (frameId) this.callStack.get(frameId)?.removeSeq(seq);
+    }
+
 
     public clear() {
         this.callStack.clear();
