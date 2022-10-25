@@ -1,29 +1,27 @@
 import React = require("react");
 import { Handle, Position } from "react-flow-renderer";
-import { DebugState } from "../model/DebugState";
-import { JigsawVariable } from "../model/JigsawVariable";
 import "./styles.css";
 
 function ObjectNode(
     {data, isConnectable, targetPosition=Position.Top, sourcePosition=Position.Bottom}:
-    {data:{variable: JigsawVariable, stackPos: number, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
-        const variable: JigsawVariable = data.variable;
-        const ds: DebugState = DebugState.getInstance();
-        let titleString: string = data.scopeTopVar ? variable.name + "(" + variable.type + ")" : variable.type;
+    {data:{variable: {[key: string]: any}, stackFrame: {[key: string]: {[key: string]: any}}, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
+        const stackFrame: {[key: string]: {[key: string]: any}} = data.stackFrame;
+        const variable: {[key: string]: any} = data.variable;
+        let titleString: string = data.scopeTopVar ? variable["name"] + "(" + variable["type"] + ")" : variable["type"];
 
-        if (variable.value.includes("@")){
+        if (variable["value"].includes("@")){
             const rows: any[] = [];
-            variable.getFields().forEach((varsVarKey:string, fieldName:string) => {
+            for (const fieldName in variable["variables"]) {
+                const varsVarKey = variable["variables"][fieldName];
                 if (varsVarKey.includes(".")) {
-                    const varsVar: JigsawVariable | undefined = ds.getFrameByPos(data.stackPos)?.jigsawVariables.get(varsVarKey);
-                    if (varsVar)
-                        rows.push(<p
-                            key={variable.name + "-" + varsVarKey}
-                            className="unstructured-field">
-                                {fieldName + "(" + varsVar.type + "): " + varsVar.value}
-                            </p>)
+                    const varsVar = stackFrame[varsVarKey];
+                    rows.push(<p
+                        key={variable["name"] + "-" + varsVarKey}
+                        className="unstructured-field">
+                            {fieldName + "(" + varsVar["type"] + "): " + varsVar["value"]}
+                        </p>)
                 }
-            });
+            }
 
             return (
                 <div className="object-node">
@@ -35,7 +33,7 @@ function ObjectNode(
                 </div>
             )
         } else {
-            titleString += ": " + variable.value;
+            titleString += ": " + variable["value"];
             return (
                 <div className="object-node">
                     <Handle type="target" position={targetPosition} isConnectable={isConnectable} />

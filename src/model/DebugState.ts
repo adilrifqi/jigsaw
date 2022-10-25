@@ -21,6 +21,8 @@ export class DebugState {
     private variablesSeqToFrameId: Map<number, number> = new Map();
     private variablesVarRefToFrameId: Map<number, number> = new Map();
 
+    private frameIdToStructVars: Map<number, Set<string>> = new Map();
+
     public setCallStack(newCallStack: Map<number, StackFrame>) {
         this.callStack = newCallStack;
         this.currentSmallestFrameId = Math.min(...this.callStack.keys());
@@ -49,10 +51,29 @@ export class DebugState {
         const frameId: number | undefined = this.variablesSeqToFrameId.get(requestSeq);
         if (frameId) {
             this.callStack.get(frameId)?.setVariable(jigsawVariable, requestSeq);
-            this.variablesVarRefToFrameId.set(jigsawVariable.variablesReference, frameId);
+            if (jigsawVariable.variablesReference > 0) this.variablesVarRefToFrameId.set(jigsawVariable.variablesReference, frameId);
             return frameId;
         }
         return -1;
+    }
+
+    public addFrameIdToStructVars(seq: number) {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        if (frameId && !this.frameIdToStructVars.has(frameId)) this.frameIdToStructVars.set(frameId, new Set());
+    }
+
+    public correlateFrameIdToStructVar(seq: number, structVarKey: string) {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        if (frameId) this.frameIdToStructVars.get(frameId)?.add(structVarKey);
+    }
+
+    public frameHasStructVar(seq: number, structVarKey: string): boolean {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        return (
+            frameId != undefined
+            && this.frameIdToStructVars.has(frameId)
+            && this.frameIdToStructVars.get(frameId)!.has(structVarKey)
+        );
     }
 
 
@@ -87,5 +108,6 @@ export class DebugState {
         this.scopesVarRefToFrameId.clear();
         this.variablesSeqToFrameId.clear();
         this.variablesVarRefToFrameId.clear();
+        this.frameIdToStructVars.clear();
     }
 }

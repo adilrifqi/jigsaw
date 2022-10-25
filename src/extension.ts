@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
+import { DebugState } from './model/DebugState';
+import { JigsawVariable } from './model/JigsawVariable';
+import { StackFrame } from './model/StackFrame';
 
-// TODO: Viewlet for call stack
-// 	stackTrace -> scopes -> variables
 export function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
 
@@ -21,17 +22,12 @@ export function activate(context: vscode.ExtensionContext) {
 	var firstFrameId: number = -1;
 	var firstFrameSeq: number = -1;
 
-	const frameIdToStructVars: Map<number, Set<string>> = new Map();
-
-	const scopesSeqToFrameId: Map<number, number> = new Map();
-	const scopesVarsRefToFrameId: Map<number, number> = new Map();
-
-	const variablesSeqToFrameId: Map<number, number> = new Map();
-	const variablesVarsRefToFrameId: Map<number, number> = new Map();
-
 	// DAP
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
+
+			DebugState.getInstance().clear();
+
 			return {
 				onWillReceiveMessage(message) {
 					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
@@ -44,15 +40,12 @@ export function activate(context: vscode.ExtensionContext) {
 							firstFrameSeq = message["seq"];
 						}
 
-						scopesSeqToFrameId.set(message["seq"], message["arguments"]["frameId"]);
+						DebugState.getInstance().setScopesSeqToFrameId(message["seq"],  message["arguments"]["frameId"]);
 					}
 
 					if (message["command"] == "variables") {
 						const varsRef: number = message["arguments"]["variablesReference"];
-						var ofFrameId: number | undefined = scopesVarsRefToFrameId.get(varsRef);
-						ofFrameId = ofFrameId != undefined ? ofFrameId : variablesVarsRefToFrameId.get(varsRef);
-						if (ofFrameId != undefined)
-							variablesSeqToFrameId.set(message["seq"], ofFrameId);
+						DebugState.getInstance().setVariablesSeqToFrameId(message["seq"], varsRef);
 					}
 				},
 				onDidSendMessage(message) {
@@ -61,19 +54,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 					// Store the id of the first frame to not send multiple requests. Send requests for the rest
 					if (message["command"] == "stackTrace") {
+						DebugState.getInstance().clear();
+
 						const stackFrames: any[] = message["body"]["stackFrames"];
 						firstFrameId = stackFrames[0]["id"];
 
-						for (var i = 1; i < stackFrames.length; i++) {
-							session.customRequest("scopes", {"frameId": stackFrames[i]["id"]});
-						}
+						const callStack: Map<number, StackFrame> = new Map();
+						for (var i = 0; i < stackFrames.length; i++) {
+							const frameId: number = stackFrames[i]["id"];
+            			    callStack.set(frameId, new StackFrame(frameId));
 
-						// Clear maps as the DebugState is reset as well
-						frameIdToStructVars.clear();
-						scopesSeqToFrameId.clear();
-						scopesVarsRefToFrameId.clear();
-						variablesSeqToFrameId.clear();
-						variablesVarsRefToFrameId.clear();
+							if (i > 0)
+								session.customRequest("scopes", {"frameId": stackFrames[i]["id"]});
+						}
+						DebugState.getInstance().setCallStack(callStack);
 					}
 
 					// Send a variables request for all but the first of the scopes
@@ -89,27 +83,66 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 						}
 
-						const ofFrameId: number | undefined = scopesSeqToFrameId.get(message["request_seq"]);
-						if (ofFrameId != undefined)
-							scopesVarsRefToFrameId.set(message["body"]["scopes"][0]["variablesReference"], ofFrameId);
+						const varsRef: number = message["body"]["scopes"][0]["variablesReference"];
+            			DebugState.getInstance().setScopesVarRefToFrameId(varsRef, message["request_seq"]);
 					}
 
 					// If a variable is structured, request the strucure
 					if (message["command"] == "variables") {
-						const ofFrameId: number | undefined = variablesSeqToFrameId.get(message["request_seq"]);
-						if (ofFrameId != undefined)
-							if (!frameIdToStructVars.has(ofFrameId)) frameIdToStructVars.set(ofFrameId, new Set());
+						const reqSeq: number = message["request_seq"];
+						DebugState.getInstance().addFrameIdToStructVars(reqSeq);
 
+						const involvedFrames: Set<number> = new Set();
+            			const involvedSeqs: Set<number> = new Set();
 						for (var variable of message["body"]["variables"]) {
+							const jigsawVariable: JigsawVariable | undefined = parseVariable(variable);
+							if (jigsawVariable) {
+								const seq: number = message["request_seq"];
+								const involvedFrameId: number = DebugState.getInstance().setVariableToFrame(jigsawVariable, seq);
+								involvedSeqs.add(seq);
+								if (involvedFrameId > -1) involvedFrames.add(involvedFrameId);
+							}
+
 							const varValue: string = variable["value"];
 							if (varValue.includes("@")) {
-								if (ofFrameId != undefined && !frameIdToStructVars.get(ofFrameId)?.has(varValue)) {
-									frameIdToStructVars.get(ofFrameId)?.add(varValue);
-									variablesVarsRefToFrameId.set(variable["variablesReference"], ofFrameId);
+								if (!DebugState.getInstance().frameHasStructVar(reqSeq, varValue)) {
+									DebugState.getInstance().correlateFrameIdToStructVar(reqSeq, varValue);
 									session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
 								}
 							}
 						}
+						for (var involvedFrameId of involvedFrames) 
+							DebugState.getInstance().getFrameById(involvedFrameId)?.scopeTopToggleOff();
+						for (var involvedSeq of involvedSeqs) 
+							DebugState.getInstance().removeSeqFromFrame(involvedSeq);
+					}
+
+					if (DebugState.getInstance().complete()) {
+						const frameIdToStackFrame: {[key: number]: {[key: string]: {[key: string]: any}}} = {};
+						DebugState.getInstance().callStack.forEach((stackFrame: StackFrame, frameId: number) => {
+							const varKeyToVariable: {[key: string]: {[key: string]: any}} = {};
+							stackFrame.jigsawVariables.forEach((variable: JigsawVariable, varKey: string) => {
+								const variables: {[key: string]: string} = {};
+								variable.variables.forEach((value: string, key: string) => {
+									variables[key] = value;
+								});
+
+								const toPush: {[key: string]: any} = {
+									"name": variable.name,
+									"value": variable.value,
+									"type": variable.type,
+									"variablesReference": variable.variablesReference,
+									"namedVariables": variable.namedVariables,
+									"indexedVariables": variable.indexedVariables,
+									"evaluateName": variable.evaluateName,
+									"scopeTopVar": stackFrame.isScopeTopVar(varKey),
+									variables: variables
+								};
+								varKeyToVariable[varKey] = toPush;
+							});
+							frameIdToStackFrame[frameId] = varKeyToVariable;
+						});
+						panel?.webview.postMessage({command: "data", body: {data: frameIdToStackFrame}});
 					}
 				}
 		  	};
@@ -163,3 +196,26 @@ function getWebviewContent(
 
 // this method is called when your extension is deactivated
 export function deactivate() {}
+
+function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
+    const name: string = toParse["name"];
+    const value: string = toParse["value"];
+    const type: string = toParse["type"];
+    const variablesReference: number = toParse["variablesReference"];
+    const namedVariables: number = toParse["namedVariables"];
+    const indexedVariables: number = toParse["indexedVariables"];
+    const evaluateName: string = toParse["evaluateName"];
+
+    if (
+        !name
+        || !value
+        || !type
+        || variablesReference == undefined
+        || namedVariables == undefined
+        || indexedVariables == undefined
+        || !evaluateName
+        ) {
+        return undefined;
+    }
+    return new JigsawVariable(name, value, type, variablesReference, namedVariables, indexedVariables, evaluateName);
+}
