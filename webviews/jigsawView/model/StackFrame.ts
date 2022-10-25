@@ -31,10 +31,12 @@ export class StackFrame {
             }
         }
 
-        this.jigsawVariables.set(keyString, variable);
+        if (!this.jigsawVariables.has(keyString)) {
+            this.jigsawVariables.set(keyString, variable);
 
-        // Associate the ref with the variable
-        this.refKeyMap.set(variable.variablesReference, keyString);
+            // Associate the ref with the variable
+            this.refKeyMap.set(variable.variablesReference, keyString);
+        }
 
         if (this.scopeTopToggle) this.scopeTopVars.add(keyString);
     }

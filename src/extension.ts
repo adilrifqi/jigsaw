@@ -21,6 +21,14 @@ export function activate(context: vscode.ExtensionContext) {
 	var firstFrameId: number = -1;
 	var firstFrameSeq: number = -1;
 
+	const frameIdToStructVars: Map<number, Set<string>> = new Map();
+
+	const scopesSeqToFrameId: Map<number, number> = new Map();
+	const scopesVarsRefToFrameId: Map<number, number> = new Map();
+
+	const variablesSeqToFrameId: Map<number, number> = new Map();
+	const variablesVarsRefToFrameId: Map<number, number> = new Map();
+
 	// DAP
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker(session: vscode.DebugSession) {
@@ -35,20 +43,21 @@ export function activate(context: vscode.ExtensionContext) {
 							firstFrameId = -1;
 							firstFrameSeq = message["seq"];
 						}
+
+						scopesSeqToFrameId.set(message["seq"], message["arguments"]["frameId"]);
+					}
+
+					if (message["command"] == "variables") {
+						const varsRef: number = message["arguments"]["variablesReference"];
+						var ofFrameId: number | undefined = scopesVarsRefToFrameId.get(varsRef);
+						ofFrameId = ofFrameId != undefined ? ofFrameId : variablesVarsRefToFrameId.get(varsRef);
+						if (ofFrameId != undefined)
+							variablesSeqToFrameId.set(message["seq"], ofFrameId);
 					}
 				},
 				onDidSendMessage(message) {
 					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
-
-					// If a variable is structured, request the strucure
-					if (message["command"] == "variables") {
-						for (var variable of message["body"]["variables"]) {
-							if (variable["value"].includes("@")) {
-								session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
-							}
-						}
-					}
 
 					// Store the id of the first frame to not send multiple requests. Send requests for the rest
 					if (message["command"] == "stackTrace") {
@@ -58,15 +67,47 @@ export function activate(context: vscode.ExtensionContext) {
 						for (var i = 1; i < stackFrames.length; i++) {
 							session.customRequest("scopes", {"frameId": stackFrames[i]["id"]});
 						}
+
+						// Clear maps as the DebugState is reset as well
+						frameIdToStructVars.clear();
+						scopesSeqToFrameId.clear();
+						scopesVarsRefToFrameId.clear();
+						variablesSeqToFrameId.clear();
+						variablesVarsRefToFrameId.clear();
 					}
 
 					// Send a variables request for all but the first of the scopes
 					if (message["command"] == "scopes") {
+						if (message["body"]["scopes"].length > 1)
+							console.log("THERE'S A MULTISCOPED \"scopes\"!!!");
+
 						if (message["request_seq"] == firstFrameSeq)
 							firstFrameSeq = -1
 						else {
 							for (var scope of message["body"]["scopes"]) {
 								session.customRequest("variables", {"variablesReference": scope["variablesReference"]});
+							}
+						}
+
+						const ofFrameId: number | undefined = scopesSeqToFrameId.get(message["request_seq"]);
+						if (ofFrameId != undefined)
+							scopesVarsRefToFrameId.set(message["body"]["scopes"][0]["variablesReference"], ofFrameId);
+					}
+
+					// If a variable is structured, request the strucure
+					if (message["command"] == "variables") {
+						const ofFrameId: number | undefined = variablesSeqToFrameId.get(message["request_seq"]);
+						if (ofFrameId != undefined)
+							if (!frameIdToStructVars.has(ofFrameId)) frameIdToStructVars.set(ofFrameId, new Set());
+
+						for (var variable of message["body"]["variables"]) {
+							const varValue: string = variable["value"];
+							if (varValue.includes("@")) {
+								if (ofFrameId != undefined && !frameIdToStructVars.get(ofFrameId)?.has(varValue)) {
+									frameIdToStructVars.get(ofFrameId)?.add(varValue);
+									variablesVarsRefToFrameId.set(variable["variablesReference"], ofFrameId);
+									session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
+								}
 							}
 						}
 					}
