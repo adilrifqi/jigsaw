@@ -101,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
 								const involvedFrameId: number = DebugState.getInstance().setVariableToFrame(jigsawVariable, seq);
 								involvedSeqs.add(seq);
 								if (involvedFrameId > -1) involvedFrames.add(involvedFrameId);
-							}
+							} else handleVariableValueReplacement(message);
 
 							const varValue: string = variable["value"];
 							if (varValue.includes("@")) {
@@ -218,4 +218,21 @@ function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefine
         return undefined;
     }
     return new JigsawVariable(name, value, type, variablesReference, namedVariables, indexedVariables, evaluateName);
+}
+
+function handleVariableValueReplacement(data: {[key: string]: any}) {
+	const variable = data["body"]["variables"][0];
+	const name: string = variable["name"];
+    const value: string = variable["value"];
+    const type: string = variable["type"];
+    const variablesReference: number = variable["variablesReference"];
+    const namedVariables: number = variable["namedVariables"];
+    const indexedVariables: number = variable["indexedVariables"];
+    const evaluateName: string = variable["evaluateName"];
+
+	if (!name && value && !type && variablesReference != undefined
+		&& namedVariables != undefined && indexedVariables != undefined && evaluateName) {
+		DebugState.getInstance().setVariablesVarsRefToFrameId(variablesReference, data["request_seq"]);
+		DebugState.getInstance().addReplaceVarsRefToVarKey(variablesReference, data["request_seq"]);
+	}
 }

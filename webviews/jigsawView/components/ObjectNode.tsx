@@ -13,7 +13,8 @@ function ObjectNode(
             const rows: any[] = [];
             for (const fieldName in variable["variables"]) {
                 const varsVarKey = variable["variables"][fieldName];
-                if (varsVarKey.includes(".")) {
+                const varsVar = stackFrame[varsVarKey];
+                if (!varsVar["value"].includes("@")) {
                     const varsVar = stackFrame[varsVarKey];
                     rows.push(<p
                         key={variable["name"] + "-" + varsVarKey}

@@ -23,6 +23,8 @@ export class DebugState {
 
     private frameIdToStructVars: Map<number, Set<string>> = new Map();
 
+    private valReplaceVarsRefToFrameId: Map<number, number> = new Map();
+
     public setCallStack(newCallStack: Map<number, StackFrame>) {
         this.callStack = newCallStack;
         this.currentSmallestFrameId = Math.min(...this.callStack.keys());
@@ -99,6 +101,16 @@ export class DebugState {
         if (frameId) this.callStack.get(frameId)?.removeSeq(seq);
     }
 
+    public addReplaceVarsRefToVarKey(replaceVarsRef: number, seq: number) {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        if (frameId) this.callStack.get(frameId)?.addReplaceVarsRefToVarKey(replaceVarsRef, seq);
+    }
+
+    public setVariablesVarsRefToFrameId(varsRef: number, seq: number) {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        if (frameId) this.variablesVarRefToFrameId.set(varsRef, frameId);
+    }
+
 
     public clear() {
         this.callStack.clear();
@@ -109,5 +121,6 @@ export class DebugState {
         this.variablesSeqToFrameId.clear();
         this.variablesVarRefToFrameId.clear();
         this.frameIdToStructVars.clear();
+        this.valReplaceVarsRefToFrameId.clear();
     }
 }

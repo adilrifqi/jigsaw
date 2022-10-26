@@ -81,7 +81,8 @@ export function FlowComponent() {
             const stackFrame = data[smallestFrameId + currentStackPos];
             for (const varKey in stackFrame) {
                 const variable = stackFrame[varKey];
-                if (!varKey.includes(".")) {
+                const varValue = variable["value"];
+                if (varKey.includes("@") && varValue.includes("@") || !varKey.includes("@") && !varKey.includes(".")) {
                     const prevNode: Node<any> | undefined = nodes.find(prevNode => prevNode.id == varKey);
                     varNodes.push({
                         id: varKey,
@@ -97,7 +98,9 @@ export function FlowComponent() {
 
                     for (const fieldName in variable["variables"]) {
                         const varsVarKey = variable["variables"][fieldName];
-                        if (!varsVarKey.includes(".")) {
+                        const varsVarValue = stackFrame[varsVarKey]["value"];
+                        if (varsVarKey.includes("@") && varsVarValue.includes("@")
+                            || !varsVarKey.includes("@") && !varsVarKey.includes(".")) {
                             varEdges.push({
                                 id: varKey + "-" + varsVarKey,
                                 source: varKey,

@@ -5,6 +5,8 @@ export class StackFrame {
     refKeyMap: Map<number, string> = new Map();
     seqRefMap: Map<number, number> = new Map();
 
+    private replaceVarsRefToVarKey: Map<number, string> = new Map();
+
     private scopeTopVars: Set<string> = new Set();
     private scopeTopToggle: boolean = true;
 
@@ -21,13 +23,21 @@ export class StackFrame {
         // If seq is given, update the existing variable that refers to the provided variable
         if (seq >= 0) {
             const ref: number | undefined = this.seqRefMap.get(seq);
-            const varKey: string | undefined = ref == undefined ? undefined : this.refKeyMap.get(ref);
-            const reffer: JigsawVariable | undefined = varKey ? this.jigsawVariables.get(varKey) : undefined;
+            var varKey: string | undefined = ref == undefined ? undefined : this.refKeyMap.get(ref);
+            if (!varKey) {
+                varKey = ref == undefined ? undefined : this.replaceVarsRefToVarKey.get(ref);
+                if (varKey) {
+                    const valReplacee: JigsawVariable | undefined = this.jigsawVariables.get(varKey);
+                    if (valReplacee) valReplacee.value = variable.value;
+                }
+            } else {
+                const reffer: JigsawVariable | undefined = varKey ? this.jigsawVariables.get(varKey) : undefined;
 
-            // If the maps chain correctly, the update should succeed
-            if (reffer) {
-                keyString = keyString.includes("@") ? keyString : reffer.value + "." + variable.name;
-                reffer.setVariable(variable.name, keyString);
+                // If the maps chain correctly, the update should succeed
+                if (reffer) {
+                    keyString = keyString.includes("@") ? keyString : reffer.value + "." + variable.name;
+                    reffer.setVariable(variable.name, keyString);
+                }
             }
         }
 
@@ -43,6 +53,15 @@ export class StackFrame {
 
     public addSeqRef(seq: number, varsRef: number) {
         this.seqRefMap.set(seq, varsRef);
+    }
+
+    public addReplaceVarsRefToVarKey(replaceVarsRef: number, seq: number) {
+        const oldVarsRef: number | undefined = this.seqRefMap.get(seq);
+        const varKey: string | undefined = oldVarsRef == undefined ? undefined : this.refKeyMap.get(oldVarsRef);
+        if (oldVarsRef != undefined && varKey) {
+            this.replaceVarsRefToVarKey.set(replaceVarsRef, varKey);
+            this.seqRefMap.delete(seq);
+        }
     }
 
     public scopeTopToggleOff() {
