@@ -49,7 +49,8 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "cgg": "antlr4ts -visitor src/customization/antlr/CustSpec.g4 -o src/customization/antlr/parser"
   },
   "devDependencies": {
     "@types/glob": "^7.2.0",
@@ -59,6 +60,7 @@
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
     "@vscode/test-electron": "^2.1.5",
+    "antlr4ts-cli": "^0.5.0-alpha.4",
     "css-loader": "^6.7.1",
     "eslint": "^8.20.0",
     "glob": "^8.0.3",
@@ -70,12 +72,15 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "@types/antlr4": "^4.11.1",
     "@types/dagre": "^0.7.48",
     "@types/react": "^18.0.19",
     "@types/react-dom": "^18.0.6",
     "@types/vscode-webview": "^1.57.0",
     "@vscode/debugadapter": "^1.57.0",
     "@vscode/debugadapter-testsupport": "^1.57.0",
+    "antlr4": "^4.11.0",
+    "antlr4ts": "^0.5.0-alpha.4",
     "elkjs": "^0.8.2",
     "react": "^18.2.0",
     "react-contenteditable": "^3.3.6",

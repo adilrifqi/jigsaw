@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { DebugState } from './model/DebugState';
-import { JigsawVariable } from './model/JigsawVariable';
-import { StackFrame } from './model/StackFrame';
+import { DebugState } from './debugmodel/DebugState';
+import { JigsawVariable } from './debugmodel/JigsawVariable';
+import { StackFrame } from './debugmodel/StackFrame';
 
 export function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
