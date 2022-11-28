@@ -1,3 +1,4 @@
+import { ConsoleReporter } from "@vscode/test-electron";
 import { JigsawVariable } from "./JigsawVariable";
 import { StackFrame } from "./StackFrame";
 
@@ -25,6 +26,8 @@ export class DebugState {
 
     private valReplaceVarsRefToFrameId: Map<number, number> = new Map();
 
+    private pendingVarsRefs: Set<number> = new Set();
+
     public setCallStack(newCallStack: Map<number, StackFrame>) {
         this.callStack = newCallStack;
         this.currentSmallestFrameId = Math.min(...this.callStack.keys());
@@ -41,6 +44,7 @@ export class DebugState {
     }
 
     public setVariablesSeqToFrameId(seq: number, variablesReference: number) {
+        this.pendingVarsRefs.delete(variablesReference);
         var frameId: number | undefined = this.scopesVarRefToFrameId.get(variablesReference);
         frameId = frameId == undefined ? this.variablesVarRefToFrameId.get(variablesReference) : frameId;
         if (frameId) {
@@ -66,7 +70,7 @@ export class DebugState {
 
     public correlateFrameIdToStructVar(seq: number, structVarKey: string) {
         const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
-        if (frameId) this.frameIdToStructVars.get(frameId)?.add(structVarKey);
+        if (frameId)this.frameIdToStructVars.get(frameId)?.add(structVarKey);
     }
 
     public frameHasStructVar(seq: number, structVarKey: string): boolean {
@@ -88,11 +92,12 @@ export class DebugState {
     }
 
     public complete(): boolean {
-        this.callStack.forEach((stackFrame: StackFrame, frameId: number) => {
+        if (this.pendingVarsRefs.size > 0) return false;
+        for (const stackFrame of this.callStack.values()) {
             if (!stackFrame.complete()) {
                 return false;
             }
-        });
+        }
         return true;
     }
     
@@ -109,6 +114,10 @@ export class DebugState {
     public setVariablesVarsRefToFrameId(varsRef: number, seq: number) {
         const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
         if (frameId) this.variablesVarRefToFrameId.set(varsRef, frameId);
+    }
+
+    public addPendingVarsRef(varsRef: number) {
+        this.pendingVarsRefs.add(varsRef);
     }
 
 

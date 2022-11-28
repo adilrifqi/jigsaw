@@ -60,7 +60,7 @@ export class StackFrame {
         const varKey: string | undefined = oldVarsRef == undefined ? undefined : this.refKeyMap.get(oldVarsRef);
         if (oldVarsRef != undefined && varKey) {
             this.replaceVarsRefToVarKey.set(replaceVarsRef, varKey);
-            this.seqRefMap.delete(seq);
+            this.removeSeq(seq);
         }
     }
 

@@ -21,6 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Keep track to not requests for the first frames of stacks so as not to send duplicates
 	var firstFrameId: number = -1;
 	var firstFrameSeq: number = -1;
+	var hasReceivedVariables: boolean = false;
 
 	// DAP
 	let lmao = vscode.debug.registerDebugAdapterTrackerFactory('*', {
@@ -54,6 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 					// Store the id of the first frame to not send multiple requests. Send requests for the rest
 					if (message["command"] == "stackTrace") {
+						hasReceivedVariables = false;
 						DebugState.getInstance().clear();
 
 						const stackFrames: any[] = message["body"]["stackFrames"];
@@ -89,6 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 					// If a variable is structured, request the strucure
 					if (message["command"] == "variables") {
+						hasReceivedVariables = true;
 						const reqSeq: number = message["request_seq"];
 						DebugState.getInstance().addFrameIdToStructVars(reqSeq);
 
@@ -107,6 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
 							if (varValue.includes("@")) {
 								if (!DebugState.getInstance().frameHasStructVar(reqSeq, varValue)) {
 									DebugState.getInstance().correlateFrameIdToStructVar(reqSeq, varValue);
+									DebugState.getInstance().addPendingVarsRef(variable["variablesReference"]);
 									session.customRequest("variables", {"variablesReference": variable["variablesReference"]});
 								}
 							}
@@ -115,34 +119,34 @@ export function activate(context: vscode.ExtensionContext) {
 							DebugState.getInstance().getFrameById(involvedFrameId)?.scopeTopToggleOff();
 						for (var involvedSeq of involvedSeqs) 
 							DebugState.getInstance().removeSeqFromFrame(involvedSeq);
-					}
+						
+						if (DebugState.getInstance().complete() && hasReceivedVariables) {
+							const frameIdToStackFrame: {[key: number]: {[key: string]: {[key: string]: any}}} = {};
+							DebugState.getInstance().callStack.forEach((stackFrame: StackFrame, frameId: number) => {
+								const varKeyToVariable: {[key: string]: {[key: string]: any}} = {};
+								stackFrame.jigsawVariables.forEach((variable: JigsawVariable, varKey: string) => {
+									const variables: {[key: string]: string} = {};
+									variable.variables.forEach((value: string, key: string) => {
+										variables[key] = value;
+									});
 
-					if (DebugState.getInstance().complete()) {
-						const frameIdToStackFrame: {[key: number]: {[key: string]: {[key: string]: any}}} = {};
-						DebugState.getInstance().callStack.forEach((stackFrame: StackFrame, frameId: number) => {
-							const varKeyToVariable: {[key: string]: {[key: string]: any}} = {};
-							stackFrame.jigsawVariables.forEach((variable: JigsawVariable, varKey: string) => {
-								const variables: {[key: string]: string} = {};
-								variable.variables.forEach((value: string, key: string) => {
-									variables[key] = value;
+									const toPush: {[key: string]: any} = {
+										"name": variable.name,
+										"value": variable.value,
+										"type": variable.type,
+										"variablesReference": variable.variablesReference,
+										"namedVariables": variable.namedVariables,
+										"indexedVariables": variable.indexedVariables,
+										"evaluateName": variable.evaluateName,
+										"scopeTopVar": stackFrame.isScopeTopVar(varKey),
+										variables: variables
+									};
+									varKeyToVariable[varKey] = toPush;
 								});
-
-								const toPush: {[key: string]: any} = {
-									"name": variable.name,
-									"value": variable.value,
-									"type": variable.type,
-									"variablesReference": variable.variablesReference,
-									"namedVariables": variable.namedVariables,
-									"indexedVariables": variable.indexedVariables,
-									"evaluateName": variable.evaluateName,
-									"scopeTopVar": stackFrame.isScopeTopVar(varKey),
-									variables: variables
-								};
-								varKeyToVariable[varKey] = toPush;
+								frameIdToStackFrame[frameId] = varKeyToVariable;
 							});
-							frameIdToStackFrame[frameId] = varKeyToVariable;
-						});
-						panel?.webview.postMessage({command: "data", body: {data: frameIdToStackFrame}});
+							panel?.webview.postMessage({command: "data", body: {data: frameIdToStackFrame}});
+						}
 					}
 				}
 		  	};

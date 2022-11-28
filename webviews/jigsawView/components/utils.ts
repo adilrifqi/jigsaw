@@ -96,7 +96,7 @@ export const layoutDiagram = async (nodes: any[], edges: any[]):
     const elk = new ElkConstructor();
     const graph = {
         id: "root",
-        layoutOptions: { 'elk.algorithm': 'force' },
+        layoutOptions: { 'elk.algorithm': 'layered' },
         children: elkNodes,
         edges: elkEdges
     }

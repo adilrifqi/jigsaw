@@ -192,7 +192,6 @@ export function FlowComponent() {
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
               fitView>
-                <MiniMap/>
                 <Controls/>
                 <Background/>
               </ReactFlow>
