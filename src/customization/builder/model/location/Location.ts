@@ -3,17 +3,19 @@ import { CustSpecComponent } from "../CustSpecComponent";
 
 export class Location extends CustSpecComponent {
     private readonly name: string;
+    private readonly placeholder: boolean;
     private parent?: Location;
 
     private commands: Command[] = [];
     private children: Location[] = [];
 
-    constructor(name: string);
-    constructor(name: string, parent?: Location);
-    constructor(name: string, parent?: Location, children?: Location[]);
-    constructor(name: string, parent?: Location, children?: Location[], commands?: Command[]) {
+    constructor(name: string, placeholder: boolean);
+    constructor(name: string, ph: boolean, parent?: Location);
+    constructor(name: string, ph: boolean, parent?: Location, children?: Location[]);
+    constructor(name: string, ph: boolean, parent?: Location, children?: Location[], commands?: Command[]) {
         super();
         this.name = name;
+        this.placeholder = ph;
         this.parent = parent;
         this.children = children ? children : this.children;
         this.commands = commands ? commands : this.commands;
@@ -21,6 +23,10 @@ export class Location extends CustSpecComponent {
 
     public getName(): string {
         return this.name;
+    }
+
+    public isPlaceholder(): boolean {
+        return this.placeholder;
     }
 
     public getParent(): Location | undefined {

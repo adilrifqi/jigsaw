@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NoneExprContext, NumLitContext, ParExprContext, ScopeCommandContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NoneExprContext, NumLitContext, ParExprContext, ScopeCommandContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringExpr } from './model/expr/StringExpr';
@@ -27,6 +27,8 @@ import { WhileCommand } from './model/command/WhileCommand';
 import { IfElseCommand } from './model/command/IfElseCommand';
 import { ScopeCommand } from './model/command/ScopeCommand';
 import { Location } from './model/location/Location';
+import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
+import { TCLocationScope } from './model/TCLocationScope';
 
 
 // TODO: NewVarCommand
@@ -38,9 +40,15 @@ import { Location } from './model/location/Location';
 // TODO: check null
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private errors: string[] = [];
+    private locationStack: Location[] = [];
+    private topLocations: Location[] = [];
+    private locVarsStack: TCLocationScope[] = [];
 
     public buildCustomization(spec: string) {
         this.errors = [];
+        this.locationStack = [];
+        this.topLocations = [];
+        this.locVarsStack = [];
         
         const lexer: Lexer = new CustSpecLexer(CharStreams.fromString(spec));
         const parser: CustSpecParser = new CustSpecParser(new CommonTokenStream(lexer));
@@ -48,6 +56,142 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         this.visit(tree);
     }
 
+    visitClassLocation(ctx: ClassLocationContext): CustSpecComponent {
+        return this.createLocation(ctx.idRule(), ctx.command(), ctx.custLocation());
+    }
+
+    visitFieldLocation(ctx: FieldLocationContext): CustSpecComponent {
+        return this.createLocation(ctx.idRule(), ctx.command(), ctx.custLocation());
+    }
+
+    private createLocation(idRule: IdRuleContext, commands: CommandContext[], custLocations: CustLocationContext[]): CustSpecComponent {
+        if (idRule.ID()) {
+            var newLocationName: string = idRule.ID()!.toString();
+
+            const newLocation: Location = new Location(newLocationName, false);
+            if (this.locationStack.length > 0) {
+                var currentLocation: Location | undefined = this.locationStack.at(-1)!;
+                newLocation.setParent(currentLocation);
+                if (!currentLocation.addChild(newLocation))
+                    return new ErrorComponent(
+                        new ErrorBuilder(idRule, "Location with name " + newLocationName + " already exists in location " + currentLocation.getName()).toString()
+                    );
+            }
+
+            // Replace a temporary location with the same name in the same location if it exists
+            const toInspect: Location[] = this.locationStack.length == 0 ? this.topLocations : this.locationStack.at(-1)!.getChildren();
+            var toSwap: number = -1;
+            for (var i = 0; i < toInspect.length; i++) {
+                const location: Location = toInspect[i];
+                if (location.isPlaceholder() && location.getName() === newLocationName) {
+                    toSwap = i;
+                    break;
+                }
+            }
+            if (toSwap > -1) {
+                var oldLocation: Location = toInspect[toSwap];
+                newLocation.setParent(oldLocation.getParent());
+                newLocation.setChildren(oldLocation.getChildren());
+                newLocation.setCommands(oldLocation.getCommands());
+                toInspect[toSwap] = newLocation;
+            }
+
+            this.locationStack.push(newLocation);
+        } else {
+            const newLocationName: string = idRule.dottedId()!.ID(idRule.dottedId()!.ID().length - 1).toString();
+
+            var currentLocation: Location | undefined = this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined;
+            var foundDirectParent: boolean = false;
+            const ids: TerminalNode[] = idRule.dottedId()!.ID();
+            var idIndex: number = 0;
+            for (; idIndex < ids.length - 1; idIndex++) {
+                const nextLocation: Location | undefined = currentLocation == undefined
+                        ? this.getTopScopeLocation(ids[idIndex].toString())
+                        : currentLocation.getChild(ids[idIndex].toString());
+
+                if (nextLocation) {
+                    currentLocation = nextLocation;
+                    if (idIndex >= ids.length - 2) {
+                        foundDirectParent = true;
+                        break;
+                    }
+                } else break;
+            }
+
+            if (!foundDirectParent) {
+                for (; idIndex < ids.length - 1; idIndex++) {
+                    const newLocation: Location = new Location(ids[idIndex].toString(), true);
+                    if (currentLocation) {
+                        currentLocation.addChild(newLocation);
+                        newLocation.setParent(currentLocation);
+                    }
+                    currentLocation = newLocation;
+                }
+
+                const newLocation: Location = new Location(newLocationName, false, currentLocation);
+                if (currentLocation) currentLocation.addChild(newLocation); // Can be null?
+                else return new ErrorComponent(new ErrorBuilder(idRule, "Bug with type checker. Found undefined where there shouldn't be.").toString());
+                this.locationStack.push(newLocation);
+            } else {
+                var toSwap: number = -1;
+                for (var i = 0; i < currentLocation!.getChildren().length; i++) {
+                    const currentCurrentLocationChild: Location = currentLocation!.getChildren()[i];
+                    if (currentCurrentLocationChild.isPlaceholder()
+                            && currentCurrentLocationChild.getName() === newLocationName) {
+                        toSwap = i;
+                        break;
+                    }
+                }
+                const newLocation: Location = new Location(newLocationName, false, currentLocation);
+                if (toSwap > -1) {
+                    const oldLocation: Location = currentLocation!.getChildren()[toSwap];
+                    newLocation.setParent(oldLocation.getParent());
+                    newLocation.setChildren(oldLocation.getChildren());
+                    newLocation.setCommands(oldLocation.getCommands());
+                    currentLocation!.getChildren()[toSwap] = newLocation;
+
+                }
+                currentLocation!.addChild(newLocation);
+                this.locationStack.push(newLocation);
+            }
+        }
+
+        this.openLocation();
+        const newLocation: Location = this.locationStack.at(-1)!;
+        for (var commandCtx of commands) {
+            const visitResult: CustSpecComponent = this.visit(commandCtx);
+            if (visitResult instanceof ErrorComponent) return visitResult;
+            newLocation.addCommand(visitResult as Command);
+        }
+        for (var locationCtx of custLocations) {
+            const visitResult: CustSpecComponent = this.visit(locationCtx);
+            if (visitResult instanceof ErrorComponent) return visitResult;
+            newLocation.addChild(visitResult as Location);
+        }
+        if (!this.closeLocation()) {
+            return new ErrorComponent(
+                new ErrorBuilder(idRule, "Type-checker has a bug where locations are closed more than they are opened.").toString()
+            );
+        }
+        return this.locationStack.pop()!;
+    }
+
+    private getTopScopeLocation(locationName: string): Location | undefined {
+        for (var location of this.topLocations) {
+            if (location.getName() === locationName) return location;
+        }
+        return undefined;
+    }
+
+    private openLocation() {
+        this.locVarsStack.push(new TCLocationScope());
+    }
+
+    private closeLocation(): boolean {
+        if (this.locVarsStack.length == 0) return false;
+        this.locVarsStack.pop();
+        return true;
+    }
 
     visitScopeCommand(ctx: ScopeCommandContext): CustSpecComponent {
         const commands: Command[] = [];
