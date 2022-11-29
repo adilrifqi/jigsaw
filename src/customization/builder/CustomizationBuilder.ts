@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { BooleanLitContext, CharLitContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustSpecParser, DisjunctionContext, ExprContext, LiteralContext, LiteralExprContext, NegationContext, NoneExprContext, NumLitContext, ParExprContext, StringLitContext, SumContext, TermContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NoneExprContext, NumLitContext, ParExprContext, ScopeCommandContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringExpr } from './model/expr/StringExpr';
@@ -22,7 +22,15 @@ import { NumExpr } from './model/expr/NumExpr';
 import { BinaryNumOp, NumOp } from './model/expr/BinaryNumOp';
 import { ComparisonExpr, CompOp } from './model/expr/ComparisonExpr';
 import { BinaryBoolOp, BoolOp } from './model/expr/BinaryBoolOp';
+import { Command } from './model/command/Command';
+import { WhileCommand } from './model/command/WhileCommand';
+import { IfElseCommand } from './model/command/IfElseCommand';
+import { ScopeCommand } from './model/command/ScopeCommand';
+import { Location } from './model/location/Location';
 
+
+// TODO: NewVarCommand
+// TODO: ReassignCommand
 // TODO: IdExpr
 // TODO: custElement
 // TODO: idRule
@@ -38,6 +46,60 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const parser: CustSpecParser = new CustSpecParser(new CommonTokenStream(lexer));
         const tree: ParseTree = parser.start();
         this.visit(tree);
+    }
+
+
+    visitScopeCommand(ctx: ScopeCommandContext): CustSpecComponent {
+        const commands: Command[] = [];
+        for (var commandCtx of ctx.command()) {
+            const comp: CustSpecComponent = this.visit(commandCtx);
+            if (comp instanceof ErrorComponent) return comp;
+            commands.push(comp as Command);
+        }
+        return new ScopeCommand(commands);
+    }
+
+    visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
+        const booleanExprs: BooleanExpr[] = [];
+        const commands: Command[] = [];
+        for (var i = 0; i < ctx.expr().length; i++) {
+            const exprComp: CustSpecComponent = this.visit(ctx.expr(i));
+            if (exprComp instanceof ErrorComponent) return exprComp;
+            const expr: Expr = exprComp as Expr;
+            if (expr.type() != ValueType.BOOLEAN)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr(i), [ValueType.BOOLEAN], expr.type()).toString()
+                );
+            booleanExprs.push(expr as BooleanExpr);
+            
+            const commandComp: CustSpecComponent = this.visit(ctx.command(i));
+            if (commandComp instanceof ErrorComponent) return commandComp;
+            commands.push(commandComp as Command);
+        }
+
+        if (ctx.command().length > ctx.expr().length) {
+            const commandComp: CustSpecComponent = this.visit(ctx.command(ctx.command().length - 1));
+            if (commandComp instanceof ErrorComponent) return commandComp;
+            commands.push(commandComp as Command);
+        }
+
+        return new IfElseCommand(booleanExprs, commands);
+    }
+
+    visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (expr.type() != ValueType.BOOLEAN)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.BOOLEAN], expr.type()).toString()
+            );
+        
+        const commandComp: CustSpecComponent = this.visit(ctx.command());
+        if (commandComp instanceof ErrorComponent) return commandComp;
+        const command: Command = commandComp as Command;
+
+        return new WhileCommand(exprComp as BooleanExpr, command);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{
