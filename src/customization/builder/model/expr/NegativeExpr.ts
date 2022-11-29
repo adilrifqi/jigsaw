@@ -1,6 +1,6 @@
-import { IntExpr } from "./IntExpr";
+import { NumExpr } from "./NumExpr";
 
-export class NegativeExpr extends IntExpr {
+export class NegativeExpr extends NumExpr {
     private readonly toNegate: number;
 
     constructor(toNegate: number) {

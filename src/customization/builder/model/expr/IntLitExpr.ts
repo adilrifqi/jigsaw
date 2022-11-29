@@ -1,6 +1,6 @@
-import { IntExpr } from "./IntExpr";
+import { NumExpr } from "./NumExpr";
 
-export class IntLitExpr extends IntExpr {
+export class IntLitExpr extends NumExpr {
     private readonly intValue: number;
 
     constructor(intValue: number) {

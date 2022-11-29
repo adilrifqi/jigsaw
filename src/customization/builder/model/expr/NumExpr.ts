@@ -1,9 +1,9 @@
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
-export abstract class IntExpr extends Expr {
+export abstract class NumExpr extends Expr {
     public type(): ValueType {
-        return ValueType.INT;
+        return ValueType.NUM;
     }
 
     public abstract value(): number;

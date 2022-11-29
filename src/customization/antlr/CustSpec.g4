@@ -63,9 +63,9 @@ custElement
 idRule  : ID | dottedId;
 dottedId: ID (DOT ID)+;
 
-literal : intLit | charLit | stringLit | booleanLit ; // TODO: BYTE, SHORT, LONG, FLOAT, DOUBLE, STRING
+literal : numLit | charLit | stringLit | booleanLit ;
 
-intLit  : INT_VALUE;
+numLit  : NUM_VALUE;
 
 charLit : CHAR_VALUE;
 
@@ -73,15 +73,16 @@ stringLit   : STRING_VALUE;
 
 booleanLit  : TRUE | FALSE ;
 
-type: INT_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE ;
+type: NUM_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE ;
 
 
 // ================================Tokens================================
 fragment LETTER     : [a-zA-Z$_] ;
 fragment DIGIT      : [0-9] ;
-fragment ANY_CHAR   : '\\t' | '\\b' | '\\r' | '\\f' | '\\n' | ~["'\\];
+fragment NONZERO    : [1-9] ;
+fragment ANY_CHAR   : '\\"' | '\\\'' | '\\\\' | '\\t' | '\\b' | '\\r' | '\\f' | '\\n' | ~["'\\];
 
-INT_VALUE   : DIGIT+;
+NUM_VALUE   : NONZERO DIGIT+ (DOT DIGIT*)?;
 CHAR_VALUE  : APO ANY_CHAR APO;
 STRING_VALUE: QUOTE ANY_CHAR* QUOTE;
 
@@ -103,12 +104,8 @@ TRUE    : 'true';
 FALSE   : 'false';
 NONE    : 'none';
 
-BYTE_TYPE   : 'byte';
 SHORT_TYPE  : 'short';
-INT_TYPE    : 'int';
-LONG_TYPE   : 'long';
-FLOAT_TYPE  : 'float';
-DOUBLE_TYPE : 'double';
+NUM_TYPE    : 'num';
 CHAR_TYPE   : 'char';
 BOOLEAN_TYPE: 'boolean';
 STRING_TYPE : 'String';
