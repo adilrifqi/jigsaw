@@ -26,6 +26,11 @@ export class ComparisonExpr extends BooleanExpr {
             case CompOp.GREATER: return this.left.value()!! > this.right.value()!!;
         }
     }
+
+    public initialize(): void {
+        this.left.initialize();
+        this.right.initialize();
+    }
 }
 
 export enum CompOp {

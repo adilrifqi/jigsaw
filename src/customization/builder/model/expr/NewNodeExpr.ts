@@ -2,7 +2,7 @@ import { Node } from "../Node";
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
-export class NodeExpr extends Expr {
+export class NewNodeExpr extends Expr {
     private readonly nodeValue: Node;
 
     constructor(nodeValue: Node) {
@@ -16,5 +16,9 @@ export class NodeExpr extends Expr {
 
     public value(): Node {
         return this.nodeValue;
+    }
+
+    public initialize(): void {
+        this.nodeValue.initialize();
     }
 }

@@ -1,14 +1,19 @@
+import { Expr } from "./Expr";
 import { NumExpr } from "./NumExpr";
 
 export class NegativeExpr extends NumExpr {
-    private readonly toNegate: number;
+    private readonly toNegate: Expr;
 
-    constructor(toNegate: number) {
+    constructor(toNegate: Expr) {
         super();
         this.toNegate = toNegate;
     }
 
     public value(): number {
-        return this.toNegate;
+        return -(this.toNegate.value() as number);
+    }
+
+    public initialize(): void {
+        this.toNegate.initialize();
     }
 }

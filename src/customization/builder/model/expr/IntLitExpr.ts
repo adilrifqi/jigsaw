@@ -11,4 +11,7 @@ export class IntLitExpr extends NumExpr {
     public value(): number {
         return this.intValue;
     }
+
+    public initialize(): void {
+    }
 }

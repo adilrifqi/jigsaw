@@ -11,4 +11,7 @@ export class BooleanLitExpr extends BooleanExpr {
     public value(): boolean {
         return this.booleanValue;
     }
+
+    public initialize(): void {
+    }
 }

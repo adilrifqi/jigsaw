@@ -1,5 +1,4 @@
 import { Expr } from "./Expr";
-import { ValueType } from "./ValueType";
 
 export class NoneExpr extends Expr {
     public type(): null {
@@ -8,5 +7,9 @@ export class NoneExpr extends Expr {
 
     public value(): null {
         return null;
+    }
+
+    public initialize(): void {
+        throw new Error("Method not implemented.");
     }
 }

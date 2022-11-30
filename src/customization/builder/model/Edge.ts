@@ -1,27 +1,41 @@
+import { Expr } from "./expr/Expr";
 import { Node } from "./Node";
 
 export class Edge {
-    private origin: Node;
-    private target: Node;
+	private readonly originExpr: Expr;
+	private readonly targetExpr: Expr;
+	
+    private origin: Node | undefined = undefined;
+    private target: Node | undefined = undefined;
 
-    constructor(origin: Node, target: Node) {
-        this.origin = origin;
-        this.target = target;
-    }
+	private initialized: boolean = false;
 
-	public get $origin(): Node {
+	constructor(originExpr: Expr, targetExpr: Expr) {
+		this.originExpr = originExpr;
+		this.targetExpr = targetExpr;
+	}
+
+	public getOrigin(): Node | undefined {
 		return this.origin;
 	}
 
-	public get $target(): Node {
+	public getTarget(): Node | undefined {
 		return this.target;
 	}
 
-	public set $origin(value: Node) {
+	public setOrigin(value: Node) {
 		this.origin = value;
 	}
 
-	public set $target(value: Node) {
+	public setTarget(value: Node) {
 		this.target = value;
+	}
+
+	public initialize() {
+		if (!this.initialized) {
+			this.origin = this.originExpr.value() as Node;
+			this.target = this.targetExpr.value() as Node;
+			this.initialized = true;
+		}
 	}
 }

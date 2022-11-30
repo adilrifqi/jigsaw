@@ -1,7 +1,7 @@
 import { Expr } from "./Expr"
 import { ValueType } from "./ValueType";
 
-export class StringExpr extends Expr {
+export class StringLitExpr extends Expr {
     private readonly stringValue: string;
 
 	constructor(stringValue: string) {
@@ -15,5 +15,8 @@ export class StringExpr extends Expr {
 
     public value(): string {
         return this.stringValue;
+    }
+
+    public initialize(): void {
     }
 }

@@ -1,8 +1,12 @@
-export class Node {
-    private name: string;
+import { Expr } from "./expr/Expr";
 
-    constructor(name: string) {
-        this.name = name;
+export class Node {
+    private name: string = "NODE";
+    private initialized: boolean = false;
+    private nameExpr: Expr;
+
+    constructor(nameExpr: Expr) {
+        this.nameExpr = nameExpr;
     }
 
     public getName(): string {
@@ -11,5 +15,12 @@ export class Node {
 
     public setName(name: string) {
         this.name = name;
+    }
+
+    public initialize() {
+        if (!this.initialized) {
+            this.name = this.nameExpr.value() as string;
+            this.initialized = true;
+        }
     }
 }

@@ -1,24 +1,22 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NoneExprContext, NumLitContext, ParExprContext, ScopeCommandContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeContext, NewNodeContext, NoneExprContext, NumLitContext, ParExprContext, ScopeCommandContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
-import { StringExpr } from './model/expr/StringExpr';
+import { StringLitExpr } from './model/expr/StringLitExpr';
 import { IntLitExpr } from './model/expr/IntLitExpr';
 import { CustSpecLexer } from '../antlr/parser/src/customization/antlr/CustSpecLexer';
 import { CharStreams, CommonTokenStream, Lexer } from 'antlr4ts';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ErrorBuilder } from './error/ErrorBuilder';
-import { CharExpr } from './model/expr/CharExpr';
+import { CharLitExpr } from './model/expr/CharLitExpr';
 import { NoneExpr } from './model/expr/NoneExpr';
 import { Expr } from './model/expr/Expr';
 import { ValueType } from './model/expr/ValueType';
 import { TypeErrorBuilder } from './error/TypeErrorBuilder';
 import { NotExpr } from './model/expr/NotExpr';
-import { BooleanExpr } from './model/expr/BooleanExpr';
 import { NegativeExpr } from './model/expr/NegativeExpr';
-import { NumExpr } from './model/expr/NumExpr';
 import { BinaryNumOp, NumOp } from './model/expr/BinaryNumOp';
 import { ComparisonExpr, CompOp } from './model/expr/ComparisonExpr';
 import { BinaryBoolOp, BoolOp } from './model/expr/BinaryBoolOp';
@@ -30,12 +28,15 @@ import { Location } from './model/location/Location';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { TCLocationScope } from './model/TCLocationScope';
 import { CustomizationRuntime } from './model/CustomizationRuntime';
+import { NewEdgeExpr } from './model/expr/NewEdgeExpr';
+import { Edge } from './model/Edge';
+import { NewNodeExpr } from './model/expr/NewNodeExpr';
+import { Node } from './model/Node';
 
 
 // TODO: NewVarCommand
 // TODO: ReassignCommand
 // TODO: IdExpr
-// TODO: custElement
 // TODO: idRule
 // TODO: dottedId
 // TODO: check null
@@ -193,7 +194,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
-        const booleanExprs: BooleanExpr[] = [];
+        const conditions: Expr[] = [];
         const commands: Command[] = [];
         for (var i = 0; i < ctx.expr().length; i++) {
             const exprComp: CustSpecComponent = this.visit(ctx.expr(i));
@@ -203,7 +204,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.expr(i), [ValueType.BOOLEAN], expr.type()).toString()
                 );
-            booleanExprs.push(expr as BooleanExpr);
+            conditions.push(expr);
             
             const commandComp: CustSpecComponent = this.visit(ctx.command(i));
             if (commandComp instanceof ErrorComponent) return commandComp;
@@ -216,7 +217,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             commands.push(commandComp as Command);
         }
 
-        return new IfElseCommand(booleanExprs, commands);
+        return new IfElseCommand(conditions, commands);
     }
 
     visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
@@ -232,7 +233,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (commandComp instanceof ErrorComponent) return commandComp;
         const command: Command = commandComp as Command;
 
-        return new WhileCommand(exprComp as BooleanExpr, command);
+        return new WhileCommand(expr, command);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{
@@ -243,7 +244,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (ctx.OR().length == 0) {
             return this.visit(ctx.conjunction(0));
         } else {
-            const booleanExprs: BooleanExpr[] = [];
+            const booleanExprs: Expr[] = [];
             for (var compCtx of ctx.conjunction()) {
                 const comp: CustSpecComponent = this.visit(compCtx);
                 if (comp instanceof ErrorComponent) return comp;
@@ -252,7 +253,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     return new ErrorComponent(
                         new TypeErrorBuilder(compCtx, [ValueType.BOOLEAN], expr.type()).toString()
                     );
-                booleanExprs.push(expr as BooleanExpr);
+                booleanExprs.push(expr);
             }
 
             var result = booleanExprs[booleanExprs.length - 1];
@@ -266,7 +267,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (ctx.AND().length == 0) {
             return this.visit(ctx.comparison(0));
         } else {
-            const booleanExprs: BooleanExpr[] = [];
+            const booleanExprs: Expr[] = [];
             for (var compCtx of ctx.comparison()) {
                 const comp: CustSpecComponent = this.visit(compCtx);
                 if (comp instanceof ErrorComponent) return comp;
@@ -275,7 +276,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     return new ErrorComponent(
                         new TypeErrorBuilder(compCtx, [ValueType.BOOLEAN], expr.type()).toString()
                     );
-                booleanExprs.push(expr as BooleanExpr);
+                booleanExprs.push(expr);
             }
 
             var result = booleanExprs[booleanExprs.length - 1];
@@ -344,8 +345,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 );
             
             return new BinaryNumOp(
-                leftExpr as NumExpr,
-                rightExpr as NumExpr,
+                leftExpr,
+                rightExpr ,
                 ctx.PLUS() != undefined ? NumOp.ADD : NumOp.SUB
             );
         }
@@ -372,8 +373,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 );
             
             return new BinaryNumOp(
-                leftExpr as NumExpr,
-                rightExpr as NumExpr,
+                leftExpr,
+                rightExpr,
                 ctx.TIMES() != undefined ? NumOp.MULT : NumOp.DIV
             );
         }
@@ -384,20 +385,20 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
 
-        if (ctx.MIN() != undefined) {
+        if (ctx.MIN()) {
             // Expr must be a number
             if (expr.type() != ValueType.NUM)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.primary(), [ValueType.NUM], expr.type()).toString()
                 );
-            return new NegativeExpr((expr as NumExpr).value());
+            return new NegativeExpr(expr);
         } else {
             // Expr must be a boolean
             if (expr.type() != ValueType.BOOLEAN)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.primary(), [ValueType.BOOLEAN], expr.type()).toString()
                 );
-            return new NotExpr((expr as BooleanExpr).value());
+            return new NotExpr(expr);
         }
     }
 
@@ -415,6 +416,38 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     visitNoneExpr(ctx: NoneExprContext): CustSpecComponent {
         return new NoneExpr();
+    }
+
+    visitNewNode(ctx: NewNodeContext): CustSpecComponent {
+        const comp: CustSpecComponent = this.visit(ctx.expr());
+        if (comp instanceof ErrorComponent) return comp;
+        const expr: Expr = comp as Expr;
+        if (expr.type() != ValueType.STRING)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.STRING], expr.type()).toString()
+            );
+        
+        return new NewNodeExpr(new Node(expr));
+    }
+
+    visitNewEdge(ctx: NewEdgeContext): CustSpecComponent {
+        const leftComp: CustSpecComponent = this.visit(ctx.expr(0));
+        if (leftComp instanceof ErrorComponent) return leftComp;
+        const leftExpr: Expr = leftComp as Expr;
+        if (leftExpr.type() != ValueType.NODE)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE], leftExpr.type()).toString()
+            );
+
+        const rightComp: CustSpecComponent = this.visit(ctx.expr(1));
+        if (rightComp instanceof ErrorComponent) return rightComp;
+        const rightExpr: Expr = rightComp as Expr;
+        if (rightExpr.type() != ValueType.NODE)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], rightExpr.type()).toString()
+            );
+        
+        return new NewEdgeExpr(new Edge(leftExpr, rightExpr));
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {
@@ -436,7 +469,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const transformed: string | undefined = this.transformChar(contents);
         
         if (transformed == undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Unknown character " + contents).toString());
-        return new CharExpr(transformed);
+        return new CharLitExpr(transformed);
     }
 
     visitStringLit(ctx: StringLitContext): CustSpecComponent {
@@ -456,7 +489,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             } else finalString += currChar;
         }
 
-        return new StringExpr(finalString);
+        return new StringLitExpr(finalString);
     }
     
     visitBooleanLit(ctx: BooleanLitContext): CustSpecComponent {

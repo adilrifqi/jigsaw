@@ -3,13 +3,13 @@ import { ValueType } from "./expr/ValueType";
 export class RTLocationScope {
     private readonly vars: Map<string, Variable>[] = [];
 
-    public addVarible(name: string, type: ValueType, value: any): boolean {
+    public addVarible(name: string, type: ValueType | null, value: any): boolean {
         if (this.vars.length == 0 || this.containsVariable(name)) return false;
         this.vars.at(-1)!.set(name, new Variable(name, type, value));
         return true;
     }
 
-    public updateVariable(name: string, type: ValueType, value: any): boolean {
+    public updateVariable(name: string, type: ValueType | null, value: any): boolean {
         for (var i = this.vars.length - 1; i >= 0; i--) {
             const scope: Map<string, Variable> = this.vars[i];
             if (scope.has(name)) {
@@ -44,10 +44,10 @@ export class RTLocationScope {
 
 export class Variable {
     public readonly name: string;
-    public readonly type: ValueType;
+    public readonly type: ValueType | null;
     public readonly value: any;
 
-    constructor(name: string, type: ValueType, value: any) {
+    constructor(name: string, type: ValueType | null, value: any) {
         this.name = name;
         this.type = type;
         this.value = value;

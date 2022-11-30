@@ -1,11 +1,11 @@
-import { BooleanExpr } from "../expr/BooleanExpr";
+import { Expr } from "../expr/Expr";
 import { Command } from "./Command";
 
 export class IfElseCommand extends Command {
-    private readonly conditions: BooleanExpr[];
+    private readonly conditions: Expr[];
     private readonly commands: Command[];
 
-    constructor(conditions: BooleanExpr[], commands: Command[]) {
+    constructor(conditions: Expr[], commands: Command[]) {
         super();
         this.conditions = conditions;
         this.commands = commands;
@@ -13,7 +13,7 @@ export class IfElseCommand extends Command {
 
     public execute(): boolean {
         for (var i = 0; i < this.conditions.length; i++)
-            if (this.conditions[i].value())
+            if (this.conditions[i].value() as boolean)
                 return this.commands[i].execute();
 
         // This means there is an "else" statement

@@ -1,14 +1,19 @@
 import { BooleanExpr } from "./BooleanExpr";
+import { Expr } from "./Expr";
 
 export class NotExpr extends BooleanExpr {
-    private readonly toNot: boolean;
+    private readonly toNot: Expr;
 
-    constructor(toNot: boolean) {
+    constructor(toNot: Expr) {
         super();
         this.toNot = toNot;
     }
 
     public value(): boolean {
-        return this.toNot;
+        return !(this.toNot.value() as boolean);
+    }
+
+    public initialize(): void {
+        this.toNot.initialize();
     }
 }
