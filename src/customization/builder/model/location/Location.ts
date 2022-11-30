@@ -6,8 +6,8 @@ export class Location extends CustSpecComponent {
     private readonly name: string;
     private readonly placeholder: boolean;
     private readonly runtime: CustomizationRuntime;
+    
     private parent?: Location;
-
     private commands: Command[] = [];
     private children: Location[] = [];
 

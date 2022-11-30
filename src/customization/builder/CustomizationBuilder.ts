@@ -65,7 +65,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         for (var location of ctx.custLocation()) {
             const comp: CustSpecComponent = this.visit(location);
             if (comp instanceof ErrorComponent) return comp;
-            this.topLocations.push(comp as Location);
+            // this.topLocations.push(comp as Location);
         }
         return this.runtime;
     }
@@ -108,9 +108,9 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 newLocation.setChildren(oldLocation.getChildren());
                 newLocation.setCommands(oldLocation.getCommands());
                 toInspect[toSwap] = newLocation;
-            }
+            } else this.addTopLocation(newLocation);
 
-            this.locationStack.push(newLocation);
+            this.pushLocationToStack(newLocation);
         } else {
             const newLocationName: string = idRule.dottedId()!.ID(idRule.dottedId()!.ID().length - 1).toString();
 
@@ -119,7 +119,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             const ids: TerminalNode[] = idRule.dottedId()!.ID();
             var idIndex: number = 0;
             for (; idIndex < ids.length - 1; idIndex++) {
-                const nextLocation: Location | undefined = currentLocation == undefined
+                const nextLocation: Location | undefined = currentLocation === undefined
                         ? this.getTopScopeLocation(ids[idIndex].toString())
                         : currentLocation.getChild(ids[idIndex].toString());
 
@@ -133,6 +133,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             }
 
             if (!foundDirectParent) {
+                const isNewTopLocation: boolean = idIndex == 0;
                 for (; idIndex < ids.length - 1; idIndex++) {
                     const newLocation: Location = new Location(ids[idIndex].toString(), true, this.runtime);
                     if (currentLocation) {
@@ -145,7 +146,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 const newLocation: Location = new Location(newLocationName, false, this.runtime, currentLocation);
                 if (currentLocation) currentLocation.addChild(newLocation); // Can be null?
                 else return new ErrorComponent(new ErrorBuilder(idRule, "Bug with type checker. Found undefined where there shouldn't be.").toString());
-                this.locationStack.push(newLocation);
+                if (isNewTopLocation) this.addTopLocation(newLocation);
+                this.pushLocationToStack(newLocation);
             } else {
                 var toSwap: number = -1;
                 for (var i = 0; i < currentLocation!.getChildren().length; i++) {
@@ -163,10 +165,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     newLocation.setChildren(oldLocation.getChildren());
                     newLocation.setCommands(oldLocation.getCommands());
                     currentLocation!.getChildren()[toSwap] = newLocation;
+                } else this.addTopLocation(newLocation);
 
-                }
                 currentLocation!.addChild(newLocation);
-                this.locationStack.push(newLocation);
+                this.pushLocationToStack(newLocation);
             }
         }
 
@@ -631,6 +633,23 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (location.getName() === locationName) return location;
         }
         return undefined;
+    }
+
+    private addTopLocation(location: Location) {
+        if (this.locationStack.length == 0) {
+            var currentLocation: Location = location;
+            var currentLocationParent: Location | undefined = location.getParent();
+            while (currentLocationParent) {
+                currentLocation = currentLocationParent;
+                currentLocationParent = currentLocation.getParent();
+            }
+            this.topLocations.push(currentLocation);
+        }
+        // this.locationStack.push(location);
+    }
+
+    private pushLocationToStack(location: Location) {
+        this.locationStack.push(location);
     }
 
     private openLocationScope() {
