@@ -40,7 +40,7 @@ import { ReassignCommand } from './model/expr/ReassignCommand';
 // TODO: check null and undefined
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
-    private topLocations: Location[] = [];
+    private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
     private locVarsStack: TCLocationScope[] = [];
     private runtime: CustomizationRuntime = new CustomizationRuntime();
 
@@ -67,7 +67,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (comp instanceof ErrorComponent) return comp;
             this.topLocations.push(comp as Location);
         }
-        return new ErrorComponent(new ErrorBuilder(ctx, "This is not a valid component").toString());
+        return this.runtime;
     }
 
     visitClassLocation(ctx: ClassLocationContext): CustSpecComponent {
@@ -479,14 +479,14 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     new TypeErrorBuilder(ctx.primary(), [ValueType.NUM], expr.type()).toString()
                 );
             return new NegativeExpr(expr);
-        } else {
+        } else if (ctx.NOT() !== undefined) {
             // Expr must be a boolean
             if (expr.type() != ValueType.BOOLEAN)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.primary(), [ValueType.BOOLEAN], expr.type()).toString()
                 );
             return new NotExpr(expr);
-        }
+        } else return expr;
     }
 
     visitIdExpr(ctx: IdExprContext): CustSpecComponent {

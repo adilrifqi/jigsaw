@@ -3,6 +3,10 @@ import { ValueType } from "./expr/ValueType";
 export class RTLocationScope {
     private readonly vars: Map<string, Variable>[] = [];
 
+    constructor() {
+        this.openVariableScope();
+    }
+
     public addVarible(name: string, type: ValueType | null, value: any): boolean {
         if (this.vars.length == 0 || this.containsVariable(name)) return false;
         this.vars.at(-1)!.set(name, new Variable(name, type, value));

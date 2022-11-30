@@ -82,7 +82,7 @@ fragment DIGIT      : [0-9] ;
 fragment NONZERO    : [1-9] ;
 fragment ANY_CHAR   : '\\"' | '\\\'' | '\\\\' | '\\t' | '\\b' | '\\r' | '\\f' | '\\n' | ~["'\\];
 
-NUM_VALUE   : NONZERO DIGIT+ (DOT DIGIT*)?;
+NUM_VALUE   : NONZERO DIGIT* (DOT DIGIT*)?;
 CHAR_VALUE  : APO ANY_CHAR APO;
 STRING_VALUE: QUOTE ANY_CHAR* QUOTE;
 

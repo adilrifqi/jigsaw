@@ -1,8 +1,9 @@
+import { CustSpecComponent } from "./CustSpecComponent";
 import { ValueType } from "./expr/ValueType";
 import { Location } from "./location/Location";
 import { RTLocationScope, Variable } from "./RTLocationScope";
 
-export class CustomizationRuntime {
+export class CustomizationRuntime extends CustSpecComponent {
     private topLocations: Location[] = [];
     private graph: any = {};
     private runtimeScopes: RTLocationScope[] = [];
