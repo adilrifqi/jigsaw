@@ -20,11 +20,11 @@ export class TCLocationScope {
         return this.getType(name) != undefined && this.getType(name) != null;
     }
 
-    public openScope() {
-        this.vars.push(new Map<String, ValueType>());
+    public openVariableScope() {
+        this.vars.push(new Map());
     }
 
-    public closeScope(): boolean {
+    public closeVariableScope(): boolean {
         if (this.vars.length == 0) return false;
         this.vars.pop();
         return true;

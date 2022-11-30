@@ -11,7 +11,10 @@ export class WhileCommand extends Command {
         this.command = command;
     }
 
-    public execute(): void {
-        while(this.condition.value()) this.command.execute();
+    public execute(): boolean {
+        while(this.condition.value())
+            if (!this.command.execute()!)
+                return false;
+        return true;
     }
 }

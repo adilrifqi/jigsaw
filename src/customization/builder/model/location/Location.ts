@@ -1,21 +1,24 @@
 import { Command } from "../command/Command";
+import { CustomizationRuntime } from "../CustomizationRuntime";
 import { CustSpecComponent } from "../CustSpecComponent";
 
 export class Location extends CustSpecComponent {
     private readonly name: string;
     private readonly placeholder: boolean;
+    private readonly runtime: CustomizationRuntime;
     private parent?: Location;
 
     private commands: Command[] = [];
     private children: Location[] = [];
 
-    constructor(name: string, placeholder: boolean);
-    constructor(name: string, ph: boolean, parent?: Location);
-    constructor(name: string, ph: boolean, parent?: Location, children?: Location[]);
-    constructor(name: string, ph: boolean, parent?: Location, children?: Location[], commands?: Command[]) {
+    constructor(name: string, placeholder: boolean, runtime: CustomizationRuntime);
+    constructor(name: string, placeholder: boolean, runtime: CustomizationRuntime, parent?: Location);
+    constructor(name: string, placeholder: boolean, runtime: CustomizationRuntime, parent?: Location, children?: Location[]);
+    constructor(name: string, placeholder: boolean, runtime: CustomizationRuntime, parent?: Location, children?: Location[], commands?: Command[]) {
         super();
         this.name = name;
-        this.placeholder = ph;
+        this.placeholder = placeholder;
+        this.runtime = runtime;
         this.parent = parent;
         this.children = children ? children : this.children;
         this.commands = commands ? commands : this.commands;
@@ -82,5 +85,16 @@ export class Location extends CustSpecComponent {
 
     public addCommand(command: Command) {
         this.commands.push(command);
+    }
+
+    public execute(): boolean {
+        this.runtime.openLocationScope();
+        for (var command of this.commands)
+            if (!command.execute())
+                return false;
+        for (var child of this.children)
+            if (!child.execute())
+                return false;
+        return this.runtime.closeLocationScope();
     }
 }

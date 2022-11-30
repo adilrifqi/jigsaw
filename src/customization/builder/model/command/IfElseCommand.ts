@@ -11,16 +11,15 @@ export class IfElseCommand extends Command {
         this.commands = commands;
     }
 
-    public execute(): void {
-        for (var i = 0; i < this.conditions.length; i++) {
-            if (this.conditions[i].value()) {
-                this.commands[i].execute();
-                return;
-            }
-        }
+    public execute(): boolean {
+        for (var i = 0; i < this.conditions.length; i++)
+            if (this.conditions[i].value())
+                return this.commands[i].execute();
 
         // This means there is an "else" statement
         if (this.commands.length > this.conditions.length)
-            this.commands[this.commands.length - 1].execute();
+            return this.commands[this.commands.length - 1].execute();
+
+        return true;
     }
 }

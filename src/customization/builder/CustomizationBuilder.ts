@@ -29,6 +29,7 @@ import { ScopeCommand } from './model/command/ScopeCommand';
 import { Location } from './model/location/Location';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { TCLocationScope } from './model/TCLocationScope';
+import { CustomizationRuntime } from './model/CustomizationRuntime';
 
 
 // TODO: NewVarCommand
@@ -43,17 +44,22 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     private locationStack: Location[] = [];
     private topLocations: Location[] = [];
     private locVarsStack: TCLocationScope[] = [];
+    private runtime: CustomizationRuntime = new CustomizationRuntime();
 
     public buildCustomization(spec: string) {
         this.errors = [];
         this.locationStack = [];
         this.topLocations = [];
         this.locVarsStack = [];
+        this.runtime = new CustomizationRuntime();
         
         const lexer: Lexer = new CustSpecLexer(CharStreams.fromString(spec));
         const parser: CustSpecParser = new CustSpecParser(new CommonTokenStream(lexer));
         const tree: ParseTree = parser.start();
         this.visit(tree);
+
+        this.runtime.setTopLocations(this.topLocations);
+        // TODO: Return something
     }
 
     visitClassLocation(ctx: ClassLocationContext): CustSpecComponent {
@@ -68,7 +74,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (idRule.ID()) {
             var newLocationName: string = idRule.ID()!.toString();
 
-            const newLocation: Location = new Location(newLocationName, false);
+            const newLocation: Location = new Location(newLocationName, false, this.runtime);
             if (this.locationStack.length > 0) {
                 var currentLocation: Location | undefined = this.locationStack.at(-1)!;
                 newLocation.setParent(currentLocation);
@@ -120,7 +126,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
             if (!foundDirectParent) {
                 for (; idIndex < ids.length - 1; idIndex++) {
-                    const newLocation: Location = new Location(ids[idIndex].toString(), true);
+                    const newLocation: Location = new Location(ids[idIndex].toString(), true, this.runtime);
                     if (currentLocation) {
                         currentLocation.addChild(newLocation);
                         newLocation.setParent(currentLocation);
@@ -128,7 +134,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     currentLocation = newLocation;
                 }
 
-                const newLocation: Location = new Location(newLocationName, false, currentLocation);
+                const newLocation: Location = new Location(newLocationName, false, this.runtime, currentLocation);
                 if (currentLocation) currentLocation.addChild(newLocation); // Can be null?
                 else return new ErrorComponent(new ErrorBuilder(idRule, "Bug with type checker. Found undefined where there shouldn't be.").toString());
                 this.locationStack.push(newLocation);
@@ -142,7 +148,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         break;
                     }
                 }
-                const newLocation: Location = new Location(newLocationName, false, currentLocation);
+                const newLocation: Location = new Location(newLocationName, false, this.runtime, currentLocation);
                 if (toSwap > -1) {
                     const oldLocation: Location = currentLocation!.getChildren()[toSwap];
                     newLocation.setParent(oldLocation.getParent());
@@ -176,23 +182,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return this.locationStack.pop()!;
     }
 
-    private getTopScopeLocation(locationName: string): Location | undefined {
-        for (var location of this.topLocations) {
-            if (location.getName() === locationName) return location;
-        }
-        return undefined;
-    }
-
-    private openLocation() {
-        this.locVarsStack.push(new TCLocationScope());
-    }
-
-    private closeLocation(): boolean {
-        if (this.locVarsStack.length == 0) return false;
-        this.locVarsStack.pop();
-        return true;
-    }
-
     visitScopeCommand(ctx: ScopeCommandContext): CustSpecComponent {
         const commands: Command[] = [];
         for (var commandCtx of ctx.command()) {
@@ -200,7 +189,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (comp instanceof ErrorComponent) return comp;
             commands.push(comp as Command);
         }
-        return new ScopeCommand(commands);
+        return new ScopeCommand(commands, this.runtime);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
@@ -504,5 +493,22 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             case "n": return "\n";
             default: return undefined;
         }
+    }
+
+    private getTopScopeLocation(locationName: string): Location | undefined {
+        for (var location of this.topLocations) {
+            if (location.getName() === locationName) return location;
+        }
+        return undefined;
+    }
+
+    private openLocation() {
+        this.locVarsStack.push(new TCLocationScope());
+    }
+
+    private closeLocation(): boolean {
+        if (this.locVarsStack.length == 0) return false;
+        this.locVarsStack.pop();
+        return true;
     }
 }
