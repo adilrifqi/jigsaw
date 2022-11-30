@@ -33,7 +33,7 @@ export class CustomizationRuntime {
 		return this.runtimeScopes.at(-1)!.addVarible(name, type, value);
     }
 
-    public updateVariable(name: string, type: ValueType | null, value: any): boolean {
+    public reassignVariable(name: string, type: ValueType | null, value: any): boolean {
         if (this.runtimeScopes.length == 0) return false;
 		return this.runtimeScopes.at(-1)!.updateVariable(name, type, value);
     }

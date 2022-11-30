@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeContext, NewNodeContext, NoneExprContext, NumLitContext, ParExprContext, ScopeCommandContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeContext, NewNodeContext, NewVarCommandContext, NoneExprContext, NumLitContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -32,23 +32,19 @@ import { NewEdgeExpr } from './model/expr/NewEdgeExpr';
 import { Edge } from './model/Edge';
 import { NewNodeExpr } from './model/expr/NewNodeExpr';
 import { Node } from './model/Node';
+import { VarRefExpr } from './model/expr/VarRefExpr';
+import { NewVarCommand } from './model/command/NewVarCommand';
+import { ReassignCommand } from './model/expr/ReassignCommand';
 
 
-// TODO: NewVarCommand
-// TODO: ReassignCommand
-// TODO: IdExpr
-// TODO: idRule
-// TODO: dottedId
-// TODO: check null
+// TODO: check null and undefined
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
-    private errors: string[] = [];
     private locationStack: Location[] = [];
     private topLocations: Location[] = [];
     private locVarsStack: TCLocationScope[] = [];
     private runtime: CustomizationRuntime = new CustomizationRuntime();
 
-    public buildCustomization(spec: string) {
-        this.errors = [];
+    public buildCustomization(spec: string): CustomizationRuntime | ErrorComponent {
         this.locationStack = [];
         this.topLocations = [];
         this.locVarsStack = [];
@@ -57,10 +53,21 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const lexer: Lexer = new CustSpecLexer(CharStreams.fromString(spec));
         const parser: CustSpecParser = new CustSpecParser(new CommonTokenStream(lexer));
         const tree: ParseTree = parser.start();
-        this.visit(tree);
+
+        const visitResult: CustSpecComponent = this.visit(tree);
+        if (visitResult instanceof ErrorComponent) return visitResult;
 
         this.runtime.setTopLocations(this.topLocations);
-        // TODO: Return something
+        return this.runtime;
+    }
+
+    visitStart(ctx: StartContext): CustSpecComponent {
+        for (var location of ctx.custLocation()) {
+            const comp: CustSpecComponent = this.visit(location);
+            if (comp instanceof ErrorComponent) return comp;
+            this.topLocations.push(comp as Location);
+        }
+        return new ErrorComponent(new ErrorBuilder(ctx, "This is not a valid component").toString());
     }
 
     visitClassLocation(ctx: ClassLocationContext): CustSpecComponent {
@@ -163,7 +170,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             }
         }
 
-        this.openLocation();
+        this.openLocationScope();
         const newLocation: Location = this.locationStack.at(-1)!;
         for (var commandCtx of commands) {
             const visitResult: CustSpecComponent = this.visit(commandCtx);
@@ -175,9 +182,9 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (visitResult instanceof ErrorComponent) return visitResult;
             newLocation.addChild(visitResult as Location);
         }
-        if (!this.closeLocation()) {
+        if (!this.closeLocationScope()) {
             return new ErrorComponent(
-                new ErrorBuilder(idRule, "Type-checker has a bug where locations are closed more than they are opened.").toString()
+                new ErrorBuilder(idRule, "Type-checker has a bug where locations are closed more than they were opened.").toString()
             );
         }
         return this.locationStack.pop()!;
@@ -186,11 +193,91 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     visitScopeCommand(ctx: ScopeCommandContext): CustSpecComponent {
         const commands: Command[] = [];
         for (var commandCtx of ctx.command()) {
+            if (!this.openVariableScope())
+                return new ErrorComponent(
+                    new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
+                );
             const comp: CustSpecComponent = this.visit(commandCtx);
+            if (!this.closeVariableScope())
+                return new ErrorComponent(
+                    new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
+                );
             if (comp instanceof ErrorComponent) return comp;
             commands.push(comp as Command);
         }
         return new ScopeCommand(commands, this.runtime);
+    }
+
+    visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
+        var declaredType: ValueType;
+        if (ctx.type().NUM_TYPE()) declaredType = ValueType.NUM;
+        else if (ctx.type().CHAR_TYPE()) declaredType = ValueType.CHAR;
+        else if (ctx.type().BOOLEAN_TYPE()) declaredType = ValueType.BOOLEAN;
+        else if (ctx.type().STRING_TYPE()) declaredType = ValueType.STRING;
+        else if (ctx.type().NODE_TYPE()) declaredType = ValueType.NODE;
+        else if (ctx.type().EDGE_TYPE()) declaredType = ValueType.EDGE;
+        else return new ErrorComponent(
+            new ErrorBuilder(ctx.type(), "Invalid type " + ctx.type().toString() + ".").toString()
+        );
+        
+        const varName: string = ctx.ID().toString();
+
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+
+        if (declaredType == ValueType.NODE && expr.type() != ValueType.NODE && expr.type() !== null)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, null], expr.type()).toString()
+            );
+        else if (declaredType == ValueType.EDGE && expr.type() != ValueType.EDGE && expr.type() !== null)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE, null], expr.type()).toString()
+            );
+        else if (declaredType != expr.type())
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
+            );
+        
+        if (!this.addTCVariable(varName, declaredType))
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Variable with name " + varName + " already exists in this scope.").toString()
+            );
+
+        return new NewVarCommand(varName, expr, this.runtime);
+    }
+
+    visitReassignCommand(ctx: ReassignCommandContext): CustSpecComponent {
+        const varName: string = ctx.ID().toString();
+        if (this.locVarsStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Bug in type checker where scope does not exist where it should").toString()
+            );
+
+        const type: ValueType | null | undefined = this.getTCType(varName);
+        if (type === undefined)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Variable " + varName + " does not exist in this scope.").toString()
+            );
+        
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+
+        if (type == ValueType.NODE && expr.type() != ValueType.NODE && expr.type() !== null)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, null], expr.type()).toString()
+            );
+        else if (type == ValueType.EDGE && expr.type() != ValueType.EDGE && expr.type() !== null)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE, null], expr.type()).toString()
+            );
+        else if (type != expr.type())
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [type], expr.type()).toString()
+            );
+        
+        return new ReassignCommand(varName, expr, this.runtime);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
@@ -287,7 +374,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitComparison(ctx: ComparisonContext): CustSpecComponent {
-        if (ctx._left == null || ctx._left == undefined) {
+        if (ctx._left === null || ctx._left === undefined) {
             return this.visit(ctx.sum(0));
         } else {
             const leftComp: CustSpecComponent = this.visit(ctx._left);
@@ -313,11 +400,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             }
 
             var op: CompOp;
-            if (ctx.LESS() != undefined) op = CompOp.LESS;
-            else if (ctx.LEQ() != undefined) op = CompOp.LEQ;
-            else if (ctx.EQUAL() != undefined) op = CompOp.EQUAL;
-            else if (ctx.NEQ() != undefined) op = CompOp.NEQ;
-            else if (ctx.GEQ() != undefined) op = CompOp.GEQ;
+            if (ctx.LESS() !== undefined) op = CompOp.LESS;
+            else if (ctx.LEQ() !== undefined) op = CompOp.LEQ;
+            else if (ctx.EQUAL() !== undefined) op = CompOp.EQUAL;
+            else if (ctx.NEQ() !== undefined) op = CompOp.NEQ;
+            else if (ctx.GEQ() !== undefined) op = CompOp.GEQ;
             else op = CompOp.GREATER;
 
             return new ComparisonExpr(leftExpr, rightExpr, op);
@@ -325,7 +412,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitSum(ctx: SumContext): CustSpecComponent {
-        if (ctx._left == null || ctx._left == undefined) {
+        if (ctx._left === null || ctx._left === undefined) {
             return this.visit(ctx.term());
         } else {
             const leftComp: CustSpecComponent = this.visit(ctx._left);
@@ -353,7 +440,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitTerm(ctx: TermContext): CustSpecComponent {
-        if (ctx._left == null || ctx._left == undefined) {
+        if (ctx._left === null || ctx._left === undefined) {
             return this.visit(ctx.negation());
         } else {
             const leftComp: CustSpecComponent = this.visit(ctx._left);
@@ -385,7 +472,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
 
-        if (ctx.MIN()) {
+        if (ctx.MIN() !== undefined) {
             // Expr must be a number
             if (expr.type() != ValueType.NUM)
                 return new ErrorComponent(
@@ -400,6 +487,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 );
             return new NotExpr(expr);
         }
+    }
+
+    visitIdExpr(ctx: IdExprContext): CustSpecComponent {
+        const varName: string = ctx.ID().toString();
+        const type: ValueType | null | undefined = this.getTCType(varName);
+        if (type === undefined) // undefined means error, null means it's a 'none' value
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Variable " + varName + " is not defined in this scope").toString()
+            );
+        
+        return new VarRefExpr(varName, type, this.runtime);
     }
 
     visitCustElementExpr(ctx: CustElementExprContext): CustSpecComponent {
@@ -456,7 +554,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     visitNumLit(ctx: NumLitContext): CustSpecComponent {
         const value: number = +ctx.NUM_VALUE().toString();
-        if (value === NaN)
+        if (isNaN(value))
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Invalid number literal " + ctx.NUM_VALUE().toString()).toString()
             );
@@ -468,7 +566,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const contents: string = ctx.CHAR_VALUE().toString().substring(1, totalLength - 1);
         const transformed: string | undefined = this.transformChar(contents);
         
-        if (transformed == undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Unknown character " + contents).toString());
+        if (transformed === undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Unknown character " + contents).toString());
         return new CharLitExpr(transformed);
     }
 
@@ -483,7 +581,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 // Assume that the input text is valid
                 const nextChar: string = contents.charAt(++i);
                 const transformed: string | undefined = this.transformChar(currChar + nextChar);
-                if (transformed == undefined)
+                if (transformed === undefined)
                     return new ErrorComponent(new ErrorBuilder(ctx, "Unknown character " + currChar + nextChar).toString());
                 finalString += transformed;
             } else finalString += currChar;
@@ -535,13 +633,39 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return undefined;
     }
 
-    private openLocation() {
+    private openLocationScope() {
         this.locVarsStack.push(new TCLocationScope());
     }
 
-    private closeLocation(): boolean {
+    private closeLocationScope(): boolean {
         if (this.locVarsStack.length == 0) return false;
         this.locVarsStack.pop();
         return true;
+    }
+
+    private openVariableScope(): boolean {
+        if (this.locVarsStack.length == 0) return false;
+        this.locVarsStack.at(-1)!.openVariableScope();
+        return true;
+    }
+
+    private closeVariableScope(): boolean {
+        if (this.locVarsStack.length == 0) return false;
+        return this.locVarsStack.at(-1)!.closeVariableScope();
+    }
+
+    private addTCVariable(name: string, type: ValueType | null): boolean {
+        if (this.locVarsStack.length == 0) return false;
+        return this.locVarsStack.at(-1)!.addVariable(name, type);
+    }
+
+    private containsTCVariable(name: string): boolean {
+        if (this.locVarsStack.length == 0) return false;
+        return this.locVarsStack.at(-1)!.containsVariable(name);
+    }
+
+    private getTCType(name: string): ValueType | null | undefined {
+        if (this.locVarsStack.length == 0) return undefined;
+        return this.locVarsStack.at(-1)!.getType(name);
     }
 }
