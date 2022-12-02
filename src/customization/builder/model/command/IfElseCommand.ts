@@ -1,12 +1,13 @@
 import { Expr } from "../expr/Expr";
+import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class IfElseCommand extends Command {
     private readonly conditions: Expr[];
     private readonly commands: Command[];
 
-    constructor(conditions: Expr[], commands: Command[]) {
-        super();
+    constructor(conditions: Expr[], commands: Command[], location: Location) {
+        super(location);
         this.conditions = conditions;
         this.commands = commands;
     }

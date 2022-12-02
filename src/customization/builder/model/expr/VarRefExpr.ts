@@ -21,7 +21,7 @@ export class VarRefExpr extends Expr {
 
     public value(): Object | null {
         const variable: Variable | undefined = this.runtime.getVariable(this.varName);
-        if (variable) return variable.value();
+        if (variable) return variable.value;
         return null;
     }
 

@@ -1,14 +1,15 @@
-import { Command } from "../command/Command";
+import { Command } from "./Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
-import { Expr } from "./Expr";
+import { Location } from "../location/Location";
+import { Expr } from "../expr/Expr";
 
 export class ReassignCommand extends Command {
     private readonly varName: string;
     private readonly expr: Expr;
     private readonly runtime: CustomizationRuntime;
 
-    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime) {
-        super();
+    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime, location: Location) {
+        super(location);
         this.varName = varName;
         this.expr = expr;
         this.runtime = runtime;

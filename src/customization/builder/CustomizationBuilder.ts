@@ -34,10 +34,9 @@ import { NewNodeExpr } from './model/expr/NewNodeExpr';
 import { Node } from './model/Node';
 import { VarRefExpr } from './model/expr/VarRefExpr';
 import { NewVarCommand } from './model/command/NewVarCommand';
-import { ReassignCommand } from './model/expr/ReassignCommand';
+import { ReassignCommand } from './model/command/ReassignCommand';
 
 
-// TODO: check null and undefined
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
     private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
@@ -207,7 +206,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (comp instanceof ErrorComponent) return comp;
             commands.push(comp as Command);
         }
-        return new ScopeCommand(commands, this.runtime);
+
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+        return new ScopeCommand(commands, this.runtime, this.locationStack.at(-1)!);
     }
 
     visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
@@ -246,7 +250,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Variable with name " + varName + " already exists in this scope.").toString()
             );
 
-        return new NewVarCommand(varName, expr, this.runtime);
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+        return new NewVarCommand(varName, expr, this.runtime, this.locationStack.at(-1)!);
     }
 
     visitReassignCommand(ctx: ReassignCommandContext): CustSpecComponent {
@@ -279,7 +287,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [type], expr.type()).toString()
             );
         
-        return new ReassignCommand(varName, expr, this.runtime);
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+        return new ReassignCommand(varName, expr, this.runtime, this.locationStack.at(-1)!);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
@@ -306,7 +318,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             commands.push(commandComp as Command);
         }
 
-        return new IfElseCommand(conditions, commands);
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+        return new IfElseCommand(conditions, commands, this.locationStack.at(-1)!);
     }
 
     visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
@@ -322,7 +338,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (commandComp instanceof ErrorComponent) return commandComp;
         const command: Command = commandComp as Command;
 
-        return new WhileCommand(expr, command);
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+        return new WhileCommand(expr, command, this.locationStack.at(-1)!);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{

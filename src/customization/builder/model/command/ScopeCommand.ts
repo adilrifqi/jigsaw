@@ -1,12 +1,13 @@
 import { CustomizationRuntime } from "../CustomizationRuntime";
+import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class ScopeCommand extends Command {
     private readonly commands: Command[];
     private readonly runtime: CustomizationRuntime;
 
-    constructor(commands: Command[], runtime: CustomizationRuntime) {
-        super();
+    constructor(commands: Command[], runtime: CustomizationRuntime, location: Location) {
+        super(location);
         this.commands = commands;
         this.runtime = runtime;
     }

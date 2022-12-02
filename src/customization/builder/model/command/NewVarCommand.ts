@@ -1,5 +1,6 @@
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "../expr/Expr";
+import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class NewVarCommand extends Command {
@@ -7,8 +8,8 @@ export class NewVarCommand extends Command {
     private readonly expr: Expr;
     private readonly runtime: CustomizationRuntime;
 
-    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime) {
-        super();
+    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime, location: Location) {
+        super(location);
         this.varName = varName;
         this.expr = expr;
         this.runtime = runtime;
