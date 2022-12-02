@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import { CustomizationBuilder } from './customization/builder/CustomizationBuilder';
+import { CustomizationRuntime } from './customization/builder/model/CustomizationRuntime';
+import { ErrorComponent } from './customization/builder/model/ErrorComponent';
 import { DebugState } from './debugmodel/DebugState';
 import { JigsawVariable } from './debugmodel/JigsawVariable';
 import { StackFrame } from './debugmodel/StackFrame';
@@ -10,6 +13,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let disposable = vscode.commands.registerCommand('jigsaw.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Hello from JIGSAW!');
+
+		const spec: string = "class Lemao {String nodeName = \"lelnode\"; Node node1 = newNode(nodeName); Node node2 = newNode(\"lolNode\"); Edge edge = newEdge(node1, node2);}"
+		const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
+		if (cust instanceof CustomizationRuntime) cust.applyCustomization();
+		console.log(cust);
 	});
 	context.subscriptions.push(disposable);
 

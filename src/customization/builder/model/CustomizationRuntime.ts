@@ -1,32 +1,44 @@
 import { CustSpecComponent } from "./CustSpecComponent";
 import { ValueType } from "./expr/ValueType";
 import { Location } from "./location/Location";
+import { Node } from "./Node";
 import { RTLocationScope, Variable } from "./RTLocationScope";
 
 export class CustomizationRuntime extends CustSpecComponent {
     private topLocations: Location[] = [];
-    private graph: any = {};
     private runtimeScopes: RTLocationScope[] = [];
+
+	private nodes: any[] = [];
+	private edges: any[] = [];
 
 	public getTopLocations(): Location[]  {
 		return this.topLocations;
-	}
-
-	public getGraph(): any  {
-		return this.graph;
 	}
 
 	public setTopLocations(value: Location[] ) {
 		this.topLocations = value;
 	}
 
-	public setGraph(value: any) {
-		this.graph = value;
-	}
-
-    public applyCustomization() {
+    public applyCustomization(nodes?: any[], edges?: any[]): {nodes: any[], edges: any[]} {
+		if (nodes !== undefined && nodes !== null) this.nodes = nodes!;
+		if (edges !== undefined && edges !== null) this.edges = edges!;
         for (var location of this.topLocations) location.execute();
+		return {nodes: this.nodes, edges: this.edges};
     }
+
+	// ====================Customization Methods====================
+	public addNode(node: Node) {
+		this.nodes.push( {
+			id: node.getName(),
+			data: {
+				layedOut: false,
+				variable: node,
+				scopeTopVar: true // Doesn't really matter
+			},
+			position: { x: 0, y: 0 },
+			type: 'object'
+		});
+	}
 
 	// ====================Scope Methods====================
 	public addVarible(name: string, type: ValueType | null, value: any): boolean {

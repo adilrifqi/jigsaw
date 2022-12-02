@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustElementExprContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeContext, NewNodeContext, NewVarCommandContext, NoneExprContext, NumLitContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NoneExprContext, NumLitContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -37,6 +37,8 @@ import { NewVarCommand } from './model/command/NewVarCommand';
 import { ReassignCommand } from './model/command/ReassignCommand';
 
 
+// TODO: Move everything to the client side
+// TODO: visitAddCommand and visitOmitCommand
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
     private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
@@ -521,24 +523,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         
         return new VarRefExpr(varName, type, this.runtime);
     }
-
-    visitCustElementExpr(ctx: CustElementExprContext): CustSpecComponent {
-        return this.visit(ctx.custElement());
-    }
-
-    visitLiteralExpr(ctx: LiteralExprContext): CustSpecComponent {
-        return this.visit(ctx.literal());
-    }
-
-    visitParExpr(ctx: ParExprContext): CustSpecComponent {
-        return this.visit(ctx.expr());
-    }
-
-    visitNoneExpr(ctx: NoneExprContext): CustSpecComponent {
-        return new NoneExpr();
-    }
-
-    visitNewNode(ctx: NewNodeContext): CustSpecComponent {
+    
+    visitNewNodeExpr(ctx: NewNodeExprContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
@@ -550,7 +536,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new NewNodeExpr(new Node(expr));
     }
 
-    visitNewEdge(ctx: NewEdgeContext): CustSpecComponent {
+    visitNewEdgeExpr(ctx: NewEdgeExprContext): CustSpecComponent {
         const leftComp: CustSpecComponent = this.visit(ctx.expr(0));
         if (leftComp instanceof ErrorComponent) return leftComp;
         const leftExpr: Expr = leftComp as Expr;
@@ -568,6 +554,18 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             );
         
         return new NewEdgeExpr(new Edge(leftExpr, rightExpr));
+    }
+
+    visitLiteralExpr(ctx: LiteralExprContext): CustSpecComponent {
+        return this.visit(ctx.literal());
+    }
+
+    visitParExpr(ctx: ParExprContext): CustSpecComponent {
+        return this.visit(ctx.expr());
+    }
+
+    visitNoneExpr(ctx: NoneExprContext): CustSpecComponent {
+        return new NoneExpr();
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {

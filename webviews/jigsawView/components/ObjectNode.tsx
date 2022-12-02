@@ -1,15 +1,16 @@
 import React = require("react");
 import { Handle, Position } from "react-flow-renderer";
+import { Node } from "../../../src/customization/builder/model/Node";
 import "./styles.css";
 
 function ObjectNode(
     {data, isConnectable, targetPosition=Position.Top, sourcePosition=Position.Bottom}:
-    {data:{variable: {[key: string]: any}, stackFrame: {[key: string]: {[key: string]: any}}, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
-        const stackFrame: {[key: string]: {[key: string]: any}} = data.stackFrame;
+    {data:{variable: {[key: string]: any} | Node, stackFrame?: {[key: string]: {[key: string]: any}}, scopeTopVar: boolean}, isConnectable:boolean, targetPosition:string, sourcePosition:string}) {
         const variable: {[key: string]: any} = data.variable;
-        let titleString: string = data.scopeTopVar ? variable["name"] + "(" + variable["type"] + ")" : variable["type"];
+        let titleString: string = variable instanceof Node ? (variable as Node).getName() : (data.scopeTopVar ? variable["name"] + "(" + variable["type"] + ")" : variable["type"]);
 
-        if (variable["value"].includes("@")){
+        if (!(variable instanceof Node) && variable["value"].includes("@")){
+            const stackFrame: {[key: string]: {[key: string]: any}} = data.stackFrame!;
             const rows: any[] = [];
             for (const fieldName in variable["variables"]) {
                 const varsVarKey = variable["variables"][fieldName];
@@ -34,7 +35,7 @@ function ObjectNode(
                 </div>
             )
         } else {
-            titleString += ": " + variable["value"];
+            if (!(variable instanceof Node)) titleString += ": " + variable["value"];
             return (
                 <div className="object-node">
                     <Handle type="target" position={targetPosition} isConnectable={isConnectable} />

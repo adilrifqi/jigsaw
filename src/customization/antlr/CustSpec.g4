@@ -15,6 +15,8 @@ command
     | ID ASS expr SEMI                                                              # ReassignCommand
     | IF LPAR expr RPAR command (ELSE IF LPAR expr RPAR command)* (ELSE command)?   # IfCommand
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
+    | ADD expr SEMI                                                                 # AddCommand
+    | OMIT expr SEMI                                                                # OmitCommand
     ;
 
 expr: disjunction;
@@ -46,18 +48,13 @@ term: left=term TIMES right=negation
 negation: (MIN | NOT)? primary ;
 
 primary
-    : ID                # IdExpr
-    | custElement       # CustElementExpr
-    | literal           # LiteralExpr
-    | LPAR expr RPAR    # ParExpr
-    | NONE              # NoneExpr
-    // TODO: Add the expression for the value of a location
-    ;
-
-custElement
-    : NEW_NODE LPAR expr RPAR               # NewNode
-    | NEW_EDGE LPAR expr COMMA expr RPAR    # NewEdge
-    // TODO: More
+    : ID                                    # IdExpr
+    | NEW_NODE LPAR expr RPAR               # NewNodeExpr
+    | NEW_EDGE LPAR expr COMMA expr RPAR    # NewEdgeExpr
+    | literal                               # LiteralExpr
+    | LPAR expr RPAR                        # ParExpr
+    | NONE                                  # NoneExpr
+    // TODO: Add the expression for the value of a location (to allow the omitting of nodes and edges)
     ;
 
 idRule  : ID | dottedId;
@@ -92,6 +89,8 @@ METHOD  : 'method';
 PARAM   : 'param';
 LOCAL   : 'local';
 
+ADD     : 'add';
+OMIT    : 'omit';
 PARENT  : 'parent';
 NEW_NODE: 'newNode';
 NEW_EDGE: 'newEdge';
