@@ -3,7 +3,7 @@ export type NodeInfo = {
 	id: string,
 	position: {x: number, y: number},
 	type: string,
-	data: {scopeTopVar: boolean, variable: VariableInfo, inNodeFields: VariableInfo[]}
+	data: {scopeTopVar?: boolean, title: VariableInfo | string, rows: (VariableInfo | string)[]}
 };
 export type EdgeInfo = {
 	id: string,

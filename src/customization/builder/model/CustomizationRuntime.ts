@@ -1,3 +1,4 @@
+import { EdgeInfo, NodeInfo } from "../../../debugmodel/DiagramInfo";
 import { CustSpecComponent } from "./CustSpecComponent";
 import { ValueType } from "./expr/ValueType";
 import { Location } from "./location/Location";
@@ -8,8 +9,8 @@ export class CustomizationRuntime extends CustSpecComponent {
     private topLocations: Location[] = [];
     private runtimeScopes: RTLocationScope[] = [];
 
-	private nodes: any[] = [];
-	private edges: any[] = [];
+	private nodes: NodeInfo[] = [];
+	private edges: EdgeInfo[] = [];
 
 	public getTopLocations(): Location[]  {
 		return this.topLocations;
@@ -19,24 +20,23 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.topLocations = value;
 	}
 
-    public applyCustomization(nodes?: any[], edges?: any[]): {nodes: any[], edges: any[]} {
-		if (nodes !== undefined && nodes !== null) this.nodes = nodes!;
-		if (edges !== undefined && edges !== null) this.edges = edges!;
+    public applyCustomization(nodes?: NodeInfo[], edges?: EdgeInfo[]): {nodes: NodeInfo[], edges: EdgeInfo[]} {
+		if (nodes !== undefined && nodes !== null) this.nodes = nodes!; else this.nodes = [];
+		if (edges !== undefined && edges !== null) this.edges = edges!; else this.edges = [];
         for (var location of this.topLocations) location.execute();
 		return {nodes: this.nodes, edges: this.edges};
     }
 
 	// ====================Customization Methods====================
 	public addNode(node: Node) {
-		this.nodes.push( {
+		this.nodes.push({
 			id: node.getName(),
+			position: {x: 0, y: 0},
+			type: 'object',
 			data: {
-				layedOut: false,
-				variable: node,
-				scopeTopVar: true // Doesn't really matter
-			},
-			position: { x: 0, y: 0 },
-			type: 'object'
+				title: node.getName(),
+				rows: [] // TODO: Implement
+			}
 		});
 	}
 

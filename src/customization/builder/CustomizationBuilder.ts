@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NoneExprContext, NumLitContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, BooleanLitContext, CharLitContext, ClassLocationContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, FieldLocationContext, IdExprContext, IdRuleContext, IfCommandContext, LiteralContext, LiteralExprContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NoneExprContext, NumLitContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -35,8 +35,10 @@ import { Node } from './model/Node';
 import { VarRefExpr } from './model/expr/VarRefExpr';
 import { NewVarCommand } from './model/command/NewVarCommand';
 import { ReassignCommand } from './model/command/ReassignCommand';
+import { AddCommand } from './model/command/AddCommand';
 
 
+// TODO: Make the add and omit commands be in effect based on location.
 // TODO: visitAddCommand and visitOmitCommand
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
@@ -344,6 +346,19 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
             );
         return new WhileCommand(expr, command, this.locationStack.at(-1)!);
+    }
+
+    visitAddCommand(ctx: AddCommandContext): CustSpecComponent {
+        const comp: CustSpecComponent = this.visit(ctx.expr());
+        if (comp instanceof ErrorComponent) return comp;
+        const expr: Expr = comp as Expr;
+        if (expr.type() != ValueType.NODE && expr.type() != ValueType.EDGE)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE], expr.type()).toString()
+            );
+        if (expr.type() == ValueType.EDGE) throw new Error('Method not implemented.');
+
+        return new AddCommand(expr, this.runtime, this.locationStack.at(-1)!);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{

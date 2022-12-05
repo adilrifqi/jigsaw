@@ -1,42 +1,50 @@
 import React = require("react");
 import { Handle, Position } from "react-flow-renderer";
+import { VariableInfo } from "../../../src/debugmodel/DiagramInfo";
 import "./styles.css";
-
-type VariableInfo = {name: string, type: string, value: string};
 
 function ObjectNode (
     {data, isConnectable, targetPosition=Position.Top, sourcePosition=Position.Bottom}:
-    {data: {variable: VariableInfo, scopeTopVar: boolean, inNodeFields: VariableInfo[]}, isConnectable: boolean, targetPosition: string, sourcePosition: string}
+    {data: {title: VariableInfo | string, scopeTopVar?: boolean, rows: (VariableInfo | string)[]}, isConnectable: boolean, targetPosition: string, sourcePosition: string}
 ) {
-    const variable: VariableInfo = data.variable;
-    let titleString: string = data.scopeTopVar ? variable.name + "(" + variable.type + ")" : variable.type;
+    const titleInfo: VariableInfo | string = data.title;
+    let title: string;
+    let titleStringGiven: boolean = true;
+    if (typeof titleInfo === 'string') title = titleInfo;
+    else {
+        const scopeTopVar: boolean = data.scopeTopVar !== undefined &&  data.scopeTopVar !== null ? data.scopeTopVar : false;
+        title = scopeTopVar ? titleInfo.name + "(" + titleInfo.type + ")" : titleInfo.type;
+        if (!titleInfo.value.includes("@")) title += ": " + titleInfo.value;
+        titleStringGiven = false;
+    }
 
-    if (variable.value.includes("@")) {
+    if (data.rows.length > 0) {
         const rows = [];
-        for (var inNodeField of data.inNodeFields) {
-            rows.push(<p
-            key={variable.name + ":" + inNodeField.name}
-            className="unstructured-field">
-                {inNodeField.name + "(" + inNodeField.type + "): " + inNodeField.value}
-            </p>)
+        for (var row of data.rows) {
+            if (typeof row === 'string')
+                rows.push(<p key={title} className="unstructured-field">{row}</p>);
+            else
+                rows.push(<p
+                key={row.name + ":" + row.name} className="unstructured-field">
+                    {row.name + "(" + row.type + "): " + row.value}
+                </p>);
         }
         return (
             <div className="object-node">
                 <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
-                <p className="title">{titleString}</p>
+                <p className="title">{title}</p>
                 <hr/>
                 {rows}
                 <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
             </div>
-        )
+        );
     } else {
-        titleString += ": " + variable.value;
         return (
-        <div className="object-node">
-            <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
-            <p className="title">{titleString}</p>
-            <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
-        </div>
+            <div className="object-node">
+                <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
+                <p className="title">{title}</p>
+                <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />
+            </div>
         );
     }
 }

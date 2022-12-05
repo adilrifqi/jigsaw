@@ -17,7 +17,10 @@ export class AddCommand extends Command {
 
     public execute(): boolean {
         // TODO: Implement
-        if (this.expr.type() == ValueType.NODE) this.runtime.addNode(this.expr.value() as Node);
+        if (this.expr.type() == ValueType.NODE) {
+            this.runtime.addNode(this.expr.value() as Node);
+            return true;
+        }
         throw new Error("Method not implemented.");
     }
 }

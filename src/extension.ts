@@ -190,6 +190,8 @@ function getWebviewContent(
 export function deactivate() {}
 
 function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} {
+	const spec: string = "class Lemao {Node node = newNode(\"NNOODDEE\"); add node;}"
+	const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
 	const nodes: NodeInfo[] = [];
 	const edges: EdgeInfo[] = [];
 	const frameToSend: StackFrame | undefined = DebugState.getInstance().getFrameByPos(stackPos);
@@ -221,15 +223,17 @@ function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]}
 					position: { x: 0, y: 0 },
 					type: 'object',
 					data: {
-						variable: {name: variable.name, type: variable.type, value: variable.value},
+						title: {name: variable.name, type: variable.type, value: variable.value},
 						scopeTopVar: frameToSend.isScopeTopVar(varKey),
-						inNodeFields: inNodeFields
+						rows: inNodeFields
 					}
 				});
 			}
 		});
 	}
-	return {nodes: nodes, edges: edges};
+	const result: {nodes: NodeInfo[], edges: EdgeInfo[]} = {nodes: nodes, edges: edges};
+	return cust instanceof CustomizationRuntime ? cust.applyCustomization(result.nodes, result.edges) : result;
+	// return result;
 }
 
 function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
