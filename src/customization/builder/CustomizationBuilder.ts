@@ -37,7 +37,6 @@ import { NewVarCommand } from './model/command/NewVarCommand';
 import { ReassignCommand } from './model/command/ReassignCommand';
 
 
-// TODO: Move everything to the client side
 // TODO: visitAddCommand and visitOmitCommand
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];

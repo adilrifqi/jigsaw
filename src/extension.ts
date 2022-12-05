@@ -3,6 +3,7 @@ import { CustomizationBuilder } from './customization/builder/CustomizationBuild
 import { CustomizationRuntime } from './customization/builder/model/CustomizationRuntime';
 import { ErrorComponent } from './customization/builder/model/ErrorComponent';
 import { DebugState } from './debugmodel/DebugState';
+import { EdgeInfo, NodeInfo } from './debugmodel/DiagramInfo';
 import { JigsawVariable } from './debugmodel/JigsawVariable';
 import { StackFrame } from './debugmodel/StackFrame';
 
@@ -23,7 +24,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Debug Call Stack
 	vscode.commands.registerCommand('stackFrames.visualizeFrame', (...args: any[]) => {
-		panel?.webview.postMessage({"command": "jigsaw:visualizeFrame", "body": args[1]});
+		const frameId: string = args[1]["frameId"];
+        const frameIdSplitColon: string[] = frameId.split(':');
+        const stackPos: number = +frameIdSplitColon[frameIdSplitColon.length - 2];
+		panel?.webview.postMessage({"command": "data", "body": getFrameGraph(stackPos)});
 	})
 
 	// Keep track to not requests for the first frames of stacks so as not to send duplicates
@@ -129,31 +133,7 @@ export function activate(context: vscode.ExtensionContext) {
 							DebugState.getInstance().removeSeqFromFrame(involvedSeq);
 						
 						if (DebugState.getInstance().complete() && hasReceivedVariables) {
-							const frameIdToStackFrame: {[key: number]: {[key: string]: {[key: string]: any}}} = {};
-							DebugState.getInstance().callStack.forEach((stackFrame: StackFrame, frameId: number) => {
-								const varKeyToVariable: {[key: string]: {[key: string]: any}} = {};
-								stackFrame.jigsawVariables.forEach((variable: JigsawVariable, varKey: string) => {
-									const variables: {[key: string]: string} = {};
-									variable.variables.forEach((value: string, key: string) => {
-										variables[key] = value;
-									});
-
-									const toPush: {[key: string]: any} = {
-										"name": variable.name,
-										"value": variable.value,
-										"type": variable.type,
-										"variablesReference": variable.variablesReference,
-										"namedVariables": variable.namedVariables,
-										"indexedVariables": variable.indexedVariables,
-										"evaluateName": variable.evaluateName,
-										"scopeTopVar": stackFrame.isScopeTopVar(varKey),
-										variables: variables
-									};
-									varKeyToVariable[varKey] = toPush;
-								});
-								frameIdToStackFrame[frameId] = varKeyToVariable;
-							});
-							panel?.webview.postMessage({command: "data", body: {data: frameIdToStackFrame}});
+							panel?.webview.postMessage({command: "data", body: getFrameGraph(0)});
 						}
 					}
 				}
@@ -208,6 +188,49 @@ function getWebviewContent(
 
 // this method is called when your extension is deactivated
 export function deactivate() {}
+
+function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} {
+	const nodes: NodeInfo[] = [];
+	const edges: EdgeInfo[] = [];
+	const frameToSend: StackFrame | undefined = DebugState.getInstance().getFrameByPos(stackPos);
+	if (frameToSend) {
+		frameToSend.jigsawVariables.forEach((variable: JigsawVariable, varKey: string) => {
+			if (!varKey.includes(".")) { // The variable in this context is not a field of another
+				const inNodeFields: {name: string, type: string, value: any}[] = [];
+				variable.variables.forEach((varsVarKey: string, fieldName: string) => {
+					const varsVar: JigsawVariable | undefined = frameToSend.jigsawVariables.get(varsVarKey);
+					if (varsVar) {
+						if (!varsVar.value.includes("@"))
+							inNodeFields.push({
+								name: fieldName,
+								type: varsVar.type,
+								value: varsVar.value
+							});
+						else
+							edges.push({
+								id: varKey + "-" + varsVarKey,
+								source: varKey,
+								target: varsVarKey,
+								label: fieldName,
+								type: 'floating'
+							});
+					}
+				});
+				nodes.push({
+					id: varKey,
+					position: { x: 0, y: 0 },
+					type: 'object',
+					data: {
+						variable: {name: variable.name, type: variable.type, value: variable.value},
+						scopeTopVar: frameToSend.isScopeTopVar(varKey),
+						inNodeFields: inNodeFields
+					}
+				});
+			}
+		});
+	}
+	return {nodes: nodes, edges: edges};
+}
 
 function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefined {
     const name: string = toParse["name"];

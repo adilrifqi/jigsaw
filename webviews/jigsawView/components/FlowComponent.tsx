@@ -4,7 +4,6 @@ import ReactFlow, {
     Controls,
     Edge,
     MarkerType,
-    MiniMap,
     Node,
     useEdgesState,
     useNodesState,
@@ -33,6 +32,7 @@ type EdgeData = {
     source: string;
     target: string;
     label: string;
+    type: string;
     markerEnd: MarkerType;
 };
 type FloatingEdge = Edge<EdgeData>;
@@ -43,8 +43,6 @@ const edgeTypes = {
 
 // Global data
 var data: any = {};
-var smallestFrameId: number = -1;
-var currentStackPos = 0;
 
 export function FlowComponent() {
     // Hooks
@@ -60,63 +58,17 @@ export function FlowComponent() {
         var update: boolean = false;
 
         if (contents["command"] == "data") {
-            data = contents["body"]["data"];
-            smallestFrameId = Math.min(...Object.keys(data).map((toParse: string) => +toParse));
-            update = true;
-        }
-
-        // Received command from the extension to switch views
-        if (contents["command"] == "jigsaw:visualizeFrame") {
-            const frameId: string = contents["body"]["frameId"];
-            const frameIdSplitColon: string[] = frameId.split(':');
-            const stackPos: number = +frameIdSplitColon[frameIdSplitColon.length - 2];
-            currentStackPos = stackPos;
+            data = contents["body"];
+            for (var edge of data["edges"]) {
+                edge["markerEnd"] = { type: MarkerType.ArrowClosed, width: 20, height: 20 };
+            }
             update = true;
         }
 
         if (update) {
-            // Compile the variable nodes and their reference edges
-            const varNodes: any[] = [];
-            const varEdges: any[] = [];
-            const stackFrame = data[smallestFrameId + currentStackPos];
-            for (const varKey in stackFrame) {
-                const variable = stackFrame[varKey];
-                const varValue = variable["value"];
-                if (varKey.includes("@") && varValue.includes("@") || !varKey.includes("@") && !varKey.includes(".")) {
-                    const prevNode: Node<any> | undefined = nodes.find(prevNode => prevNode.id == varKey);
-                    varNodes.push({
-                        id: varKey,
-                        data: {
-                            layedOut: prevNode ? prevNode.data["layedOut"] : false,
-                            variable: variable,
-                            stackFrame: stackFrame,
-                            scopeTopVar: variable["scopeTopVar"]
-                        },
-                        position: prevNode ? prevNode.position : { x: 0, y: 0 },
-                        type: 'object'
-                    });
-
-                    for (const fieldName in variable["variables"]) {
-                        const varsVarKey = variable["variables"][fieldName];
-                        const varsVarValue = stackFrame[varsVarKey]["value"];
-                        if (varsVarKey.includes("@") && varsVarValue.includes("@")
-                            || !varsVarKey.includes("@") && !varsVarKey.includes(".")) {
-                            varEdges.push({
-                                id: varKey + "-" + varsVarKey,
-                                source: varKey,
-                                target: varsVarKey,
-                                label: fieldName,
-                                markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
-                                type:'floating'
-                            });
-                        }
-                    }
-                }
-            }
-
             // Update the node and edge states
-            setNodes(varNodes);
-            setEdges(varEdges);
+            setNodes(data["nodes"]);
+            setEdges(data["edges"]);
         }
     })
     // #endregion eventListener

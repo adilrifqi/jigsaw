@@ -120,6 +120,10 @@ export class DebugState {
         this.pendingVarsRefs.add(varsRef);
     }
 
+    public getCurrentSmallestFrameId(): number {
+        return this.currentSmallestFrameId;
+    }
+
 
     public clear() {
         this.callStack.clear();
