@@ -20,9 +20,9 @@ export class BinaryBoolOp extends BooleanExpr {
         }
     }
 
-    public initialize(): void {
-        this.left.initialize();
-        this.right.initialize();
+    public reset(): void {
+        this.left.reset();
+        this.right.reset();
     }
 }
 

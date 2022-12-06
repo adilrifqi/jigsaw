@@ -12,6 +12,6 @@ export class IntLitExpr extends NumExpr {
         return this.intValue;
     }
 
-    public initialize(): void {
+    public reset(): void {
     }
 }

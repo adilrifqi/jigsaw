@@ -15,7 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('jigsaw.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Hello from JIGSAW!');
 
-		const spec: string = "class Lemao {String nodeName = \"lelnode\"; Node node1 = newNode(nodeName); Node node2 = newNode(\"lolNode\"); Edge edge = newEdge(node1, node2);}"
+		const spec: string = "c:Customer {add newNode(\"NNOODDEE\");}";
 		const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
 		if (cust instanceof CustomizationRuntime) cust.applyCustomization();
 		console.log(cust);
@@ -133,7 +133,8 @@ export function activate(context: vscode.ExtensionContext) {
 							DebugState.getInstance().removeSeqFromFrame(involvedSeq);
 						
 						if (DebugState.getInstance().complete() && hasReceivedVariables) {
-							panel?.webview.postMessage({command: "data", body: getFrameGraph(0)});
+							const graph: {nodes: NodeInfo[], edges: EdgeInfo[]} = getFrameGraph(0);
+							panel?.webview.postMessage({command: "data", body: graph});
 						}
 					}
 				}
@@ -190,7 +191,7 @@ function getWebviewContent(
 export function deactivate() {}
 
 function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} {
-	const spec: string = "class Lemao {Node node = newNode(\"NNOODDEE\"); add node;}"
+	const spec: string = "c:CharterContract.f:charter {omit here;}";
 	const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
 	const nodes: NodeInfo[] = [];
 	const edges: EdgeInfo[] = [];
@@ -232,7 +233,7 @@ function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]}
 		});
 	}
 	const result: {nodes: NodeInfo[], edges: EdgeInfo[]} = {nodes: nodes, edges: edges};
-	return cust instanceof CustomizationRuntime ? cust.applyCustomization(result.nodes, result.edges) : result;
+	return cust instanceof CustomizationRuntime ? cust.applyCustomization(result.nodes, result.edges, stackPos) : result;
 	// return result;
 }
 

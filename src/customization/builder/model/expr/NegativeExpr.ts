@@ -13,7 +13,7 @@ export class NegativeExpr extends NumExpr {
         return -(this.toNegate.value() as number);
     }
 
-    public initialize(): void {
-        this.toNegate.initialize();
+    public reset(): void {
+        this.toNegate.reset();
     }
 }

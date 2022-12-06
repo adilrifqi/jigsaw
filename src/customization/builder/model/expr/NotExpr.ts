@@ -13,7 +13,7 @@ export class NotExpr extends BooleanExpr {
         return !(this.toNot.value() as boolean);
     }
 
-    public initialize(): void {
-        this.toNot.initialize();
+    public reset(): void {
+        this.toNot.reset();
     }
 }

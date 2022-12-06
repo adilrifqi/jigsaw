@@ -1,19 +1,19 @@
 import { ValueType } from "./expr/ValueType";
 
 export class TCLocationScope {
-    private readonly vars: Map<String, ValueType | null>[] = [];
+    private readonly vars: Map<String, ValueType>[] = [];
 
     constructor() {
         this.openVariableScope();
     }
 
-    public addVariable(name: string, type: ValueType | null): boolean {
+    public addVariable(name: string, type: ValueType): boolean {
         if (this.vars.length == 0 || this.containsVariable(name)) return false;
         this.vars.at(-1)!.set(name, type);
         return true;
     }
 
-    public getType(name: string): ValueType | null | undefined {
+    public getType(name: string): ValueType | undefined {
         for (var i = this.vars.length - 1; i >= 0; i--) {
             if (this.vars[i].has(name)) return this.vars[i].get(name);
         }

@@ -13,6 +13,7 @@ export class WhileCommand extends Command {
     }
 
     public execute(): boolean {
+        this.condition.reset();
         while(this.condition.value() as boolean)
             if (!this.command.execute()!)
                 return false;

@@ -16,7 +16,7 @@ export class ReassignCommand extends Command {
     }
 
     public execute(): boolean {
-        this.expr.initialize();
+        this.expr.reset();
         return this.runtime.reassignVariable(this.varName, this.expr.type(), this.expr.value());
     }
 }

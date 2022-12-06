@@ -17,6 +17,6 @@ export class CharLitExpr extends Expr {
         return this.charValue;
     }
 
-    public initialize(): void {
+    public reset(): void {
     }
 }

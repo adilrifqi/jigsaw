@@ -16,7 +16,6 @@ export class ComparisonExpr extends BooleanExpr {
     public value(): boolean {
         // Assume correct typing left and right
         // Only possible types are char or int
-        // TODO: Confirm that this works as intended
         switch (this.op) {
             case CompOp.LESS: return this.left.value()!! < this.right.value()!!;
             case CompOp.LEQ: return this.left.value()!! <= this.right.value()!!;
@@ -27,9 +26,9 @@ export class ComparisonExpr extends BooleanExpr {
         }
     }
 
-    public initialize(): void {
-        this.left.initialize();
-        this.right.initialize();
+    public reset(): void {
+        this.left.reset();
+        this.right.reset();
     }
 }
 

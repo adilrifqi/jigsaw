@@ -7,13 +7,13 @@ export class RTLocationScope {
         this.openVariableScope();
     }
 
-    public addVarible(name: string, type: ValueType | null, value: any): boolean {
+    public addVarible(name: string, type: ValueType, value: any): boolean {
         if (this.vars.length == 0 || this.containsVariable(name)) return false;
         this.vars.at(-1)!.set(name, new Variable(name, type, value));
         return true;
     }
 
-    public updateVariable(name: string, type: ValueType | null, value: any): boolean {
+    public updateVariable(name: string, type: ValueType, value: any): boolean {
         for (var i = this.vars.length - 1; i >= 0; i--) {
             const scope: Map<string, Variable> = this.vars[i];
             if (scope.has(name)) {
@@ -48,10 +48,10 @@ export class RTLocationScope {
 
 export class Variable {
     public readonly name: string;
-    public readonly type: ValueType | null;
-    public readonly value: any;
+    public readonly type: ValueType;
+    public readonly value: Object;
 
-    constructor(name: string, type: ValueType | null, value: any) {
+    constructor(name: string, type: ValueType, value: Object) {
         this.name = name;
         this.type = type;
         this.value = value;

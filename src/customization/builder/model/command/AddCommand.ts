@@ -1,8 +1,8 @@
+import { NodeInfo } from "../../../../debugmodel/DiagramInfo";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "../expr/Expr";
 import { ValueType } from "../expr/ValueType";
 import { Location } from "../location/Location";
-import { Node } from "../Node";
 import { Command } from "./Command";
 
 export class AddCommand extends Command {
@@ -17,8 +17,11 @@ export class AddCommand extends Command {
 
     public execute(): boolean {
         // TODO: Implement
+        this.expr.reset();
         if (this.expr.type() == ValueType.NODE) {
-            this.runtime.addNode(this.expr.value() as Node);
+            const nodeValue: Object | null = this.expr.value();
+            if (nodeValue !== null && nodeValue !== undefined)  
+                this.runtime.addNode(nodeValue as NodeInfo);
             return true;
         }
         throw new Error("Method not implemented.");

@@ -16,7 +16,7 @@ export class NewVarCommand extends Command {
     }
     
     public execute(): boolean {
-        this.expr.initialize();
+        this.expr.reset();
         return this.runtime.addVarible(
             this.varName,
             this.expr.type(),

@@ -22,9 +22,9 @@ export class BinaryNumOp extends NumExpr {
         }
     }
 
-    public initialize(): void {
-        this.left.initialize();
-        this.right.initialize();
+    public reset(): void {
+        this.left.reset();
+        this.right.reset();
     }
 }
 

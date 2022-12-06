@@ -13,6 +13,7 @@ export class IfElseCommand extends Command {
     }
 
     public execute(): boolean {
+        for (const condition of this.conditions) condition.reset();
         for (var i = 0; i < this.conditions.length; i++)
             if (this.conditions[i].value() as boolean)
                 return this.commands[i].execute();

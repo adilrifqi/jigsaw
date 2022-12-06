@@ -17,6 +17,6 @@ export class StringLitExpr extends Expr {
         return this.stringValue;
     }
 
-    public initialize(): void {
+    public reset(): void {
     }
 }

@@ -3,11 +3,7 @@ grammar CustSpec;
 // ================================Grammar================================
 start   : custLocation*;
 
-custLocation
-    : CLASS idRule LCURL command* custLocation* RCURL   # ClassLocation
-    | FIELD idRule LCURL command* custLocation* RCURL   # FieldLocation
-    // TODO: METHOD, PARAM, and LOCAL
-    ;
+custLocation: locId (DOT locId)* LCURL command* custLocation* RCURL;
 
 command
     : LCURL command* RCURL                                                          # ScopeCommand
@@ -51,14 +47,13 @@ primary
     : ID                                    # IdExpr
     | NEW_NODE LPAR expr RPAR               # NewNodeExpr
     | NEW_EDGE LPAR expr COMMA expr RPAR    # NewEdgeExpr
+    | HERE                                  # HereExpr
     | literal                               # LiteralExpr
     | LPAR expr RPAR                        # ParExpr
-    | NONE                                  # NoneExpr
     // TODO: Add the expression for the value of a location (to allow the omitting of nodes and edges)
     ;
 
-idRule  : ID | dottedId;
-dottedId: ID (DOT ID)+;
+locId   : (CLASS | FIELD) ID ; // TODO: METHOD, PARAM, and LOCAL
 
 literal : numLit | charLit | stringLit | booleanLit ;
 
@@ -83,14 +78,15 @@ NUM_VALUE   : ((NONZERO DIGIT+) | DIGIT) (DOT DIGIT*)?;
 CHAR_VALUE  : APO ANY_CHAR APO;
 STRING_VALUE: QUOTE ANY_CHAR* QUOTE;
 
-CLASS   : 'class';
-FIELD   : 'field';
-METHOD  : 'method';
-PARAM   : 'param';
-LOCAL   : 'local';
+CLASS   : 'c:';
+FIELD   : 'f:';
+METHOD  : 'm:';
+PARAM   : 'p:';
+LOCAL   : 'l:';
 
 ADD     : 'add';
 OMIT    : 'omit';
+HERE    : 'here';
 PARENT  : 'parent';
 NEW_NODE: 'newNode';
 NEW_EDGE: 'newEdge';
@@ -101,7 +97,6 @@ FOR     : 'for';
 WHILE   : 'while';
 TRUE    : 'true';
 FALSE   : 'false';
-NONE    : 'none';
 
 SHORT_TYPE  : 'short';
 NUM_TYPE    : 'num';
