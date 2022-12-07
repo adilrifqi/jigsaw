@@ -1,4 +1,4 @@
-import { NodeInfo } from "../../../../debugmodel/DiagramInfo";
+import { EdgeInfo, NodeInfo } from "../../../../debugmodel/DiagramInfo";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "../expr/Expr";
 import { ValueType } from "../expr/ValueType";
@@ -16,14 +16,16 @@ export class AddCommand extends Command {
     }
 
     public execute(): boolean {
-        // TODO: Implement
         this.expr.reset();
+        const value: Object | null = this.expr.value();
         if (this.expr.type() == ValueType.NODE) {
-            const nodeValue: Object | null = this.expr.value();
-            if (nodeValue !== null && nodeValue !== undefined)  
-                this.runtime.addNode(nodeValue as NodeInfo);
-            return true;
+            if (value !== null && value !== undefined)
+                return this.runtime.addNode(value as NodeInfo);
+            return false;
+        } else {
+            if (value !== null && value !== undefined)
+                return this.runtime.addEdge(value as EdgeInfo);
+            return false;
         }
-        throw new Error("Method not implemented.");
     }
 }

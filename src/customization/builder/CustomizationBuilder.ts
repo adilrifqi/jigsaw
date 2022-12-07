@@ -39,7 +39,7 @@ import { HereExpr } from './model/expr/HereExpr';
 import path = require('path');
 
 
-// TODO: Implement Edge addition and omission
+// TODO: Implement getting edge, similar to getting node "here".
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
     private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
@@ -360,7 +360,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE], expr.type()).toString()
             );
-        if (expr.type() == ValueType.EDGE) throw new Error('Method not implemented.');
 
         return new AddCommand(expr, this.runtime, this.locationStack.at(-1)!);
     }
@@ -373,7 +372,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE], expr.type()).toString()
             );
-        if (expr.type() == ValueType.EDGE) throw new Error('Method not implemented.');
 
         return new OmitCommand(expr, this.runtime, this.locationStack.at(-1)!);
     }

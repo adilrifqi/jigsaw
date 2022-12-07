@@ -120,11 +120,28 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	// ====================Customization Methods====================
-	public addNode(node: NodeInfo) {
-		this.nodes.push(node);
+	public addNode(newNode: NodeInfo): boolean {
+		for (const node of this.nodes)
+			if (node.id === newNode.id)
+				return false;
+		this.nodes.push(newNode);
+		return true;
 	}
 
-	public omitNode(node: NodeInfo) {
+	public addEdge(newEdge: EdgeInfo): boolean {
+		var sourceFound: boolean = false;
+		var targetFound: boolean = false;
+		for (const node of this.nodes) {
+			sourceFound = sourceFound || newEdge.source === node.id;
+			targetFound = targetFound || newEdge.source === node.id;
+			if (sourceFound && targetFound) break;
+		}
+		if (!sourceFound || !targetFound) return false;
+		this.edges.push(newEdge);
+		return true;
+    }
+
+	public omitNode(node: NodeInfo): boolean {
 		var remNodeIndex: number = -1;
 		for (var i = 0; i < this.nodes.length; i++) {
 			if (this.nodes[i].id === node.id) {
@@ -143,7 +160,22 @@ export class CustomizationRuntime extends CustSpecComponent {
 			for (var remEdgeIndex of remEdgeIndices) this.edges.splice(remEdgeIndex, 1);
 
 			this.nodes.splice(remNodeIndex, 1);
-		}
+			return true;
+		} else return false;
+	}
+
+	public omitEdge(toOmit: EdgeInfo): boolean {
+		var toOmitIndex: number = -1;
+		for (var i = 0; i < this.edges.length; i++)
+			if (toOmit.id === this.edges[i].id) {
+				toOmitIndex = i;
+				break;
+			}
+		
+		if (toOmitIndex > -1) {
+			this.edges.splice(toOmitIndex, 1);
+			return true;
+		} else return false;
 	}
 
 	public getNodesOfType(typeName: string): NodeInfo[] {
