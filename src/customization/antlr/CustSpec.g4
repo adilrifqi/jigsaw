@@ -44,12 +44,12 @@ term: left=term TIMES right=negation
 negation: (MIN | NOT)? primary ;
 
 primary
-    : ID                                    # IdExpr
-    | NEW_NODE LPAR expr RPAR               # NewNodeExpr
-    | NEW_EDGE LPAR expr COMMA expr RPAR    # NewEdgeExpr
-    | HERE                                  # HereExpr
-    | literal                               # LiteralExpr
-    | LPAR expr RPAR                        # ParExpr
+    : ID                                            # IdExpr
+    | NEW_NODE LPAR expr RPAR                       # NewNodeExpr
+    | NEW_EDGE LPAR expr COMMA expr COMMA expr RPAR # NewEdgeExpr
+    | HERE                                          # HereExpr
+    | literal                                       # LiteralExpr
+    | LPAR expr RPAR                                # ParExpr
     // TODO: Add the expression for the value of a location (to allow the omitting of nodes and edges)
     ;
 

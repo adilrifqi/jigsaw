@@ -566,23 +566,31 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitNewEdgeExpr(ctx: NewEdgeExprContext): CustSpecComponent {
-        const leftComp: CustSpecComponent = this.visit(ctx.expr(0));
-        if (leftComp instanceof ErrorComponent) return leftComp;
-        const leftExpr: Expr = leftComp as Expr;
-        if (leftExpr.type() != ValueType.NODE)
+        const firstComp: CustSpecComponent = this.visit(ctx.expr(0));
+        if (firstComp instanceof ErrorComponent) return firstComp;
+        const firstExpr: Expr = firstComp as Expr;
+        if (firstExpr.type() != ValueType.NODE)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE], leftExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE], firstExpr.type()).toString()
             );
 
-        const rightComp: CustSpecComponent = this.visit(ctx.expr(1));
-        if (rightComp instanceof ErrorComponent) return rightComp;
-        const rightExpr: Expr = rightComp as Expr;
-        if (rightExpr.type() != ValueType.NODE)
+        const secondComp: CustSpecComponent = this.visit(ctx.expr(1));
+        if (secondComp instanceof ErrorComponent) return secondComp;
+        const secondExpr: Expr = secondComp as Expr;
+        if (secondExpr.type() != ValueType.NODE)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], rightExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], secondExpr.type()).toString()
+            );
+
+        const thirdComp: CustSpecComponent = this.visit(ctx.expr(2));
+        if (thirdComp instanceof ErrorComponent) return thirdComp;
+        const thirdExpr: Expr = thirdComp as Expr;
+        if (thirdExpr.type() != ValueType.STRING)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(1), [ValueType.STRING], thirdExpr.type()).toString()
             );
         
-        return new NewEdgeExpr(leftExpr, rightExpr);
+        return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr);
     }
 
     visitHereExpr(ctx: HereExprContext): CustSpecComponent {

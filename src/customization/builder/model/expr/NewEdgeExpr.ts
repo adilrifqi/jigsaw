@@ -3,15 +3,17 @@ import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
 export class NewEdgeExpr extends Expr {
-    private readonly left: Expr;
-    private readonly right: Expr;
+    private readonly sourceExpr: Expr;
+    private readonly targetExpr: Expr;
+    private readonly labelExpr: Expr;
 
     private edge?: EdgeInfo;
 
-    constructor(leftExpr: Expr, rightExpr: Expr) {
+    constructor(sourceExpr: Expr, targetExpr: Expr, labelExpr: Expr) {
         super();
-        this.left = leftExpr;
-        this.right = rightExpr;
+        this.sourceExpr = sourceExpr;
+        this.targetExpr = targetExpr;
+        this.labelExpr = labelExpr;
     }
     
     public type(): ValueType {
@@ -20,13 +22,14 @@ export class NewEdgeExpr extends Expr {
 
     public value(): EdgeInfo {
         if (!this.edge) {
-            const source: NodeInfo = this.left.value() as NodeInfo;
-            const target: NodeInfo = this.right.value() as NodeInfo;
+            const source: NodeInfo = this.sourceExpr.value() as NodeInfo;
+            const target: NodeInfo = this.targetExpr.value() as NodeInfo;
+            const label: string = this.labelExpr.value() as string;
             this.edge = {
                 id: source.id + "-" + target.id,
                 source: source.id,
                 target: target.id,
-                label: 'CUST', // TODO: Add another expr for edge label
+                label: label,
                 type: 'floating'
             };
         }
@@ -35,7 +38,8 @@ export class NewEdgeExpr extends Expr {
 
     public reset(): void {
         this.edge = undefined;
-        this.left.reset();
-        this.right.reset();
+        this.sourceExpr.reset();
+        this.targetExpr.reset();
+        this.labelExpr.reset();
     }
 }
