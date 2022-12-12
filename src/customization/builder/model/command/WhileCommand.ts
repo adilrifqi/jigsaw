@@ -14,9 +14,7 @@ export class WhileCommand extends Command {
     }
 
     public execute(): RuntimeError | undefined {
-        this.condition.reset();
-
-        var conditionValue: Object = this.condition.value() as Object;
+        var conditionValue: Object = this.condition.eval() as Object;
         if (conditionValue instanceof RuntimeError) return conditionValue;
         var conditionPassed: boolean = conditionValue as boolean;
 
@@ -24,7 +22,7 @@ export class WhileCommand extends Command {
             const commandResult: RuntimeError | undefined = this.command.execute();
             if (commandResult) return commandResult;
 
-            conditionValue = this.condition.value() as Object;
+            conditionValue = this.condition.eval() as Object;
             if (conditionValue instanceof RuntimeError) return conditionValue;
             conditionPassed = conditionValue as boolean;
         }

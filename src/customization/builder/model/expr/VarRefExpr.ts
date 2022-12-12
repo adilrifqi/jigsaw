@@ -24,13 +24,10 @@ export class VarRefExpr extends Expr {
         return this.varType;
     }
 
-    public value(): Object | null {
+    public eval(): Object | null {
         const variable: Variable | undefined = this.runtime.getVariable(this.varName);
         if (!variable)
             return new RuntimeError(this.ctx, "Somehow variable " + this.varName + " does not exist in runtime");
         return variable.value
-    }
-
-    public reset(): void {
     }
 }

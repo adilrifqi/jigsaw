@@ -20,8 +20,7 @@ export class ReassignCommand extends Command {
     }
 
     public execute(): RuntimeError | undefined {
-        this.expr.reset();
-        const exprValue: Object | null = this.expr.value();
+        const exprValue: Object | null = this.expr.eval();
         if (exprValue instanceof RuntimeError) return exprValue;
 
         if (!this.runtime.reassignVariable(this.varName, this.expr.type(), exprValue))

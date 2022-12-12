@@ -1,4 +1,5 @@
 import { JigsawVariable } from "../../../../debugmodel/JigsawVariable";
+import { RuntimeError } from "../../error/RuntimeError";
 import { Command } from "../command/Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { CustSpecComponent } from "../CustSpecComponent";
@@ -110,13 +111,17 @@ export class Location extends CustSpecComponent {
         this.commands.push(command);
     }
 
-    public execute(variable: JigsawVariable): boolean {
+    public execute(variable: JigsawVariable): RuntimeError | undefined {
         // TODO: Do something with the variable
         this.runtime.openLocationScope();
-        for (var command of this.commands)
-            if (!command.execute())
-                return false;
-        return this.runtime.closeLocationScope();
+
+        for (var command of this.commands) {
+            const commandResult: RuntimeError | undefined = command.execute();
+            if (commandResult) return commandResult;
+        }
+
+        this.runtime.closeLocationScope();
+        return undefined;
     }
 
     public getPath(): {name: string, type: LocationType}[] {

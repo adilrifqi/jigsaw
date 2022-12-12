@@ -14,12 +14,12 @@ export class BinaryNumOp extends NumExpr {
         this.op = op;
     }
 
-    public value(): Object {
-        const leftExprValue: Object = this.leftExpr.value() as Object;
+    public eval(): Object {
+        const leftExprValue: Object = this.leftExpr.eval() as Object;
         if (leftExprValue instanceof RuntimeError) return leftExprValue;
         const left: number = leftExprValue as number;
 
-        const rightExprValue: Object = this.rightExpr.value() as Object;
+        const rightExprValue: Object = this.rightExpr.eval() as Object;
         if (rightExprValue instanceof RuntimeError) return rightExprValue;
         const right: number = rightExprValue as number;
 
@@ -29,11 +29,6 @@ export class BinaryNumOp extends NumExpr {
             case NumOp.MULT: return left * right;
             case NumOp.DIV: return Math.floor(left + right);
         }
-    }
-
-    public reset(): void {
-        this.leftExpr.reset();
-        this.rightExpr.reset();
     }
 }
 

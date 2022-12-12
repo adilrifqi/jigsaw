@@ -14,12 +14,12 @@ export class BinaryBoolOp extends BooleanExpr {
         this.op = op;
     }
 
-    public value(): Object {
-        const leftExprValue: Object = this.leftExpr.value() as Object;
+    public eval(): Object {
+        const leftExprValue: Object = this.leftExpr.eval() as Object;
         if (leftExprValue instanceof RuntimeError) return leftExprValue;
         const left: boolean = leftExprValue as boolean;
 
-        const rightExprValue: Object = this.rightExpr.value() as Object;
+        const rightExprValue: Object = this.rightExpr.eval() as Object;
         if (rightExprValue instanceof RuntimeError) return rightExprValue;
         const right: boolean = rightExprValue as boolean;
 
@@ -27,11 +27,6 @@ export class BinaryBoolOp extends BooleanExpr {
             case BoolOp.AND: return left && right;
             case BoolOp.OR: return left || right;
         }
-    }
-
-    public reset(): void {
-        this.leftExpr.reset();
-        this.rightExpr.reset();
     }
 }
 

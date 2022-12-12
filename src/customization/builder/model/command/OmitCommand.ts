@@ -21,8 +21,7 @@ export class OmitCommand extends Command {
     }
 
     public execute(): RuntimeError | undefined {
-        this.expr.reset();
-        const value: Object | null = this.expr.value();
+        const value: Object | null = this.expr.eval();
         if (value instanceof RuntimeError) return value;
         const exprType: ValueType | ArrayType = this.expr.type();
 

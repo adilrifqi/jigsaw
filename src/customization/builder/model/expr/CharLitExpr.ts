@@ -13,10 +13,7 @@ export class CharLitExpr extends Expr {
         return ValueType.CHAR;
     }
 
-    public value(): string {
+    public eval(): string {
         return this.charValue;
-    }
-
-    public reset(): void {
     }
 }

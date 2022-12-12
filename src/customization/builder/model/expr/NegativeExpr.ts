@@ -10,13 +10,9 @@ export class NegativeExpr extends NumExpr {
         this.toNegate = toNegate;
     }
 
-    public value(): Object {
-        const toNegateValue: Object = this.toNegate.value() as Object;
+    public eval(): Object {
+        const toNegateValue: Object = this.toNegate.eval() as Object;
         if (toNegateValue instanceof RuntimeError) return toNegateValue;
         return -(toNegateValue as number);
-    }
-
-    public reset(): void {
-        this.toNegate.reset();
     }
 }

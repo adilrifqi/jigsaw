@@ -4,6 +4,5 @@ import { ValueType } from "./ValueType";
 
 export abstract class Expr extends CustSpecComponent {
     public abstract type(): ValueType | ArrayType;
-    public abstract value(): Object | null;
-    public abstract reset(): void;
+    public abstract eval(): Object | null;
 }

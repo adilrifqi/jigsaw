@@ -10,13 +10,9 @@ export class NotExpr extends BooleanExpr {
         this.toNot = toNot;
     }
 
-    public value(): Object {
-        const toNotValue: Object = this.toNot.value() as Object;
+    public eval(): Object {
+        const toNotValue: Object = this.toNot.eval() as Object;
         if (toNotValue instanceof RuntimeError) return toNotValue;
         return !(toNotValue as boolean);
-    }
-
-    public reset(): void {
-        this.toNot.reset();
     }
 }

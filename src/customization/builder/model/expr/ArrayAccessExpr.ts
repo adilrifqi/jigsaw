@@ -22,12 +22,12 @@ export class ArrayAccessExpr extends Expr {
         return {type: arrayType.type, dimension: arrayType.dimension - 1};
     }
 
-    public value(): Object | null {
-        const arrayExprValue: Object = this.arrayExpr.value() as Object;
+    public eval(): Object | null {
+        const arrayExprValue: Object = this.arrayExpr.eval() as Object;
         if (arrayExprValue instanceof RuntimeError) return arrayExprValue;
         const array: (Object | null)[] = arrayExprValue as (Object | null)[];
 
-        const indexExprValue: Object = this.indexExpr.value() as Object;
+        const indexExprValue: Object = this.indexExpr.eval() as Object;
         if (indexExprValue instanceof RuntimeError) return indexExprValue;
         const index: number = indexExprValue as number;
 
@@ -35,10 +35,5 @@ export class ArrayAccessExpr extends Expr {
             return new RuntimeError(this.ctx, "Index out of bounds, index" + index + " to an array of size " + array.length);
 
         return array[index];
-    }
-
-    public reset(): void {
-        this.arrayExpr.reset();
-        this.indexExpr.reset();
     }
 }

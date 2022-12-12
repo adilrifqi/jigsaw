@@ -31,18 +31,13 @@ export class ArrayExpr extends Expr {
         return this.arrayType;
     }
 
-    public value(): Object {
+    public eval(): Object {
         const result: (Object | null)[] = [];
         for (const expr of this.contents) {
-            const exprValue: Object | null = expr.value();
+            const exprValue: Object | null = expr.eval();
             if (exprValue instanceof RuntimeError) return exprValue;
             result.push(exprValue);
         }
         return result;
-    }
-
-    public reset(): void {
-        for (const expr of this.contents)
-            expr.reset();
     }
 }

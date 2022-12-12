@@ -14,13 +14,13 @@ export class ComparisonExpr extends BooleanExpr {
         this.op = op;
     }
     
-    public value(): Object {
+    public eval(): Object {
         // Assume correct typing left and right
         // Only possible types are char or int
-        const leftExprValue: Object = this.leftExpr.value() as Object;
+        const leftExprValue: Object = this.leftExpr.eval() as Object;
         if (leftExprValue instanceof RuntimeError) return leftExprValue;
 
-        const rightExprValue: Object = this.rightExpr.value() as Object;
+        const rightExprValue: Object = this.rightExpr.eval() as Object;
         if (rightExprValue instanceof RuntimeError) return rightExprValue;
 
         switch (this.op) {
@@ -31,11 +31,6 @@ export class ComparisonExpr extends BooleanExpr {
             case CompOp.GEQ: return leftExprValue >= rightExprValue;
             case CompOp.GREATER: return leftExprValue > rightExprValue;
         }
-    }
-
-    public reset(): void {
-        this.leftExpr.reset();
-        this.rightExpr.reset();
     }
 }
 

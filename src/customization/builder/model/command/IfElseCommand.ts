@@ -16,8 +16,7 @@ export class IfElseCommand extends Command {
     public execute(): RuntimeError | undefined {
         for (var i = 0; i < this.conditions.length; i++) {
             const conditionExpr: Expr = this.conditions[i];
-            conditionExpr.reset();
-            const conditionValue: Object = conditionExpr.value() as Object;
+            const conditionValue: Object = conditionExpr.eval() as Object;
             if (conditionValue instanceof RuntimeError) return conditionValue;
 
             const condition: boolean = conditionValue as boolean;

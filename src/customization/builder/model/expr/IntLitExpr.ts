@@ -8,10 +8,7 @@ export class IntLitExpr extends NumExpr {
         this.intValue = intValue;
     }
 
-    public value(): number {
+    public eval(): number {
         return this.intValue;
-    }
-
-    public reset(): void {
     }
 }

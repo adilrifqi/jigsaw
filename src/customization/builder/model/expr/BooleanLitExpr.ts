@@ -8,10 +8,7 @@ export class BooleanLitExpr extends BooleanExpr {
         this.booleanValue = booleanValue;
 	}
 
-    public value(): boolean {
+    public eval(): boolean {
         return this.booleanValue;
-    }
-
-    public reset(): void {
     }
 }

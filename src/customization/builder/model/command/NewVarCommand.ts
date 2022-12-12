@@ -24,8 +24,7 @@ export class NewVarCommand extends Command {
     }
     
     public execute(): RuntimeError | undefined {
-        this.expr.reset();
-        const exprValue: Object | null = this.expr.value();
+        const exprValue: Object | null = this.expr.eval();
         if (exprValue instanceof RuntimeError) return exprValue;
 
         if (this.runtime.addVarible(

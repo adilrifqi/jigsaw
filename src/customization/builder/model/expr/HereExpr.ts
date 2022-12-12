@@ -15,10 +15,7 @@ export class HereExpr extends Expr {
         return ValueType.NODE;
     }
 
-    public value(): NodeInfo | null {
+    public eval(): NodeInfo | null {
         return this.runtime.getCurrentVariableNode();
-    }
-
-    public reset(): void {
     }
 }

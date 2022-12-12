@@ -61,7 +61,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 		if (interestName === location.getName()) {
 			this.currentLocation = location;
 			this.currentVariable = variable;
-			location.execute(variable);
+			location.execute(variable); // TODO: Do something in case of RuntimeError
 			for (const [fieldName, varsVarKey] of variable.variables) {
 				const varsVarVariable: JigsawVariable = frame.jigsawVariables.get(varsVarKey)!;
 				for (var child of location.getChildren())
