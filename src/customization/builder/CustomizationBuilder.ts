@@ -379,24 +379,46 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
-        if (expr.type() != ValueType.NODE && expr.type() != ValueType.EDGE)
+        const exprType: ValueType | ArrayType = expr.type();
+        var mistype: boolean = false;
+
+        if (exprType as any in ValueType) {
+            if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
+        } else {
+            const arrayType: ArrayType = exprType as ArrayType;
+            if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
+                mistype = true;
+        }
+
+        if (mistype)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE], expr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, {type: ValueType.NODE, dimension: 1}, {type: ValueType.EDGE, dimension: 1}], expr.type()).toString()
             );
 
-        return new AddCommand(expr, this.runtime, this.locationStack.at(-1)!);
+        return new AddCommand(expr, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
     visitOmitCommand(ctx: OmitCommandContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
-        if (expr.type() != ValueType.NODE && expr.type() != ValueType.EDGE)
+        const exprType: ValueType | ArrayType = expr.type();
+        var mistype: boolean = false;
+
+        if (exprType as any in ValueType) {
+            if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
+        } else {
+            const arrayType: ArrayType = exprType as ArrayType;
+            if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
+                mistype = true;
+        }
+
+        if (mistype)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE], expr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, {type: ValueType.NODE, dimension: 1}, {type: ValueType.EDGE, dimension: 1}], expr.type()).toString()
             );
 
-        return new OmitCommand(expr, this.runtime, this.locationStack.at(-1)!);
+        return new OmitCommand(expr, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{

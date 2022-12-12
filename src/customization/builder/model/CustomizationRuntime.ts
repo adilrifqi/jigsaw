@@ -129,6 +129,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return true;
 	}
 
+	public addNodes(newNodes: NodeInfo[]): boolean {
+		var allSuccess: boolean = true;
+		for (const newNode of newNodes)
+			allSuccess = allSuccess && this.addNode(newNode);
+		return allSuccess;
+	}
+
 	public addEdge(newEdge: EdgeInfo): boolean {
 		var sourceFound: boolean = false;
 		var targetFound: boolean = false;
@@ -141,6 +148,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.edges.push(newEdge);
 		return true;
     }
+
+	public addEdges(newEdges: EdgeInfo[]): boolean {
+		var allSuccess: boolean = true;
+		for (const newEdge of newEdges)
+			allSuccess = allSuccess && this.addEdge(newEdge);
+		return allSuccess;
+	}
 
 	public omitNode(node: NodeInfo): boolean {
 		var remNodeIndex: number = -1;
@@ -165,6 +179,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 		} else return false;
 	}
 
+	public omitNodes(nodes: NodeInfo[]): boolean {
+		var allSuccess: boolean = true;
+		for (const node of nodes)
+			allSuccess = allSuccess && this.omitNode(node);
+		return allSuccess;
+	}
+
 	public omitEdge(toOmit: EdgeInfo): boolean {
 		var toOmitIndex: number = -1;
 		for (var i = 0; i < this.edges.length; i++)
@@ -177,6 +198,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 			this.edges.splice(toOmitIndex, 1);
 			return true;
 		} else return false;
+	}
+
+	public omitEdges(edges: EdgeInfo[]): boolean {
+		var allSucces: boolean = true;
+		for (const edge of edges)
+			allSucces = allSucces && this.omitEdge(edge);
+		return allSucces;
 	}
 
 	public getNodesOfType(typeName: string): NodeInfo[] {
