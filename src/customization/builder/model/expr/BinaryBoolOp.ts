@@ -1,28 +1,37 @@
+import { RuntimeError } from "../../error/RuntimeError";
 import { BooleanExpr } from "./BooleanExpr";
 import { Expr } from "./Expr";
 
 export class BinaryBoolOp extends BooleanExpr {
-    private readonly left: Expr;
-    private readonly right: Expr;
+    private readonly leftExpr: Expr;
+    private readonly rightExpr: Expr;
     private readonly op: BoolOp;
 
     constructor(left: Expr, right: Expr, op: BoolOp) {
         super();
-        this.left = left;
-        this.right = right;
+        this.leftExpr = left;
+        this.rightExpr = right;
         this.op = op;
     }
 
-    public value(): boolean {
+    public value(): Object {
+        const leftExprValue: Object = this.leftExpr.value() as Object;
+        if (leftExprValue instanceof RuntimeError) return leftExprValue;
+        const left: boolean = leftExprValue as boolean;
+
+        const rightExprValue: Object = this.rightExpr.value() as Object;
+        if (rightExprValue instanceof RuntimeError) return rightExprValue;
+        const right: boolean = rightExprValue as boolean;
+
         switch(this.op) {
-            case BoolOp.AND: return (this.left.value() as boolean) && (this.right.value() as boolean);
-            case BoolOp.OR: return (this.left.value() as boolean) || (this.right.value() as boolean);
+            case BoolOp.AND: return left && right;
+            case BoolOp.OR: return left || right;
         }
     }
 
     public reset(): void {
-        this.left.reset();
-        this.right.reset();
+        this.leftExpr.reset();
+        this.rightExpr.reset();
     }
 }
 

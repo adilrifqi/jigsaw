@@ -1,3 +1,4 @@
+import { RuntimeError } from "../../error/RuntimeError";
 import { Expr } from "./Expr";
 import { NumExpr } from "./NumExpr";
 
@@ -9,8 +10,10 @@ export class NegativeExpr extends NumExpr {
         this.toNegate = toNegate;
     }
 
-    public value(): number {
-        return -(this.toNegate.value() as number);
+    public value(): Object {
+        const toNegateValue: Object = this.toNegate.value() as Object;
+        if (toNegateValue instanceof RuntimeError) return toNegateValue;
+        return -(toNegateValue as number);
     }
 
     public reset(): void {

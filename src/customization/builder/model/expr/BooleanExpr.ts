@@ -6,5 +6,5 @@ export abstract class BooleanExpr extends Expr {
         return ValueType.BOOLEAN;
     }
 
-    public abstract value(): boolean;
+    public abstract value(): Object;
 }

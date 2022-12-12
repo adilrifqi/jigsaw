@@ -1,3 +1,4 @@
+import { RuntimeError } from "../../error/RuntimeError";
 import { Expr } from "../expr/Expr";
 import { Location } from "../location/Location";
 import { Command } from "./Command";
@@ -12,16 +13,21 @@ export class IfElseCommand extends Command {
         this.commands = commands;
     }
 
-    public execute(): boolean {
-        for (const condition of this.conditions) condition.reset();
-        for (var i = 0; i < this.conditions.length; i++)
-            if (this.conditions[i].value() as boolean)
-                return this.commands[i].execute();
+    public execute(): RuntimeError | undefined {
+        for (var i = 0; i < this.conditions.length; i++) {
+            const conditionExpr: Expr = this.conditions[i];
+            conditionExpr.reset();
+            const conditionValue: Object = conditionExpr.value() as Object;
+            if (conditionValue instanceof RuntimeError) return conditionValue;
+
+            const condition: boolean = conditionValue as boolean;
+            if (condition) return this.commands[i].execute();
+        }
 
         // This means there is an "else" statement
         if (this.commands.length > this.conditions.length)
             return this.commands[this.commands.length - 1].execute();
 
-        return true;
+        return undefined;
     }
 }

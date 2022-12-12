@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NumLitContext, OmitCommandContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, IndexSuffixedContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NumLitContext, OmitCommandContext, ParExprContext, PropSuffixedContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -24,7 +24,6 @@ import { WhileCommand } from './model/command/WhileCommand';
 import { IfElseCommand } from './model/command/IfElseCommand';
 import { ScopeCommand } from './model/command/ScopeCommand';
 import { Location } from './model/location/Location';
-import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { TCLocationScope } from './model/TCLocationScope';
 import { CustomizationRuntime } from './model/CustomizationRuntime';
 import { NewEdgeExpr } from './model/expr/NewEdgeExpr';
@@ -37,8 +36,11 @@ import { LocationType } from './model/location/LocationType';
 import { OmitCommand } from './model/command/OmitCommand';
 import { HereExpr } from './model/expr/HereExpr';
 import path = require('path');
+import { ArrayExpr, ArrayType } from './model/expr/ArrayExpr';
+import { ArrayAccessExpr } from './model/expr/ArrayAccessExpr';
 
 
+// TODO: Implement updating array contents
 // TODO: Implement getting edge, similar to getting node "here".
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
@@ -218,21 +220,29 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
             );
-        return new ScopeCommand(commands, this.runtime, this.locationStack.at(-1)!);
+        return new ScopeCommand(commands, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
     visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
-        var declaredType: ValueType;
-        if (ctx.type().NUM_TYPE()) declaredType = ValueType.NUM;
-        else if (ctx.type().CHAR_TYPE()) declaredType = ValueType.CHAR;
-        else if (ctx.type().BOOLEAN_TYPE()) declaredType = ValueType.BOOLEAN;
-        else if (ctx.type().STRING_TYPE()) declaredType = ValueType.STRING;
-        else if (ctx.type().NODE_TYPE()) declaredType = ValueType.NODE;
-        else if (ctx.type().EDGE_TYPE()) declaredType = ValueType.EDGE;
+        var deepestType: ValueType;
+        var dimension: number = 0;
+        var currentTypeCtx: TypeContext = ctx.type();
+        while (currentTypeCtx.type()) {
+            dimension++;
+            currentTypeCtx = currentTypeCtx.type()!;
+        }
+        
+        if (currentTypeCtx.basicType()!.NUM_TYPE()) deepestType = ValueType.NUM;
+        else if (currentTypeCtx.basicType()!.CHAR_TYPE()) deepestType = ValueType.CHAR;
+        else if (currentTypeCtx.basicType()!.BOOLEAN_TYPE()) deepestType = ValueType.BOOLEAN;
+        else if (currentTypeCtx.basicType()!.STRING_TYPE()) deepestType = ValueType.STRING;
+        else if (currentTypeCtx.basicType()!.NODE_TYPE()) deepestType = ValueType.NODE;
+        else if (currentTypeCtx.basicType()!.EDGE_TYPE()) deepestType = ValueType.EDGE;
         else return new ErrorComponent(
             new ErrorBuilder(ctx.type(), "Invalid type " + ctx.type().toString() + ".").toString()
         );
-        
+
+        const declaredType: ValueType | ArrayType = dimension == 0 ? deepestType : {type: deepestType, dimension: dimension};
         const varName: string = ctx.ID().toString();
 
         const exprComp: CustSpecComponent = this.visit(ctx.expr());
@@ -247,7 +257,20 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
             );
-        else if (declaredType != expr.type())
+        else if (!(declaredType as any in ValueType)) {
+            // If the given array type is of dimension 0 then it's fine
+            // If they're both arrays with different types, raise error
+            const declaredArrayType: ArrayType = declaredType as ArrayType;
+            if (expr.type() as any in ValueType)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
+                );
+            const givenArrayType: ArrayType = expr.type() as ArrayType;
+            if (givenArrayType.dimension > 0 && JSON.stringify(declaredArrayType) !== JSON.stringify(givenArrayType))
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
+                );
+        } else if (JSON.stringify(declaredType) != JSON.stringify(expr.type()))
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
             );
@@ -261,7 +284,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
             );
-        return new NewVarCommand(varName, expr, this.runtime, this.locationStack.at(-1)!);
+        return new NewVarCommand(varName, expr, declaredType, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
     visitReassignCommand(ctx: ReassignCommandContext): CustSpecComponent {
@@ -271,7 +294,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Bug in type checker where scope does not exist where it should").toString()
             );
 
-        const type: ValueType | undefined = this.getTCType(varName);
+        const type: ValueType | ArrayType | undefined = this.getTCType(varName);
         if (type === undefined)
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Variable " + varName + " does not exist in this scope.").toString()
@@ -289,7 +312,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
             );
-        else if (type != expr.type())
+        else if (JSON.stringify(type) !== JSON.stringify(expr.type()))
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [type!], expr.type()).toString()
             );
@@ -298,7 +321,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
             );
-        return new ReassignCommand(varName, expr, this.runtime, this.locationStack.at(-1)!);
+        return new ReassignCommand(varName, expr, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
@@ -521,7 +544,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitNegation(ctx: NegationContext): CustSpecComponent {
-        const comp: CustSpecComponent = this.visit(ctx.primary());
+        const comp: CustSpecComponent = this.visit(ctx.propSuffixed());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
 
@@ -529,28 +552,60 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             // Expr must be a number
             if (expr.type() != ValueType.NUM)
                 return new ErrorComponent(
-                    new TypeErrorBuilder(ctx.primary(), [ValueType.NUM], expr.type()).toString()
+                    new TypeErrorBuilder(ctx.propSuffixed(), [ValueType.NUM], expr.type()).toString()
                 );
             return new NegativeExpr(expr);
         } else if (ctx.NOT() !== undefined) {
             // Expr must be a boolean
             if (expr.type() != ValueType.BOOLEAN)
                 return new ErrorComponent(
-                    new TypeErrorBuilder(ctx.primary(), [ValueType.BOOLEAN], expr.type()).toString()
+                    new TypeErrorBuilder(ctx.propSuffixed(), [ValueType.BOOLEAN], expr.type()).toString()
                 );
             return new NotExpr(expr);
         } else return expr;
     }
 
+    visitPropSuffixed(ctx: PropSuffixedContext): CustSpecComponent {
+        if (ctx.ID()) throw new Error("Method not implemented");
+        else return this.visit(ctx.indexSuffixed()!);
+    }
+
+    visitIndexSuffixed(ctx: IndexSuffixedContext): CustSpecComponent {
+        if (ctx.indexSuffixed()) {
+            const arrayComp: CustSpecComponent = this.visit(ctx.indexSuffixed()!);
+            if (arrayComp instanceof ErrorComponent) return arrayComp;
+            const arrayExpr: Expr = arrayComp as Expr;
+            if (arrayExpr.type() as any in ValueType)
+                return new ErrorComponent(
+                    new ErrorBuilder(ctx.indexSuffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
+                );
+            const arrayType: ArrayType = arrayExpr.type() as ArrayType;
+            if (arrayType.dimension == 0)
+                return new ErrorComponent(
+                    new ErrorBuilder(ctx.indexSuffixed()!, "Cannot index an empty array.").toString()
+                );
+
+            const exprComp: CustSpecComponent = this.visit(ctx.expr()!);
+            if (exprComp instanceof ErrorComponent) return exprComp;
+            const expr: Expr = exprComp as Expr;
+            if (expr.type() != ValueType.NUM)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr()!, [ValueType.NUM], expr.type()).toString()
+                );
+
+            return new ArrayAccessExpr(arrayExpr, expr, ctx);
+        } else return this.visit(ctx.primary()!);
+    }
+
     visitIdExpr(ctx: IdExprContext): CustSpecComponent {
         const varName: string = ctx.ID().toString();
-        const type: ValueType | undefined = this.getTCType(varName);
-        if (type === undefined) // undefined means error, null means it's a 'none' value
+        const type: ValueType | ArrayType | undefined = this.getTCType(varName);
+        if (type === undefined)
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Variable " + varName + " is not defined in this scope").toString()
             );
         
-        return new VarRefExpr(varName, type, this.runtime);
+        return new VarRefExpr(varName, type, this.runtime, ctx);
     }
     
     visitNewNodeExpr(ctx: NewNodeExprContext): CustSpecComponent {
@@ -603,6 +658,36 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     visitParExpr(ctx: ParExprContext): CustSpecComponent {
         return this.visit(ctx.expr());
+    }
+
+    visitArrayExpr(ctx: ArrayExprContext): CustSpecComponent {
+        if (ctx.expr().length == 0) return new ArrayExpr([]);
+
+        const contents: Expr[] = [];
+
+        var exprComp: CustSpecComponent = this.visit(ctx.expr(0));
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        var expr: Expr = exprComp as Expr;
+        const type: ValueType | ArrayType = expr.type();
+        contents.push(expr);
+
+        for (var i = 1; i < ctx.expr().length; i++) {
+            exprComp = this.visit(ctx.expr(i));
+            if (exprComp instanceof ErrorComponent) return exprComp;
+            expr = exprComp as Expr;
+            if (JSON.stringify(type) !== JSON.stringify(expr.type()))
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr(i), [type], expr.type()).toString()
+                );
+            contents.push(expr);
+        }
+
+        return new ArrayExpr(
+            contents,
+            (type as any in ValueType)
+            ? {type: type as ValueType, dimension: 1}
+            : {type: (type as ArrayType).type, dimension: (type as ArrayType).dimension + 1}
+        );
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {
@@ -731,7 +816,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return this.locVarsStack.at(-1)!.closeVariableScope();
     }
 
-    private addTCVariable(name: string, type: ValueType): boolean {
+    private addTCVariable(name: string, type: ValueType | ArrayType): boolean {
         if (this.locVarsStack.length == 0) return false;
         return this.locVarsStack.at(-1)!.addVariable(name, type);
     }
@@ -741,7 +826,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return this.locVarsStack.at(-1)!.containsVariable(name);
     }
 
-    private getTCType(name: string): ValueType | undefined {
+    private getTCType(name: string): ValueType | ArrayType | undefined {
         if (this.locVarsStack.length == 0) return undefined;
         return this.locVarsStack.at(-1)!.getType(name);
     }

@@ -3,6 +3,7 @@ import { EdgeInfo, NodeInfo, VariableInfo } from "../../../debugmodel/DiagramInf
 import { JigsawVariable } from "../../../debugmodel/JigsawVariable";
 import { StackFrame } from "../../../debugmodel/StackFrame";
 import { CustSpecComponent } from "./CustSpecComponent";
+import { ArrayType } from "./expr/ArrayExpr";
 import { ValueType } from "./expr/ValueType";
 import { Location } from "./location/Location";
 import { LocationType } from "./location/LocationType";
@@ -212,12 +213,12 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	// ====================Scope Methods====================
-	public addVarible(name: string, type: ValueType, value: any): boolean {
+	public addVarible(name: string, type: ValueType | ArrayType, value: any): boolean {
 		if (this.runtimeScopes.length == 0) return false;
 		return this.runtimeScopes.at(-1)!.addVarible(name, type, value);
     }
 
-    public reassignVariable(name: string, type: ValueType, value: any): boolean {
+    public reassignVariable(name: string, type: ValueType | ArrayType, value: any): boolean {
         if (this.runtimeScopes.length == 0) return false;
 		return this.runtimeScopes.at(-1)!.updateVariable(name, type, value);
     }

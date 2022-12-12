@@ -1,3 +1,4 @@
+import { RuntimeError } from "../../error/RuntimeError";
 import { CustSpecComponent } from "../CustSpecComponent";
 import { Location } from "../location/Location";
 
@@ -13,5 +14,5 @@ export abstract class Command extends CustSpecComponent {
         this.location = location;
     }
 
-    public abstract execute(): boolean;
+    public abstract execute(): RuntimeError | undefined;
 }

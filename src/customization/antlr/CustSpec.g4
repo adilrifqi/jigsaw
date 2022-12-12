@@ -8,14 +8,15 @@ custLocation: locId (DOT locId)* LCURL command* custLocation* RCURL;
 command
     : LCURL command* RCURL                                                          # ScopeCommand
     | type ID ASS expr SEMI                                                         # NewVarCommand
-    | ID ASS expr SEMI                                                              # ReassignCommand
+    | ID ASS expr SEMI                                                              # ReassignCommand // TODO: Array element reassignment
     | IF LPAR expr RPAR command (ELSE IF LPAR expr RPAR command)* (ELSE command)?   # IfCommand
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
     | OMIT expr SEMI                                                                # OmitCommand
+    // TODO: Array operations (e.g. adding, removing)
     ;
 
-expr: disjunction;
+expr: disjunction; // TODO: Add string concatenation
 
 disjunction : conjunction (OR conjunction)*;
 
@@ -41,16 +42,20 @@ term: left=term TIMES right=negation
     | negation
     ;
 
-negation: (MIN | NOT)? primary ;
+negation: (MIN | NOT)? propSuffixed ;
+
+propSuffixed    : propSuffixed DOT ID | indexSuffixed ;
+indexSuffixed   : indexSuffixed LBRAC expr RBRAC | primary ;
 
 primary
-    : ID                                            # IdExpr
-    | NEW_NODE LPAR expr RPAR                       # NewNodeExpr
-    | NEW_EDGE LPAR expr COMMA expr COMMA expr RPAR # NewEdgeExpr
-    | HERE                                          # HereExpr
-    | literal                                       # LiteralExpr
-    | LPAR expr RPAR                                # ParExpr
-    // TODO: Add the expression for the value of a location (to allow the omitting of nodes and edges)
+    : ID                                # IdExpr
+    | NEW_NODE expr                     # NewNodeExpr
+    | NEW_EDGE expr expr expr           # NewEdgeExpr
+    | HERE                              # HereExpr
+    | literal                           # LiteralExpr
+    | LPAR expr RPAR                    # ParExpr
+    | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
+    // TODO: Add the expression for the value of a location
     ;
 
 locId   : (CLASS | FIELD) ID ; // TODO: METHOD, PARAM, and LOCAL
@@ -65,7 +70,9 @@ stringLit   : STRING_VALUE;
 
 booleanLit  : TRUE | FALSE ;
 
-type: NUM_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE ;
+type        : basicType | type LBRAC RBRAC;
+
+basicType   : NUM_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE ;
 
 
 // ================================Tokens================================
@@ -129,6 +136,8 @@ LPAR    : '(';
 RPAR    : ')';
 LCURL   : '{';
 RCURL   : '}';
+LBRAC   : '[';
+RBRAC   : ']';
 
 ID          : LETTER (LETTER | DIGIT)* ;
 

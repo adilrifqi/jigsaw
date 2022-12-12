@@ -1,34 +1,41 @@
+import { RuntimeError } from "../../error/RuntimeError";
 import { BooleanExpr } from "./BooleanExpr";
 import { Expr } from "./Expr";
 
 export class ComparisonExpr extends BooleanExpr {
-    private readonly left: Expr;
-    private readonly right: Expr;
+    private readonly leftExpr: Expr;
+    private readonly rightExpr: Expr;
     private readonly op: CompOp;
 
     constructor(left: Expr, right: Expr, op: CompOp) {
         super();
-        this.left = left;
-        this.right = right;
+        this.leftExpr = left;
+        this.rightExpr = right;
         this.op = op;
     }
     
-    public value(): boolean {
+    public value(): Object {
         // Assume correct typing left and right
         // Only possible types are char or int
+        const leftExprValue: Object = this.leftExpr.value() as Object;
+        if (leftExprValue instanceof RuntimeError) return leftExprValue;
+
+        const rightExprValue: Object = this.rightExpr.value() as Object;
+        if (rightExprValue instanceof RuntimeError) return rightExprValue;
+
         switch (this.op) {
-            case CompOp.LESS: return this.left.value()!! < this.right.value()!!;
-            case CompOp.LEQ: return this.left.value()!! <= this.right.value()!!;
-            case CompOp.EQUAL: return this.left.value()!! == this.right.value()!!;
-            case CompOp.NEQ: return this.left.value()!! != this.right.value()!!;
-            case CompOp.GEQ: return this.left.value()!! >= this.right.value()!!;
-            case CompOp.GREATER: return this.left.value()!! > this.right.value()!!;
+            case CompOp.LESS: return leftExprValue < rightExprValue;
+            case CompOp.LEQ: return leftExprValue <= rightExprValue;
+            case CompOp.EQUAL: return leftExprValue == rightExprValue;
+            case CompOp.NEQ: return leftExprValue != rightExprValue;
+            case CompOp.GEQ: return leftExprValue >= rightExprValue;
+            case CompOp.GREATER: return leftExprValue > rightExprValue;
         }
     }
 
     public reset(): void {
-        this.left.reset();
-        this.right.reset();
+        this.leftExpr.reset();
+        this.rightExpr.reset();
     }
 }
 

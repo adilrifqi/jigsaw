@@ -6,5 +6,5 @@ export abstract class NumExpr extends Expr {
         return ValueType.NUM;
     }
 
-    public abstract value(): number;
+    public abstract value(): Object;
 }

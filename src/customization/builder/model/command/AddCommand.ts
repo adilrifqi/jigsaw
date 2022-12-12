@@ -1,4 +1,5 @@
 import { EdgeInfo, NodeInfo } from "../../../../debugmodel/DiagramInfo";
+import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "../expr/Expr";
 import { ValueType } from "../expr/ValueType";
@@ -15,17 +16,17 @@ export class AddCommand extends Command {
         this.runtime = runtime;
     }
 
-    public execute(): boolean {
+    public execute(): RuntimeError | undefined {
         this.expr.reset();
         const value: Object | null = this.expr.value();
-        if (this.expr.type() == ValueType.NODE) {
-            if (value !== null && value !== undefined)
-                return this.runtime.addNode(value as NodeInfo);
-            return false;
-        } else {
-            if (value !== null && value !== undefined)
-                return this.runtime.addEdge(value as EdgeInfo);
-            return false;
+        if (value instanceof RuntimeError) return value;
+
+        if (value !== null && value !== undefined) {
+            if (this.expr.type() == ValueType.NODE)
+                this.runtime.addNode(value as NodeInfo);
+            else this.runtime.addEdge(value as EdgeInfo);
         }
+
+        return undefined;
     }
 }
