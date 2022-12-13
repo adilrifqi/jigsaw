@@ -27,7 +27,7 @@ export class NewVarCommand extends Command {
         const exprValue: Object | null = this.expr.eval();
         if (exprValue instanceof RuntimeError) return exprValue;
 
-        if (this.runtime.addVarible(
+        if (!this.runtime.addVarible(
             this.varName,
             this.type,
             exprValue

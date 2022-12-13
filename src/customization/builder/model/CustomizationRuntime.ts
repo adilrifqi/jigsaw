@@ -240,6 +240,14 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return undefined;
 	}
 
+	public getEdges(origin: NodeInfo, target: NodeInfo): EdgeInfo[] {
+		const result: EdgeInfo[] = [];
+		for (const edge of this.edges)
+			if (edge.source === origin.id && edge.target === target.id)
+				result.push(edge);
+		return result;
+	}
+
 	// ====================Scope Methods====================
 	public addVarible(name: string, type: ValueType | ArrayType, value: any): boolean {
 		if (this.runtimeScopes.length == 0) return false;

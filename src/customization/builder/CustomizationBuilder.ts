@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, IndexSuffixedContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NumLitContext, OmitCommandContext, ParExprContext, PropSuffixedContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, IndexSuffixedContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NumLitContext, OmitCommandContext, ParExprContext, PropSuffixedContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -38,10 +38,10 @@ import { HereExpr } from './model/expr/HereExpr';
 import path = require('path');
 import { ArrayExpr, ArrayType } from './model/expr/ArrayExpr';
 import { ArrayAccessExpr } from './model/expr/ArrayAccessExpr';
+import { EdgesOfExpr } from './model/expr/EdgesOfExpr';
 
 
 // TODO: Implement updating array contents
-// TODO: Implement getting edge, similar to getting node "here".
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
     private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
@@ -672,6 +672,26 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     visitHereExpr(ctx: HereExprContext): CustSpecComponent {
         return new HereExpr(this.runtime);
+    }
+
+    visitEdgesOfExpr(ctx: EdgesOfExprContext): CustSpecComponent {
+        const firstComp: CustSpecComponent = this.visit(ctx.expr(0));
+        if (firstComp instanceof ErrorComponent) return firstComp;
+        const firstExpr: Expr = firstComp as Expr;
+        if (firstExpr.type() != ValueType.NODE)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE], firstExpr.type()).toString()
+            );
+
+        const secondComp: CustSpecComponent = this.visit(ctx.expr(1));
+        if (secondComp instanceof ErrorComponent) return secondComp;
+        const secondExpr: Expr = secondComp as Expr;
+        if (secondExpr.type() != ValueType.NODE)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], secondExpr.type()).toString()
+            );
+
+        return new EdgesOfExpr(firstExpr, secondExpr, this.runtime);
     }
 
     visitLiteralExpr(ctx: LiteralExprContext): CustSpecComponent {

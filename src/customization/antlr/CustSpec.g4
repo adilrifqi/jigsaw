@@ -52,6 +52,8 @@ primary
     | NEW_NODE expr                     # NewNodeExpr
     | NEW_EDGE expr expr expr           # NewEdgeExpr
     | HERE                              # HereExpr
+    // TODO: Similar to HERE, but for parent and child
+    | EDGES_OF expr expr                # EdgesOfExpr
     | literal                           # LiteralExpr
     | LPAR expr RPAR                    # ParExpr
     | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
@@ -94,6 +96,7 @@ LOCAL   : 'l:';
 ADD     : 'add';
 OMIT    : 'omit';
 HERE    : 'here';
+EDGES_OF: 'edgesOf';
 PARENT  : 'parent';
 NEW_NODE: 'newNode';
 NEW_EDGE: 'newEdge';

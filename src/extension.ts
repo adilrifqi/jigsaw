@@ -15,7 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('jigsaw.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Hello from JIGSAW!');
 
-		const spec: string = "c:Customer {num[][] numbers = [];}";
+		const spec: string = "c:Customer {Node thisNode = here; Node node = newNode \"LEL\"; Edge edge = newEdge thisNode node \"DUMMY_LABEL\"; add node; add edge;}";
 		const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
 		if (cust instanceof CustomizationRuntime) cust.applyCustomization();
 		console.log(cust);
@@ -191,7 +191,7 @@ function getWebviewContent(
 export function deactivate() {}
 
 function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} {
-	const spec: string = "c:Customer {String[] strings = [\"henlo\", \"how u doin\"]; add newNode(strings[1]);}";
+	const spec: string = "c:Customer {Node thisNode = here; Node node = newNode \"LEL\"; Edge edge = newEdge thisNode node \"DUMMY_LABEL\"; add node; add edge; Edge[] between = edgesOf thisNode node; omit between;}";
 	const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
 	const nodes: NodeInfo[] = [];
 	const edges: EdgeInfo[] = [];
