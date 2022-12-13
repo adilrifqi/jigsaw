@@ -9,6 +9,10 @@ import { Location } from "./location/Location";
 import { LocationType } from "./location/LocationType";
 import { RTLocationScope, Variable } from "./RTLocationScope";
 
+export type Subject = {
+	id: string
+}
+
 export class CustomizationRuntime extends CustSpecComponent {
     private topLocations: Location[] = [];
     private runtimeScopes: RTLocationScope[] = [];
@@ -73,51 +77,39 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return false;
 	}
 
-	public getCurrentVariableNode(): NodeInfo | null {
+	public getSubjectNode(subject: Subject): NodeInfo | null {
+		var result: NodeInfo | null = null;
+		for (const node of this.nodes)
+			if (node.id === subject.id) {
+				result = node;
+				break;
+			}
+		return result;
+	}
+
+	public getCurrentSubject(): Subject {
+		return {id: this.currentVariable.id};
+	}
+
+	public getParentsOf(subject: Subject): Subject[] {
+		const result: Subject[] = [];
+		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
+		if (frame)
+			for (const [varKey, variable] of frame.jigsawVariables)
+				for (const [_, fieldKey] of variable.variables)
+					if (fieldKey === subject.id) result.push({id: varKey});
+		return result;
+    }
+
+	public getChildrenOf(subject: Subject): Subject[] {
+		const result: Subject[] = [];
 		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
 		if (frame) {
-			switch(this.currentLocation.getType()) {
-			case LocationType.CLASS:
-				for (const node of this.nodes)
-					if (node.id === this.currentVariable.value)
-						return node;
-				return null;
-			case LocationType.FIELD:
-				const path: {name: string, type: LocationType}[] = this.currentLocation.getPath();
-				var possibles: {variable: JigsawVariable, node: NodeInfo | null}[] = [];
-				
-				for (const loc of path) {
-					const result: {variable: JigsawVariable, node: NodeInfo | null}[] = [];
-					switch(loc.type) {
-						case LocationType.CLASS:
-							for (const node of this.nodes)
-								if (typeof node.data.title !== 'string' && node.data.title.type === loc.name)
-									result.push({variable: frame.jigsawVariables.get(node.id)!, node: node});
-							break;
-						case LocationType.FIELD:
-							for (const possible of possibles)
-								for (const [fieldName, varKey] of possible.variable.variables)
-									if (fieldName === loc.name) {
-										var nextNode: NodeInfo | null = null;
-										for (const node of this.nodes)
-											if (node.id === varKey) {
-												nextNode = node;
-												break;
-											}
-										result.push({variable: frame.jigsawVariables.get(varKey)!, node: nextNode});
-										break;
-									}
-							break;
-					}
-					possibles = result;
-				}
-				for (const possible of possibles)
-					if (possible.variable === this.currentVariable)
-						return possible.node;
-				return null;
-			}
+			const variable: JigsawVariable = frame.jigsawVariables.get(subject.id)!;
+			for (const [_, fieldKey] of variable.variables)
+				result.push({id: fieldKey});
 		}
-		return null;
+		return result;
 	}
 
 	// ====================Customization Methods====================

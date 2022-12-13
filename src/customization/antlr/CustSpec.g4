@@ -51,8 +51,12 @@ primary
     : ID                                # IdExpr
     | NEW_NODE expr                     # NewNodeExpr
     | NEW_EDGE expr expr expr           # NewEdgeExpr
+    | PARENTS                           # ParentsExpr
+    | PARENTS_OF expr                   # ParentsOfExpr
     | HERE                              # HereExpr
-    // TODO: Similar to HERE, but for parent and child
+    | CHILDREN                          # ChildrenExpr
+    | CHILDREN_OF expr                  # ChildrenOfExpr
+    | NODE_OF expr                      # NodeOfExpr
     | EDGES_OF expr expr                # EdgesOfExpr
     | literal                           # LiteralExpr
     | LPAR expr RPAR                    # ParExpr
@@ -74,7 +78,7 @@ booleanLit  : TRUE | FALSE ;
 
 type        : basicType | type LBRAC RBRAC;
 
-basicType   : NUM_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE ;
+basicType   : NUM_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE | SUBJECT_TYPE ;
 
 
 // ================================Tokens================================
@@ -93,13 +97,17 @@ METHOD  : 'm:';
 PARAM   : 'p:';
 LOCAL   : 'l:';
 
-ADD     : 'add';
-OMIT    : 'omit';
-HERE    : 'here';
-EDGES_OF: 'edgesOf';
-PARENT  : 'parent';
-NEW_NODE: 'newNode';
-NEW_EDGE: 'newEdge';
+ADD         : 'add';
+OMIT        : 'omit';
+HERE        : 'here';
+PARENTS     : 'parents';
+PARENTS_OF  : 'parentsOf';
+CHILDREN    : 'children';
+CHILDREN_OF : 'childrenOf';
+NODE_OF     : 'nodeOf';
+EDGES_OF    : 'edgesOf';
+NEW_NODE    : 'newNode';
+NEW_EDGE    : 'newEdge';
 
 IF      : 'if';
 ELSE    : 'else';
@@ -115,6 +123,7 @@ BOOLEAN_TYPE: 'boolean';
 STRING_TYPE : 'String';
 NODE_TYPE   : 'Node';
 EDGE_TYPE   : 'Edge';
+SUBJECT_TYPE: 'Subject';
 
 SEMI    : ';';
 DOT     : '.';
@@ -142,7 +151,7 @@ RCURL   : '}';
 LBRAC   : '[';
 RBRAC   : ']';
 
-ID          : LETTER (LETTER | DIGIT)* ;
+ID      : LETTER (LETTER | DIGIT)* ;
 
 // skip all whitespace
 WS : (' ' | '\r' | '\t' | '\n' | '\f')+ -> skip ;

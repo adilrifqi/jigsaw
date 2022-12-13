@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, IndexSuffixedContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NumLitContext, OmitCommandContext, ParExprContext, PropSuffixedContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, IndexSuffixedContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PropSuffixedContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -34,11 +34,14 @@ import { ReassignCommand } from './model/command/ReassignCommand';
 import { AddCommand } from './model/command/AddCommand';
 import { LocationType } from './model/location/LocationType';
 import { OmitCommand } from './model/command/OmitCommand';
-import { HereExpr } from './model/expr/HereExpr';
+import { NodeOfExpr } from './model/expr/NodeOfExpr';
 import path = require('path');
 import { ArrayExpr, ArrayType } from './model/expr/ArrayExpr';
 import { ArrayAccessExpr } from './model/expr/ArrayAccessExpr';
 import { EdgesOfExpr } from './model/expr/EdgesOfExpr';
+import { HereExpr } from './model/expr/HereExpr';
+import { ParentsOfExpr } from './model/expr/ParentsOfExpr';
+import { ChildrenOfExpr } from './model/expr/ChildrenOfExpr';
 
 
 // TODO: Implement updating array contents
@@ -238,6 +241,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         else if (currentTypeCtx.basicType()!.STRING_TYPE()) deepestType = ValueType.STRING;
         else if (currentTypeCtx.basicType()!.NODE_TYPE()) deepestType = ValueType.NODE;
         else if (currentTypeCtx.basicType()!.EDGE_TYPE()) deepestType = ValueType.EDGE;
+        else if (currentTypeCtx.basicType()!.SUBJECT_TYPE()) deepestType = ValueType.SUBJECT;
         else return new ErrorComponent(
             new ErrorBuilder(ctx.type(), "Invalid type " + ctx.type().toString() + ".").toString()
         );
@@ -670,8 +674,52 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr);
     }
 
+    visitParentsExpr(ctx: ParentsExprContext): CustSpecComponent {
+        return new ParentsOfExpr(new HereExpr(this.runtime), this.runtime);
+    }
+
+    visitParentsOfExpr(ctx: ParentsOfExprContext): CustSpecComponent {
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (expr.type() != ValueType.SUBJECT)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
+            );
+
+        return new ParentsOfExpr(expr, this.runtime);
+    }
+
     visitHereExpr(ctx: HereExprContext): CustSpecComponent {
         return new HereExpr(this.runtime);
+    }
+
+    visitChildrenExpr(ctx: ChildrenExprContext): CustSpecComponent {
+        return new ChildrenOfExpr(new HereExpr(this.runtime), this.runtime);
+    }
+
+    visitChildrenOfExpr(ctx: ChildrenOfExprContext): CustSpecComponent {
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (expr.type() != ValueType.SUBJECT)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
+            );
+
+        return new ChildrenOfExpr(expr, this.runtime);
+    }
+
+    visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (expr.type() != ValueType.SUBJECT)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
+            );
+
+        return new NodeOfExpr(expr, this.runtime);
     }
 
     visitEdgesOfExpr(ctx: EdgesOfExprContext): CustSpecComponent {

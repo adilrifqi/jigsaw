@@ -1,5 +1,5 @@
-import { NodeInfo } from "../../../../debugmodel/DiagramInfo";
-import { CustomizationRuntime } from "../CustomizationRuntime";
+import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
+import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
@@ -10,12 +10,12 @@ export class HereExpr extends Expr {
         super();
         this.runtime = runtime;
     }
-    
+
     public type(): ValueType {
-        return ValueType.NODE;
+        return ValueType.SUBJECT;
     }
 
-    public eval(): NodeInfo | null {
-        return this.runtime.getCurrentVariableNode();
+    public eval(): Subject {
+        return this.runtime.getCurrentSubject();
     }
 }

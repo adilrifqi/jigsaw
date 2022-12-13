@@ -42,6 +42,7 @@ export class StackFrame {
         }
 
         if (!this.jigsawVariables.has(keyString)) {
+            variable.id = keyString;
             this.jigsawVariables.set(keyString, variable);
 
             // Associate the ref with the variable
