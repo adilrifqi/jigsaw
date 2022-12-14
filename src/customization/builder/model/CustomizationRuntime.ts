@@ -112,6 +112,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
 	}
 
+	public getCurrentVariableField(fieldName: string): Subject | null {
+		for (const [fieldName, fieldVarKey] of this.currentVariable.variables)
+			if (fieldName === fieldName)
+				return {id: fieldVarKey};
+		return null;
+	}
+
 	// ====================Customization Methods====================
 	public addNode(newNode: NodeInfo): boolean {
 		for (const node of this.nodes)

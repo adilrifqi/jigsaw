@@ -191,7 +191,7 @@ function getWebviewContent(
 export function deactivate() {}
 
 function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} {
-	const spec: string = "c:Customer {Node thisNode = here; Node node = newNode \"LEL\"; Edge edge = newEdge thisNode node \"DUMMY_LABEL\"; add node; add edge; Edge[] between = edgesOf thisNode node; omit between;}";
+	const spec: string = "c:CharterContract { Subject charter = f:charter; omit nodeOf charter; }";
 	const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
 	const nodes: NodeInfo[] = [];
 	const edges: EdgeInfo[] = [];

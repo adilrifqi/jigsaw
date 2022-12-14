@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, HereExprContext, IdExprContext, IfCommandContext, IndexSuffixedContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PropSuffixedContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -42,6 +42,7 @@ import { EdgesOfExpr } from './model/expr/EdgesOfExpr';
 import { HereExpr } from './model/expr/HereExpr';
 import { ParentsOfExpr } from './model/expr/ParentsOfExpr';
 import { ChildrenOfExpr } from './model/expr/ChildrenOfExpr';
+import { FieldSubjectExpr } from './model/expr/FieldSubjectExpr';
 
 
 // TODO: Implement updating array contents
@@ -570,7 +571,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitNegation(ctx: NegationContext): CustSpecComponent {
-        const comp: CustSpecComponent = this.visit(ctx.propSuffixed());
+        const comp: CustSpecComponent = this.visit(ctx.suffixed());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
 
@@ -578,37 +579,33 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             // Expr must be a number
             if (expr.type() != ValueType.NUM)
                 return new ErrorComponent(
-                    new TypeErrorBuilder(ctx.propSuffixed(), [ValueType.NUM], expr.type()).toString()
+                    new TypeErrorBuilder(ctx.suffixed(), [ValueType.NUM], expr.type()).toString()
                 );
             return new NegativeExpr(expr);
         } else if (ctx.NOT() !== undefined) {
             // Expr must be a boolean
             if (expr.type() != ValueType.BOOLEAN)
                 return new ErrorComponent(
-                    new TypeErrorBuilder(ctx.propSuffixed(), [ValueType.BOOLEAN], expr.type()).toString()
+                    new TypeErrorBuilder(ctx.suffixed(), [ValueType.BOOLEAN], expr.type()).toString()
                 );
             return new NotExpr(expr);
         } else return expr;
     }
 
-    visitPropSuffixed(ctx: PropSuffixedContext): CustSpecComponent {
-        if (ctx.ID()) throw new Error("Method not implemented");
-        else return this.visit(ctx.indexSuffixed()!);
-    }
-
-    visitIndexSuffixed(ctx: IndexSuffixedContext): CustSpecComponent {
-        if (ctx.indexSuffixed()) {
-            const arrayComp: CustSpecComponent = this.visit(ctx.indexSuffixed()!);
+    visitSuffixed(ctx: SuffixedContext): CustSpecComponent {
+        if (ctx.DOT()) throw new Error("Method not implemented");
+        else if (ctx.LBRAC()) {
+            const arrayComp: CustSpecComponent = this.visit(ctx.suffixed()!);
             if (arrayComp instanceof ErrorComponent) return arrayComp;
             const arrayExpr: Expr = arrayComp as Expr;
             if (arrayExpr.type() as any in ValueType)
                 return new ErrorComponent(
-                    new ErrorBuilder(ctx.indexSuffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
+                    new ErrorBuilder(ctx.suffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
                 );
             const arrayType: ArrayType = arrayExpr.type() as ArrayType;
             if (arrayType.dimension == 0)
                 return new ErrorComponent(
-                    new ErrorBuilder(ctx.indexSuffixed()!, "Cannot index an empty array.").toString()
+                    new ErrorBuilder(ctx.suffixed()!, "Cannot index an empty array.").toString()
                 );
 
             const exprComp: CustSpecComponent = this.visit(ctx.expr()!);
@@ -708,6 +705,14 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             );
 
         return new ChildrenOfExpr(expr, this.runtime);
+    }
+
+    visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
+        if (ctx.locId().CLASS())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Cannot access children class.").toString()
+            );
+        else return new FieldSubjectExpr(ctx.locId().ID().toString(), this.runtime);
     }
 
     visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {

@@ -42,10 +42,13 @@ term: left=term TIMES right=negation
     | negation
     ;
 
-negation: (MIN | NOT)? propSuffixed ;
+negation: (MIN | NOT)? suffixed ;
 
-propSuffixed    : propSuffixed DOT ID | indexSuffixed ;
-indexSuffixed   : indexSuffixed LBRAC expr RBRAC | primary ;
+suffixed
+    : suffixed DOT ID
+    | suffixed LBRAC expr RBRAC
+    | primary
+    ;
 
 primary
     : ID                                # IdExpr
@@ -56,6 +59,7 @@ primary
     | HERE                              # HereExpr
     | CHILDREN                          # ChildrenExpr
     | CHILDREN_OF expr                  # ChildrenOfExpr
+    | locId                             # FieldSubjectExpr
     | NODE_OF expr                      # NodeOfExpr
     | EDGES_OF expr expr                # EdgesOfExpr
     | literal                           # LiteralExpr
