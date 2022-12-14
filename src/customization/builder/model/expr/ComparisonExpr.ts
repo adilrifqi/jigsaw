@@ -26,8 +26,8 @@ export class ComparisonExpr extends BooleanExpr {
         switch (this.op) {
             case CompOp.LESS: return leftExprValue < rightExprValue;
             case CompOp.LEQ: return leftExprValue <= rightExprValue;
-            case CompOp.EQUAL: return leftExprValue == rightExprValue;
-            case CompOp.NEQ: return leftExprValue != rightExprValue;
+            case CompOp.EQUAL: return JSON.stringify(leftExprValue) === JSON.stringify(rightExprValue);
+            case CompOp.NEQ: return JSON.stringify(leftExprValue) !== JSON.stringify(rightExprValue);
             case CompOp.GEQ: return leftExprValue >= rightExprValue;
             case CompOp.GREATER: return leftExprValue > rightExprValue;
         }

@@ -101,6 +101,17 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
     }
 
+	public getFieldOfName(subject: Subject, fieldName: string): Subject | null {
+		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
+		if (frame) {
+			const variable: JigsawVariable = frame.jigsawVariables.get(subject.id)!;
+			for (const [varFieldName, varFieldKey] of variable.variables)
+				if (varFieldName === fieldName)
+					return {id: varFieldKey};
+		}
+		return null
+	}
+
 	public getChildrenOf(subject: Subject): Subject[] {
 		const result: Subject[] = [];
 		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
@@ -113,8 +124,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public getCurrentVariableField(fieldName: string): Subject | null {
-		for (const [fieldName, fieldVarKey] of this.currentVariable.variables)
-			if (fieldName === fieldName)
+		for (const [varFieldName, fieldVarKey] of this.currentVariable.variables)
+			if (varFieldName === fieldName)
 				return {id: fieldVarKey};
 		return null;
 	}

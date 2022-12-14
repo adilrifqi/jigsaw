@@ -45,9 +45,9 @@ term: left=term TIMES right=negation
 negation: (MIN | NOT)? suffixed ;
 
 suffixed
-    : suffixed DOT ID
-    | suffixed LBRAC expr RBRAC
-    | primary
+    : suffixed DOT (ID | locId) # PropSuffix
+    | suffixed LBRAC expr RBRAC # ArrayAccessSuffix // TODO: Get Subject in array of subjects
+    | primary                   # PrimaryExpr
     ;
 
 primary

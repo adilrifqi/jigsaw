@@ -1,5 +1,4 @@
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
-import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 

@@ -1,4 +1,3 @@
-import { NodeInfo } from "../../../../debugmodel/DiagramInfo";
 import { RuntimeError } from "../../error/RuntimeError";
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";

@@ -17,7 +17,6 @@ export class ArrayExpr extends Expr {
         if (arrayType) this.arrayType = arrayType;
         else if (this.contents.length == 0) this.arrayType = {type: ValueType.NUM, dimension: 0};
         else {
-            // throw new Error("Array type must be provided for arrays of non-zero length.");
             const elementType: ValueType | ArrayType = this.contents[0].type();
             if (elementType as any in ValueType) this.arrayType = {type: elementType as ValueType, dimension: 1};
             else {

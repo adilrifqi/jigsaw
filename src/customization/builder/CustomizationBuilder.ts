@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayExprContext, BooleanLitContext, CharLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, BooleanLitContext, CharLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -43,6 +43,7 @@ import { HereExpr } from './model/expr/HereExpr';
 import { ParentsOfExpr } from './model/expr/ParentsOfExpr';
 import { ChildrenOfExpr } from './model/expr/ChildrenOfExpr';
 import { FieldSubjectExpr } from './model/expr/FieldSubjectExpr';
+import { PropExpr } from './model/expr/PropExpr';
 
 
 // TODO: Implement updating array contents
@@ -480,10 +481,18 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (ctx._left === null || ctx._left === undefined) {
             return this.visit(ctx.sum(0));
         } else {
+            var op: CompOp;
+            if (ctx.LESS() !== undefined) op = CompOp.LESS;
+            else if (ctx.LEQ() !== undefined) op = CompOp.LEQ;
+            else if (ctx.EQUAL() !== undefined) op = CompOp.EQUAL;
+            else if (ctx.NEQ() !== undefined) op = CompOp.NEQ;
+            else if (ctx.GEQ() !== undefined) op = CompOp.GEQ;
+            else op = CompOp.GREATER;
+
             const leftComp: CustSpecComponent = this.visit(ctx._left);
             if (leftComp instanceof ErrorComponent) return leftComp;
             const leftExpr: Expr = leftComp as Expr;
-            if (leftExpr.type() != ValueType.NUM && leftExpr.type() != ValueType.CHAR)
+            if (op != CompOp.EQUAL && op != CompOp.NEQ && leftExpr.type() != ValueType.NUM && leftExpr.type() != ValueType.CHAR)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx._left, [ValueType.NUM, ValueType.CHAR], leftExpr.type()).toString()
                 );
@@ -491,7 +500,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             const rightComp: CustSpecComponent = this.visit(ctx._right);
             if (rightComp instanceof ErrorComponent) return rightComp;
             const rightExpr: Expr = rightComp as Expr;
-            if (rightExpr.type() != ValueType.NUM && rightExpr.type() != ValueType.CHAR)
+            if (op != CompOp.EQUAL && op != CompOp.NEQ && rightExpr.type() != ValueType.NUM && rightExpr.type() != ValueType.CHAR)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx._right, [ValueType.NUM, ValueType.CHAR], rightExpr.type()).toString()
                 );
@@ -501,14 +510,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     new TypeErrorBuilder(ctx._right, [leftExpr.type()], rightExpr.type()).toString()
                 );
             }
-
-            var op: CompOp;
-            if (ctx.LESS() !== undefined) op = CompOp.LESS;
-            else if (ctx.LEQ() !== undefined) op = CompOp.LEQ;
-            else if (ctx.EQUAL() !== undefined) op = CompOp.EQUAL;
-            else if (ctx.NEQ() !== undefined) op = CompOp.NEQ;
-            else if (ctx.GEQ() !== undefined) op = CompOp.GEQ;
-            else op = CompOp.GREATER;
 
             return new ComparisonExpr(leftExpr, rightExpr, op);
         }
@@ -592,32 +593,68 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         } else return expr;
     }
 
-    visitSuffixed(ctx: SuffixedContext): CustSpecComponent {
-        if (ctx.DOT()) throw new Error("Method not implemented");
-        else if (ctx.LBRAC()) {
-            const arrayComp: CustSpecComponent = this.visit(ctx.suffixed()!);
-            if (arrayComp instanceof ErrorComponent) return arrayComp;
-            const arrayExpr: Expr = arrayComp as Expr;
-            if (arrayExpr.type() as any in ValueType)
-                return new ErrorComponent(
-                    new ErrorBuilder(ctx.suffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
-                );
-            const arrayType: ArrayType = arrayExpr.type() as ArrayType;
-            if (arrayType.dimension == 0)
-                return new ErrorComponent(
-                    new ErrorBuilder(ctx.suffixed()!, "Cannot index an empty array.").toString()
-                );
+    visitPropSuffix(ctx: PropSuffixContext): CustSpecComponent {
+        const comp: CustSpecComponent = this.visit(ctx.suffixed()!);
+        if (comp instanceof ErrorComponent) return comp;
+        const expr: Expr = comp as Expr;
 
-            const exprComp: CustSpecComponent = this.visit(ctx.expr()!);
-            if (exprComp instanceof ErrorComponent) return exprComp;
-            const expr: Expr = exprComp as Expr;
-            if (expr.type() != ValueType.NUM)
-                return new ErrorComponent(
-                    new TypeErrorBuilder(ctx.expr()!, [ValueType.NUM], expr.type()).toString()
-                );
+        if (ctx.ID()) {
+            const prop: string = ctx.ID()!.toString();
 
-            return new ArrayAccessExpr(arrayExpr, expr, ctx);
-        } else return this.visit(ctx.primary()!);
+            switch (prop) {
+                case "length":
+                    if (!(expr.type() as any in ValueType)) {
+                        const arrayType: ArrayType = expr.type() as ArrayType;
+                        if (arrayType.dimension > 0) break;
+                    }
+                case "label":
+                    if (expr.type() as any in ValueType) {
+                        const type: ValueType = expr.type() as ValueType;
+                        if (type == ValueType.EDGE) break;
+                    }
+                default:
+                    return new ErrorComponent(
+                        new ErrorBuilder(ctx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()
+                    );
+            }
+
+            return new PropExpr(expr, prop, this.runtime, ctx);
+        } else {
+            if (expr.type() != ValueType.SUBJECT)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx, [ValueType.SUBJECT], expr.type()).toString()
+                );
+            return new PropExpr(expr, ctx.locId()!.ID().toString(), this.runtime, ctx, true);
+        }
+    }
+
+    visitArrayAccessSuffix(ctx: ArrayAccessSuffixContext): CustSpecComponent {
+        const arrayComp: CustSpecComponent = this.visit(ctx.suffixed()!);
+        if (arrayComp instanceof ErrorComponent) return arrayComp;
+        const arrayExpr: Expr = arrayComp as Expr;
+        if (arrayExpr.type() as any in ValueType)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx.suffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
+            );
+        const arrayType: ArrayType = arrayExpr.type() as ArrayType;
+        if (arrayType.dimension == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx.suffixed()!, "Cannot index an empty array.").toString()
+            );
+
+        const exprComp: CustSpecComponent = this.visit(ctx.expr()!);
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (expr.type() != ValueType.NUM)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr()!, [ValueType.NUM], expr.type()).toString()
+            );
+
+        return new ArrayAccessExpr(arrayExpr, expr, ctx);
+    }
+
+    visitPrimaryExpr(ctx: PrimaryExprContext): CustSpecComponent {
+        return this.visit(ctx.primary());
     }
 
     visitIdExpr(ctx: IdExprContext): CustSpecComponent {
@@ -668,7 +705,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(1), [ValueType.STRING], thirdExpr.type()).toString()
             );
         
-        return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr);
+        return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr, ctx);
     }
 
     visitParentsExpr(ctx: ParentsExprContext): CustSpecComponent {
@@ -712,7 +749,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Cannot access children class.").toString()
             );
-        else return new FieldSubjectExpr(ctx.locId().ID().toString(), this.runtime);
+        else return new FieldSubjectExpr(ctx.locId().ID().toString(), this.runtime, ctx);
     }
 
     visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {
@@ -724,7 +761,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
             );
 
-        return new NodeOfExpr(expr, this.runtime);
+        return new NodeOfExpr(expr, this.runtime, ctx);
     }
 
     visitEdgesOfExpr(ctx: EdgesOfExprContext): CustSpecComponent {
@@ -744,7 +781,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], secondExpr.type()).toString()
             );
 
-        return new EdgesOfExpr(firstExpr, secondExpr, this.runtime);
+        return new EdgesOfExpr(firstExpr, secondExpr, this.runtime, ctx);
     }
 
     visitLiteralExpr(ctx: LiteralExprContext): CustSpecComponent {

@@ -18,10 +18,9 @@ export class ChildrenOfExpr extends Expr {
         return {type: ValueType.SUBJECT, dimension: 1};
     }
 
-    public eval(): Object | null {
-        const subjectExpr: Object | null = this.subjectExpr.eval();
+    public eval(): Object {
+        const subjectExpr: Object = this.subjectExpr.eval() as Object;
         if (subjectExpr instanceof RuntimeError) return subjectExpr;
-        if (subjectExpr === null) return null;
         const subject: Subject = subjectExpr as Subject;
         return this.runtime.getChildrenOf(subject);
     }
