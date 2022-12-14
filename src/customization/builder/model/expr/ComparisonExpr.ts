@@ -16,7 +16,6 @@ export class ComparisonExpr extends BooleanExpr {
     
     public eval(): Object {
         // Assume correct typing left and right
-        // Only possible types are char or int
         const leftExprValue: Object = this.leftExpr.eval() as Object;
         if (leftExprValue instanceof RuntimeError) return leftExprValue;
 

@@ -24,7 +24,6 @@ export class BinaryNumOp extends NumExpr {
         const right: number = rightExprValue as number;
 
         switch(this.op) {
-            case NumOp.ADD: return left + right;
             case NumOp.SUB: return left - right;
             case NumOp.MULT: return left * right;
             case NumOp.DIV: return Math.floor(left + right);
@@ -33,6 +32,6 @@ export class BinaryNumOp extends NumExpr {
 }
 
 export enum NumOp {
-    ADD, SUB, MULT, DIV
+    SUB, MULT, DIV
 }
 

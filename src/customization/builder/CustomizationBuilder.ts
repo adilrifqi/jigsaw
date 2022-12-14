@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, BooleanLitContext, CharLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -10,7 +10,6 @@ import { CustSpecLexer } from '../antlr/parser/src/customization/antlr/CustSpecL
 import { CharStreams, CommonTokenStream, Lexer } from 'antlr4ts';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ErrorBuilder } from './error/ErrorBuilder';
-import { CharLitExpr } from './model/expr/CharLitExpr';
 import { Expr } from './model/expr/Expr';
 import { ValueType } from './model/expr/ValueType';
 import { TypeErrorBuilder } from './error/TypeErrorBuilder';
@@ -44,9 +43,9 @@ import { ParentsOfExpr } from './model/expr/ParentsOfExpr';
 import { ChildrenOfExpr } from './model/expr/ChildrenOfExpr';
 import { FieldSubjectExpr } from './model/expr/FieldSubjectExpr';
 import { PropExpr } from './model/expr/PropExpr';
+import { AdditionExpr } from './model/expr/AdditionExpr';
 
 
-// TODO: Implement updating array contents
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
     private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
@@ -238,7 +237,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         }
         
         if (currentTypeCtx.basicType()!.NUM_TYPE()) deepestType = ValueType.NUM;
-        else if (currentTypeCtx.basicType()!.CHAR_TYPE()) deepestType = ValueType.CHAR;
         else if (currentTypeCtx.basicType()!.BOOLEAN_TYPE()) deepestType = ValueType.BOOLEAN;
         else if (currentTypeCtx.basicType()!.STRING_TYPE()) deepestType = ValueType.STRING;
         else if (currentTypeCtx.basicType()!.NODE_TYPE()) deepestType = ValueType.NODE;
@@ -492,17 +490,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             const leftComp: CustSpecComponent = this.visit(ctx._left);
             if (leftComp instanceof ErrorComponent) return leftComp;
             const leftExpr: Expr = leftComp as Expr;
-            if (op != CompOp.EQUAL && op != CompOp.NEQ && leftExpr.type() != ValueType.NUM && leftExpr.type() != ValueType.CHAR)
+            if (op != CompOp.EQUAL && op != CompOp.NEQ && leftExpr.type() != ValueType.NUM)
                 return new ErrorComponent(
-                    new TypeErrorBuilder(ctx._left, [ValueType.NUM, ValueType.CHAR], leftExpr.type()).toString()
+                    new TypeErrorBuilder(ctx._left, [ValueType.NUM], leftExpr.type()).toString()
                 );
             
             const rightComp: CustSpecComponent = this.visit(ctx._right);
             if (rightComp instanceof ErrorComponent) return rightComp;
             const rightExpr: Expr = rightComp as Expr;
-            if (op != CompOp.EQUAL && op != CompOp.NEQ && rightExpr.type() != ValueType.NUM && rightExpr.type() != ValueType.CHAR)
+            if (op != CompOp.EQUAL && op != CompOp.NEQ && rightExpr.type() != ValueType.NUM)
                 return new ErrorComponent(
-                    new TypeErrorBuilder(ctx._right, [ValueType.NUM, ValueType.CHAR], rightExpr.type()).toString()
+                    new TypeErrorBuilder(ctx._right, [ValueType.NUM], rightExpr.type()).toString()
                 );
             
             if (leftExpr.type() != rightExpr.type()) {
@@ -518,7 +516,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     visitSum(ctx: SumContext): CustSpecComponent {
         if (ctx._left === null || ctx._left === undefined) {
             return this.visit(ctx.term());
-        } else {
+        } else if (ctx.MIN()) {
             const leftComp: CustSpecComponent = this.visit(ctx._left);
             if (leftComp instanceof ErrorComponent) return leftComp;
             const leftExpr: Expr = leftComp as Expr;
@@ -535,11 +533,57 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     new TypeErrorBuilder(ctx._right, [ValueType.NUM], rightExpr.type()).toString()
                 );
             
-            return new BinaryNumOp(
-                leftExpr,
-                rightExpr ,
-                ctx.PLUS() != undefined ? NumOp.ADD : NumOp.SUB
-            );
+            return new BinaryNumOp(leftExpr, rightExpr, NumOp.SUB);
+        } else {
+            const leftComp: CustSpecComponent = this.visit(ctx._left);
+            if (leftComp instanceof ErrorComponent) return leftComp;
+            const leftExpr: Expr = leftComp as Expr;
+            const leftType: ValueType | ArrayType = leftExpr.type();
+
+            const rightComp: CustSpecComponent = this.visit(ctx._right);
+            if (rightComp instanceof ErrorComponent) return rightComp;
+            const rightExpr: Expr = rightComp as Expr;
+            const rightType: ValueType | ArrayType = rightExpr.type();
+
+            if (leftType == ValueType.STRING
+                && rightType != ValueType.NUM
+                && rightType != ValueType.STRING)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx._right, [ValueType.NUM, ValueType.STRING], rightType).toString()
+                );
+
+            if (rightType == ValueType.STRING
+                && leftType != ValueType.NUM
+                && leftType != ValueType.STRING)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx._left, [ValueType.NUM, ValueType.STRING], leftType).toString()
+                );
+
+            if (leftType == ValueType.NUM && rightType != ValueType.NUM)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx._right, [ValueType.NUM], rightType).toString()
+                );
+
+            if (!(leftType as any in ValueType)) {
+                if (rightType as any in ValueType)
+                    return new ErrorComponent(
+                        new TypeErrorBuilder(ctx._right, [leftType], rightType).toString()
+                    );
+                else {
+                    const leftArrayType: ArrayType = leftType as ArrayType;
+                    const rightArrayType: ArrayType = rightType as ArrayType;
+                    if (leftArrayType.type != rightArrayType.type || leftArrayType.dimension != rightArrayType.dimension || leftArrayType.dimension == 0)
+                        return new ErrorComponent(
+                            new TypeErrorBuilder(ctx._right, [leftArrayType], rightArrayType).toString()
+                        );
+                }
+            }
+            else if (leftType != ValueType.STRING && leftType != ValueType.NUM)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx._left, [ValueType.STRING, ValueType.NUM], leftType).toString()
+                );
+
+            return new AdditionExpr(leftExpr, rightExpr);
         }
     }
 
@@ -608,10 +652,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         if (arrayType.dimension > 0) break;
                     }
                 case "label":
-                    if (expr.type() as any in ValueType) {
-                        const type: ValueType = expr.type() as ValueType;
-                        if (type == ValueType.EDGE) break;
-                    }
+                    if (expr.type() == ValueType.EDGE) break;
                 default:
                     return new ErrorComponent(
                         new ErrorBuilder(ctx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()
@@ -833,15 +874,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Invalid number literal " + ctx.NUM_VALUE().toString()).toString()
             );
         return new IntLitExpr(value);
-    }
-
-    visitCharLit(ctx: CharLitContext): CustSpecComponent {
-        const totalLength: number = ctx.CHAR_VALUE().toString().length;
-        const contents: string = ctx.CHAR_VALUE().toString().substring(1, totalLength - 1);
-        const transformed: string | undefined = this.transformChar(contents);
-        
-        if (transformed === undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Unknown character " + contents).toString());
-        return new CharLitExpr(transformed);
     }
 
     visitStringLit(ctx: StringLitContext): CustSpecComponent {

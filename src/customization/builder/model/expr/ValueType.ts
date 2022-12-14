@@ -1,3 +1,3 @@
 export enum ValueType {
-    NUM, CHAR, BOOLEAN, STRING, NODE, EDGE, SUBJECT
+    NUM, BOOLEAN, STRING, NODE, EDGE, SUBJECT
 }

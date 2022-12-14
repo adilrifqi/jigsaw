@@ -16,7 +16,7 @@ command
     // TODO: Array operations (e.g. adding, removing)
     ;
 
-expr: disjunction; // TODO: Add string concatenation
+expr: disjunction;
 
 disjunction : conjunction (OR conjunction)*;
 
@@ -70,11 +70,9 @@ primary
 
 locId   : (CLASS | FIELD) ID ; // TODO: METHOD, PARAM, and LOCAL
 
-literal : numLit | charLit | stringLit | booleanLit ;
+literal : numLit | stringLit | booleanLit ;
 
 numLit  : NUM_VALUE;
-
-charLit : CHAR_VALUE;
 
 stringLit   : STRING_VALUE;
 
@@ -82,7 +80,7 @@ booleanLit  : TRUE | FALSE ;
 
 type        : basicType | type LBRAC RBRAC;
 
-basicType   : NUM_TYPE | CHAR_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE | SUBJECT_TYPE ;
+basicType   : NUM_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE | SUBJECT_TYPE ;
 
 
 // ================================Tokens================================
