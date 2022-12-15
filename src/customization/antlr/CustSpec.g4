@@ -59,6 +59,7 @@ primary
     | HERE                              # HereExpr
     | CHILDREN                          # ChildrenExpr
     | CHILDREN_OF expr                  # ChildrenOfExpr
+    | VALUE_OF expr basicType           # ValueOfExpr
     | locId                             # FieldSubjectExpr
     | NODE_OF expr                      # NodeOfExpr
     | EDGES_OF expr expr                # EdgesOfExpr
@@ -108,6 +109,7 @@ CHILDREN    : 'children';
 CHILDREN_OF : 'childrenOf';
 NODE_OF     : 'nodeOf';
 EDGES_OF    : 'edgesOf';
+VALUE_OF    : 'valueOf';
 NEW_NODE    : 'newNode';
 NEW_EDGE    : 'newEdge';
 

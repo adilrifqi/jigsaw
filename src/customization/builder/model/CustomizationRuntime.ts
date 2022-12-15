@@ -130,6 +130,23 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return null;
 	}
 
+	public getSubjectValue(subject: Subject): Object | null {
+		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
+		if (frame) {
+			for (const [varId, variable] of frame.jigsawVariables)
+				if (varId === subject.id) {
+					if (variable.type === "int") return +variable.value;
+					else if (variable.type === "String")  {
+						const stringValue: string = variable.value as string;
+						return stringValue.substring(1, stringValue.length - 1);
+					}
+					else if (variable.type === "boolean") return variable.value === "true";
+					return null;
+				}
+		}
+		return null;
+	}
+
 	// ====================Customization Methods====================
 	public addNode(newNode: NodeInfo): boolean {
 		for (const node of this.nodes)

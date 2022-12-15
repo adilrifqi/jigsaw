@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -44,6 +44,7 @@ import { ChildrenOfExpr } from './model/expr/ChildrenOfExpr';
 import { FieldSubjectExpr } from './model/expr/FieldSubjectExpr';
 import { PropExpr } from './model/expr/PropExpr';
 import { AdditionExpr } from './model/expr/AdditionExpr';
+import { ValueOfExpr } from './model/expr/ValueOfExpr';
 
 
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
@@ -783,6 +784,26 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             );
 
         return new ChildrenOfExpr(expr, this.runtime);
+    }
+
+    visitValueOfExpr(ctx: ValueOfExprContext): CustSpecComponent {
+        const comp: CustSpecComponent = this.visit(ctx.expr());
+        if (comp instanceof ErrorComponent) return comp;
+        const expr: Expr = comp as Expr;
+        if (expr.type() != ValueType.SUBJECT)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
+            );
+
+        var declaredType: ValueType; // TODO: Add array types and other types
+        if (ctx.basicType().BOOLEAN_TYPE()) declaredType = ValueType.BOOLEAN;
+        else if (ctx.basicType().NUM_TYPE()) declaredType = ValueType.NUM;
+        else if (ctx.basicType().STRING_TYPE()) declaredType = ValueType.STRING;
+        else return new ErrorComponent(
+            new ErrorBuilder(ctx.basicType(), "Invalid given type " + ctx.basicType().toString()).toString()
+        );
+
+        return new ValueOfExpr(expr, declaredType, this.runtime, ctx);
     }
 
     visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
