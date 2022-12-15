@@ -1,16 +1,17 @@
 import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
+import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
 export class ValueOfExpr extends Expr {
     private readonly subjectExpr: Expr;
-    private readonly declaredType: ValueType;
+    private readonly declaredType: ValueType | ArrayType;
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(subjectExpr: Expr, declaredType: ValueType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+    constructor(subjectExpr: Expr, declaredType: ValueType | ArrayType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
         super();
         this.subjectExpr = subjectExpr;
         this.declaredType = declaredType;
@@ -18,7 +19,7 @@ export class ValueOfExpr extends Expr {
         this.ctx = ctx;
     }
 
-    public type(): ValueType {
+    public type(): ValueType | ArrayType {
         return this.declaredType;
     }
 
@@ -26,15 +27,13 @@ export class ValueOfExpr extends Expr {
         const subjectExprValue: Object = this.subjectExpr.eval() as Object;
         if (subjectExprValue instanceof RuntimeError) return subjectExprValue;
 
-        const subjectValue: Object | null = this.runtime.getSubjectValue(subjectExprValue as Subject);
+        const subjectValue: {value: Object, type: ValueType | ArrayType} | null = this.runtime.getSubjectValue(subjectExprValue as Subject);
         if (subjectValue === null) return new RuntimeError(this.ctx, "Cannot get the value the subject of the variable of this type.");
 
         const valueTypeHere: string = typeof subjectValue;
-        if ((this.declaredType == ValueType.BOOLEAN && valueTypeHere !== "boolean")
-            || (this.declaredType == ValueType.NUM && valueTypeHere !== "number")
-            || (this.declaredType == ValueType.STRING && valueTypeHere !== "string"))
+        if (JSON.stringify(this.declaredType) !== JSON.stringify(subjectValue.type))
             return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
 
-        return subjectValue;
+        return subjectValue.value;
     }
 }

@@ -59,14 +59,13 @@ primary
     | HERE                              # HereExpr
     | CHILDREN                          # ChildrenExpr
     | CHILDREN_OF expr                  # ChildrenOfExpr
-    | VALUE_OF expr basicType           # ValueOfExpr
+    | VALUE_OF expr type                # ValueOfExpr
     | locId                             # FieldSubjectExpr
     | NODE_OF expr                      # NodeOfExpr
     | EDGES_OF expr expr                # EdgesOfExpr
     | literal                           # LiteralExpr
     | LPAR expr RPAR                    # ParExpr
     | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
-    // TODO: Add the expression for the value of a location
     ;
 
 locId   : (CLASS | FIELD) ID ; // TODO: METHOD, PARAM, and LOCAL

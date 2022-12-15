@@ -130,19 +130,51 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return null;
 	}
 
-	public getSubjectValue(subject: Subject): Object | null {
+	public getSubjectValue(subject: Subject): {value: Object, type: ValueType | ArrayType} | null {
 		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
 		if (frame) {
-			for (const [varId, variable] of frame.jigsawVariables)
-				if (varId === subject.id) {
-					if (variable.type === "int") return +variable.value;
-					else if (variable.type === "String")  {
-						const stringValue: string = variable.value as string;
-						return stringValue.substring(1, stringValue.length - 1);
+			const variable: JigsawVariable | undefined = frame.jigsawVariables.get(subject.id);
+			if (variable) {
+				var typeString: string = variable.type;
+				if (typeString.endsWith("]")) {
+					const arrayResult: Object[] = [];
+					for (const [_, fieldKey] of variable.variables)  {
+						const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: fieldKey});
+						if (fieldValue === null) return null;
+						arrayResult.push(fieldValue.value);
 					}
-					else if (variable.type === "boolean") return variable.value === "true";
-					return null;
+
+					var deepestType: ValueType;
+					var dimension: number = 0;
+					var reduced: string = typeString;
+					while (reduced.endsWith("]")) {
+						reduced = reduced.substring(0, reduced.length - 2);
+						dimension++;
+					}
+					switch (reduced) {
+						case "boolean":
+							deepestType = ValueType.BOOLEAN;
+							break;
+						case "int":
+							deepestType = ValueType.NUM;
+							break;
+						case "String":
+							deepestType = ValueType.STRING;
+							break;
+						default:
+							return null;
+					}
+
+					return {value: arrayResult, type: {type: deepestType, dimension: dimension}};
+				} 
+				if (variable.type === "boolean") return {value: variable.value === "true", type: ValueType.BOOLEAN};
+				if (variable.type === "int") return {value: +variable.value, type: ValueType.NUM};
+				if (variable.type === "String")  {
+					const stringValue: string = variable.value as string;
+					return {value: stringValue.substring(1, stringValue.length - 1), type: ValueType.STRING};
 				}
+				return null;
+			}
 		}
 		return null;
 	}

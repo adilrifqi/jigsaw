@@ -47,6 +47,7 @@ import { AdditionExpr } from './model/expr/AdditionExpr';
 import { ValueOfExpr } from './model/expr/ValueOfExpr';
 
 
+// TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
     private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
@@ -795,13 +796,20 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
             );
 
-        var declaredType: ValueType; // TODO: Add array types and other types
-        if (ctx.basicType().BOOLEAN_TYPE()) declaredType = ValueType.BOOLEAN;
-        else if (ctx.basicType().NUM_TYPE()) declaredType = ValueType.NUM;
-        else if (ctx.basicType().STRING_TYPE()) declaredType = ValueType.STRING;
+        var deepestType: ValueType;
+        var dimension: number = 0;
+        var currentTypeCtx: TypeContext = ctx.type();
+        while (currentTypeCtx.type()) {
+            dimension++;
+            currentTypeCtx = currentTypeCtx.type()!;
+        }
+        if (currentTypeCtx.basicType()!.NUM_TYPE()) deepestType = ValueType.NUM;
+        else if (currentTypeCtx.basicType()!.BOOLEAN_TYPE()) deepestType = ValueType.BOOLEAN;
+        else if (currentTypeCtx.basicType()!.STRING_TYPE()) deepestType = ValueType.STRING;
         else return new ErrorComponent(
-            new ErrorBuilder(ctx.basicType(), "Invalid given type " + ctx.basicType().toString()).toString()
+            new ErrorBuilder(ctx.type(), "Invalid type " + ctx.type().toString() + ".").toString()
         );
+        const declaredType: ValueType | ArrayType = dimension == 0 ? deepestType : {type: deepestType, dimension: dimension};
 
         return new ValueOfExpr(expr, declaredType, this.runtime, ctx);
     }
