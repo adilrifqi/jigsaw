@@ -2,6 +2,7 @@ import { DebugState } from "../../../debugmodel/DebugState";
 import { EdgeInfo, NodeInfo, VariableInfo } from "../../../debugmodel/DiagramInfo";
 import { JigsawVariable } from "../../../debugmodel/JigsawVariable";
 import { StackFrame } from "../../../debugmodel/StackFrame";
+import { RuntimeError } from "../error/RuntimeError";
 import { CustSpecComponent } from "./CustSpecComponent";
 import { ArrayType } from "./expr/ArrayExpr";
 import { ValueType } from "./expr/ValueType";
@@ -32,7 +33,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.topLocations = value;
 	}
 
-	public applyCustomization(nodes: NodeInfo[] = [], edges: EdgeInfo[] = [], stackPos: number = 0): {nodes: NodeInfo[], edges: EdgeInfo[]} {
+	public applyCustomization(nodes: NodeInfo[] = [], edges: EdgeInfo[] = [], stackPos: number = 0): {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError {
 		this.nodes = nodes;
 		this.edges = edges;
 		this.stackPos = stackPos;
@@ -40,14 +41,16 @@ export class CustomizationRuntime extends CustSpecComponent {
 		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(stackPos);
 		if (frame)
 			for (const [varKey, variable] of frame.jigsawVariables)
-				for (const topLocation of this.topLocations)
-					if (this.customizationDispatch(variable, {class: variable.type}, topLocation, frame))
-						break;
+				for (const topLocation of this.topLocations) {
+					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topLocation, frame);
+					if (dispatchResult === null) break;
+					else if (dispatchResult instanceof RuntimeError) return dispatchResult;
+				}
 
 		return {nodes: this.nodes, edges: this.edges};
     }
 
-	private customizationDispatch(variable: JigsawVariable, interestNames: {class?: string, field?: string}, location: Location, frame: StackFrame): boolean {
+	private customizationDispatch(variable: JigsawVariable, interestNames: {class?: string, field?: string}, location: Location, frame: StackFrame): RuntimeError | null | undefined {
 		switch (location.getType()) {
 			case LocationType.CLASS:
 				if (interestNames.class !== undefined && interestNames.class !== null)
@@ -58,23 +61,28 @@ export class CustomizationRuntime extends CustSpecComponent {
 					return this.customizeLocation(variable, interestNames.field, location, frame);
 				break;
 		}
-		return false;
+		return undefined;
 	}
 
-	private customizeLocation(variable: JigsawVariable, interestName: string, location: Location, frame: StackFrame): boolean {
+	private customizeLocation(variable: JigsawVariable, interestName: string, location: Location, frame: StackFrame): RuntimeError | null | undefined {
 		if (interestName === location.getName()) {
 			this.currentLocation = location;
 			this.currentVariable = variable;
-			location.execute(variable); // TODO: Do something in case of RuntimeError
+
+			const executionResult: RuntimeError | undefined = location.execute(variable);
+			if (executionResult) return executionResult;
+
 			for (const [fieldName, varsVarKey] of variable.variables) {
 				const varsVarVariable: JigsawVariable = frame.jigsawVariables.get(varsVarKey)!;
-				for (var child of location.getChildren())
-					if (this.customizationDispatch(varsVarVariable, {class: varsVarVariable.type, field: fieldName}, child, frame))
-						break;
+				for (var child of location.getChildren()) {
+					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(varsVarVariable, {class: varsVarVariable.type, field: fieldName}, child, frame);
+					if (dispatchResult === null) break;
+					else if (dispatchResult instanceof RuntimeError) return dispatchResult;
+				}
 			}
-			return true;
+			return null;
 		}
-		return false;
+		return undefined;
 	}
 
 	public getSubjectNode(subject: Subject): NodeInfo | null {

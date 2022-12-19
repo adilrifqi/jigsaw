@@ -1,11 +1,14 @@
 import * as vscode from 'vscode';
 import { CustomizationBuilder } from './customization/builder/CustomizationBuilder';
+import { RuntimeError } from './customization/builder/error/RuntimeError';
 import { CustomizationRuntime } from './customization/builder/model/CustomizationRuntime';
 import { ErrorComponent } from './customization/builder/model/ErrorComponent';
 import { DebugState } from './debugmodel/DebugState';
 import { EdgeInfo, NodeInfo } from './debugmodel/DiagramInfo';
 import { JigsawVariable } from './debugmodel/JigsawVariable';
 import { StackFrame } from './debugmodel/StackFrame';
+
+var custRuntime: CustomizationRuntime | undefined = undefined;
 
 export function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
@@ -15,10 +18,12 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('jigsaw.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Hello from JIGSAW!');
 
-		const spec: string = "c:TypeTest { num[][] lmao = [[1, 2, 3], [4, 5, 6]]; lmao[0][2] = 5; add newNode \"HEY \" + lmao[0][2]; }";
-		const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
-		if (cust instanceof CustomizationRuntime) cust.applyCustomization();
-		console.log(cust);
+		vscode.workspace.openTextDocument(vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "spec.jig")).then((document) => {
+			const spec: string = document.getText();
+			const newRuntime: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
+			if (newRuntime instanceof ErrorComponent) vscode.window.showErrorMessage(newRuntime.getMessage());
+			else console.log(custRuntime);
+		});
 	});
 	context.subscriptions.push(disposable);
 
@@ -27,7 +32,11 @@ export function activate(context: vscode.ExtensionContext) {
 		const frameId: string = args[1]["frameId"];
         const frameIdSplitColon: string[] = frameId.split(':');
         const stackPos: number = +frameIdSplitColon[frameIdSplitColon.length - 2];
-		panel?.webview.postMessage({"command": "data", "body": getFrameGraph(stackPos)});
+
+		const graphResult: {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError | string = getFrameGraph(stackPos);
+		if (typeof graphResult === "string") vscode.window.showErrorMessage(graphResult);
+		else if (graphResult instanceof RuntimeError) vscode.window.showErrorMessage(graphResult.toString());
+		else panel?.webview.postMessage({"command": "data", "body": graphResult});
 	})
 
 	// Keep track to not requests for the first frames of stacks so as not to send duplicates
@@ -133,8 +142,10 @@ export function activate(context: vscode.ExtensionContext) {
 							DebugState.getInstance().removeSeqFromFrame(involvedSeq);
 						
 						if (DebugState.getInstance().complete() && hasReceivedVariables) {
-							const graph: {nodes: NodeInfo[], edges: EdgeInfo[]} = getFrameGraph(0);
-							panel?.webview.postMessage({command: "data", body: graph});
+							const graphResult: {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError | string = getFrameGraph(0);
+							if (typeof graphResult === "string") vscode.window.showErrorMessage(graphResult);
+							else if (graphResult instanceof RuntimeError) vscode.window.showErrorMessage(graphResult.toString());
+							else panel?.webview.postMessage({command: "data", body: graphResult});
 						}
 					}
 				}
@@ -146,18 +157,53 @@ export function activate(context: vscode.ExtensionContext) {
 	// Webview
 	context.subscriptions.push(
 		vscode.commands.registerCommand('jigsaw.showReactFlow', () => {
-		  panel = vscode.window.createWebviewPanel(
-			'showReactFlow',
-			'React Flow Sample View',
-			vscode.ViewColumn.One,
-			{
-			  enableScripts: true,
-			  retainContextWhenHidden: true
-			}
-		  );
-		  panel.webview.html = getWebviewContent(panel.webview, context.extensionUri);
+			vscode.workspace.openTextDocument(vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "spec.jig")).then((document) => {
+				const spec: string = document.getText();
+				const newRuntime: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
+
+				if (newRuntime instanceof ErrorComponent) vscode.window.showErrorMessage(newRuntime.getMessage());
+				else {
+					custRuntime = newRuntime;
+
+					panel = vscode.window.createWebviewPanel(
+						'showReactFlow',
+						'React Flow Sample View',
+						vscode.ViewColumn.One,
+						{
+							enableScripts: true,
+							retainContextWhenHidden: true
+						}
+					);
+					panel.webview.html = getWebviewContent(panel.webview, context.extensionUri);
+				}
+			});
 		})
-	  );
+	);
+
+	vscode.debug.onDidStartDebugSession((session: vscode.DebugSession) => {
+		// TODO: Debug
+		// vscode.window.showInformationMessage("lmao");
+		// vscode.workspace.openTextDocument(vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "spec.jig")).then((document) => {
+		// 	const spec: string = document.getText();
+		// 	const newRuntime: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
+
+		// 	if (newRuntime instanceof ErrorComponent) vscode.window.showErrorMessage(newRuntime.getMessage());
+		// 	else {
+		// 		custRuntime = newRuntime;
+
+		// 		panel = vscode.window.createWebviewPanel(
+		// 			'showReactFlow',
+		// 			'React Flow Sample View',
+		// 			vscode.ViewColumn.One,
+		// 			{
+		// 				enableScripts: true,
+		// 				retainContextWhenHidden: true
+		// 			}
+		// 		);
+		// 		panel.webview.html = getWebviewContent(panel.webview, context.extensionUri);
+		// 	}
+		// });
+	});
 }
 
 function getWebviewContent(
@@ -190,9 +236,10 @@ function getWebviewContent(
 // this method is called when your extension is deactivated
 export function deactivate() {}
 
-function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} {
-	const spec: string = "c:TypeTest { num[][] lmao = [[1, 2, 3], [4, 5, 6]]; lmao[0][2] = 5; add newNode \"HEY \" + lmao[0][2]; }";
-	const cust: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
+function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError | string {
+	if (!custRuntime) return "Customization runtime has not been initialized";
+	if (custRuntime instanceof ErrorComponent) return custRuntime.getMessage();
+
 	const nodes: NodeInfo[] = [];
 	const edges: EdgeInfo[] = [];
 	const frameToSend: StackFrame | undefined = DebugState.getInstance().getFrameByPos(stackPos);
@@ -233,7 +280,7 @@ function getFrameGraph(stackPos: number): {nodes: NodeInfo[], edges: EdgeInfo[]}
 		});
 	}
 	const result: {nodes: NodeInfo[], edges: EdgeInfo[]} = {nodes: nodes, edges: edges};
-	return cust instanceof CustomizationRuntime ? cust.applyCustomization(result.nodes, result.edges, stackPos) : result;
+	return custRuntime.applyCustomization(result.nodes, result.edges, stackPos);
 	// return result;
 }
 

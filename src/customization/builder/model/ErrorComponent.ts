@@ -8,4 +8,8 @@ export class ErrorComponent extends CustSpecComponent {
         super();
         this.message = message;
     }
+
+    public getMessage(): string {
+        return this.message;
+    }
 }

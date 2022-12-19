@@ -13,7 +13,8 @@
     "onCommand:jigsaw.helloWorld",
     "onCommand:jigsaw.showReactFlow",
     "onDebugAdapterProtocolTracker:*",
-    "onView:stackFrames"
+    "onView:stackFrames",
+    "onDebug"
   ],
   "main": "./dist/extension.js",
   "contributes": {
