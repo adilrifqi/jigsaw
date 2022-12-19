@@ -9,14 +9,16 @@ import { ValueType } from "./ValueType";
 export class PropExpr extends Expr {
     private readonly proppedExpr: Expr;
     private readonly prop: string;
+    private readonly args: Expr[];
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
     private readonly isSubjectProp: boolean;
 
-    constructor(proppedExpr: Expr, prop: string, runtime: CustomizationRuntime, ctx: ParserRuleContext, isSubjectProp: boolean = false) {
+    constructor(proppedExpr: Expr, prop: string, args: Expr[], runtime: CustomizationRuntime, ctx: ParserRuleContext, isSubjectProp: boolean = false) {
         super();
         this.proppedExpr = proppedExpr;
         this.prop = prop;
+        this.args = args;
         this.runtime = runtime;
         this.ctx = ctx;
         this.isSubjectProp = isSubjectProp;
@@ -30,6 +32,8 @@ export class PropExpr extends Expr {
                 return ValueType.NUM;
             case "label":
                 return ValueType.STRING;
+            case "append":
+                return ValueType.NUM;
             default:
                 return ValueType.NUM;
         }
@@ -51,6 +55,12 @@ export class PropExpr extends Expr {
                     return (proppedValue as any[]).length;
                 case "label":
                     return (proppedValue as EdgeInfo).label;
+                case "append":
+                    const argValue : Object | null = this.args[0].eval();
+                    if (argValue instanceof RuntimeError) return argValue;
+                    const proppedArray: (Object | null)[] = proppedValue as (Object | null)[];
+                    proppedArray.push(argValue);
+                    return proppedArray.length;
                 default:
                     return new RuntimeError(this.ctx, "Somehow the invalid property " + this.prop + " passed type-checking.");
             }

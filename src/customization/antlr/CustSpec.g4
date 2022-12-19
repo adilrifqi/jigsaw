@@ -14,7 +14,7 @@ command
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
     | OMIT expr SEMI                                                                # OmitCommand
-    // TODO: Array operations (e.g. adding, removing)
+    // TODO: Array operations (e.g. removing)
     ;
 
 expr: disjunction;
@@ -46,9 +46,9 @@ term: left=term TIMES right=negation
 negation: (MIN | NOT)? suffixed ;
 
 suffixed
-    : suffixed DOT (ID | locId) # PropSuffix
-    | suffixed LBRAC expr RBRAC # ArrayAccessSuffix // TODO: Get Subject in array of subjects
-    | primary                   # PrimaryExpr
+    : suffixed DOT (ID LPAR (expr (COMMA expr)*)? RPAR | locId) # PropSuffix
+    | suffixed LBRAC expr RBRAC                                 # ArrayAccessSuffix // TODO: Get Subject in array of subjects
+    | primary                                                   # PrimaryExpr
     ;
 
 primary

@@ -673,28 +673,48 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
         if (ctx.ID()) {
             const prop: string = ctx.ID()!.toString();
+            const argExprs: Expr[] = []
 
             switch (prop) {
                 case "length":
-                    if (!(expr.type() as any in ValueType)) {
+                    if (!(expr.type() as any in ValueType) && ctx.expr().length == 0) {
                         const arrayType: ArrayType = expr.type() as ArrayType;
                         if (arrayType.dimension > 0) break;
                     }
                 case "label":
-                    if (expr.type() == ValueType.EDGE) break;
+                    if (expr.type() == ValueType.EDGE && ctx.expr().length == 0) break;
+                case "append":
+                    const suffixedType: ValueType | ArrayType = expr.type();
+                    if (!(suffixedType as any in ValueType)) {
+                        const suffixedArrayType : ArrayType = suffixedType as ArrayType;
+                        const expectedType: ValueType | ArrayType =
+                            suffixedArrayType.dimension > 1
+                            ? {type: suffixedArrayType.type, dimension: suffixedArrayType.dimension - 1}
+                            : suffixedArrayType.type;
+
+                        if (ctx.expr().length == 1) {
+                            const newElementComp: CustSpecComponent = this.visit(ctx.expr(0));
+                            if (newElementComp instanceof ErrorComponent) return newElementComp;
+                            const newElementExpr: Expr = newElementComp as Expr;
+                            if (JSON.stringify(newElementExpr.type()) === JSON.stringify(expectedType)) {
+                                argExprs.push(newElementExpr);
+                                break;
+                            }
+                        }
+                    }
                 default:
                     return new ErrorComponent(
                         new ErrorBuilder(ctx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()
                     );
             }
 
-            return new PropExpr(expr, prop, this.runtime, ctx);
+            return new PropExpr(expr, prop, argExprs, this.runtime, ctx);
         } else {
             if (expr.type() != ValueType.SUBJECT)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx, [ValueType.SUBJECT], expr.type()).toString()
                 );
-            return new PropExpr(expr, ctx.locId()!.ID().toString(), this.runtime, ctx, true);
+            return new PropExpr(expr, ctx.locId()!.ID().toString(), [], this.runtime, ctx, true);
         }
     }
 
