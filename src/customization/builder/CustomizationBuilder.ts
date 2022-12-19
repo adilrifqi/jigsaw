@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -45,6 +45,7 @@ import { FieldSubjectExpr } from './model/expr/FieldSubjectExpr';
 import { PropExpr } from './model/expr/PropExpr';
 import { AdditionExpr } from './model/expr/AdditionExpr';
 import { ValueOfExpr } from './model/expr/ValueOfExpr';
+import { ArrayIndexReassignCommand } from './model/command/ArrayIndexReassignCommand';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -300,34 +301,60 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Bug in type checker where scope does not exist where it should").toString()
             );
 
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+
         const type: ValueType | ArrayType | undefined = this.getTCType(varName);
         if (type === undefined)
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Variable " + varName + " does not exist in this scope.").toString()
             );
-        
+
         const exprComp: CustSpecComponent = this.visit(ctx.expr());
         if (exprComp instanceof ErrorComponent) return exprComp;
         const expr: Expr = exprComp as Expr;
-
-        if (type == ValueType.NODE && expr.type() != ValueType.NODE && expr.type() !== null)
-            return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE], expr.type()).toString()
-            );
-        else if (type == ValueType.EDGE && expr.type() != ValueType.EDGE && expr.type() !== null)
-            return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
-            );
-        else if (JSON.stringify(type) !== JSON.stringify(expr.type()))
+    
+        if (JSON.stringify(type) !== JSON.stringify(expr.type()))
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [type!], expr.type()).toString()
             );
-        
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
-            );
+            
         return new ReassignCommand(varName, expr, this.runtime, this.locationStack.at(-1)!, ctx);
+    }
+
+    visitArrayIndexReassignCommand(ctx: ArrayIndexReassignCommandContext): CustSpecComponent {
+        const arrayComp: CustSpecComponent = this.visit(ctx.expr(0));
+        if (arrayComp instanceof ErrorComponent) return arrayComp;
+        const arrayExpr: Expr = arrayComp as Expr;
+        if (arrayExpr.type() as any in ValueType)
+            return new ErrorComponent(new ErrorBuilder(ctx.expr(0), "Cannot update index of non-array expression").toString());
+        const arrayType: ArrayType = arrayExpr.type() as ArrayType;
+
+        const indicesCount: number = ctx.expr().length - 2;
+        const indexExprs: Expr[] = [];
+        for (var i = 1; i < ctx.expr().length - 1; i++) {
+            const indexComp: CustSpecComponent = this.visit(ctx.expr(i));
+            if (indexComp instanceof ErrorComponent) return indexComp;
+            const indexExpr: Expr = indexComp as Expr;
+            if (indexExpr.type() != ValueType.NUM)
+                return new ErrorComponent(new TypeErrorBuilder(ctx.expr(i), [ValueType.NUM], indexExpr.type()).toString());
+            indexExprs.push(indexExpr);
+        }
+
+        const expectedType: ValueType | ArrayType =
+            indicesCount == arrayType.dimension
+            ? arrayType.type
+            : {type: arrayType.type, dimension: arrayType.dimension - indicesCount};
+
+        const newValueComp: CustSpecComponent = this.visit(ctx.expr(ctx.expr().length - 1));
+        if (newValueComp instanceof ErrorComponent) return newValueComp;
+        const newValueExpr: Expr = newValueComp as Expr;
+        if (JSON.stringify(expectedType) !== JSON.stringify(newValueExpr.type()))
+            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
+
+        return new ArrayIndexReassignCommand(arrayExpr, indexExprs, newValueExpr, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {

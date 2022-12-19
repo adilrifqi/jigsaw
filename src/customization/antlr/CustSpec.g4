@@ -8,7 +8,8 @@ custLocation: locId (DOT locId)* LCURL command* custLocation* RCURL;
 command
     : LCURL command* RCURL                                                          # ScopeCommand
     | type ID ASS expr SEMI                                                         # NewVarCommand
-    | ID ASS expr SEMI                                                              # ReassignCommand // TODO: Array element reassignment
+    | ID ASS expr SEMI                                                              # ReassignCommand
+    | expr (LBRAC expr RBRAC)+ ASS expr SEMI                                        # ArrayIndexReassignCommand
     | IF LPAR expr RPAR command (ELSE IF LPAR expr RPAR command)* (ELSE command)?   # IfCommand
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
