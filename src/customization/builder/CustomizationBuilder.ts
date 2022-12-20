@@ -1,13 +1,13 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
 import { IntLitExpr } from './model/expr/IntLitExpr';
 import { CustSpecLexer } from '../antlr/parser/src/customization/antlr/CustSpecLexer';
-import { CharStreams, CommonTokenStream, Lexer } from 'antlr4ts';
+import { CharStreams, CommonTokenStream, Lexer, ParserRuleContext } from 'antlr4ts';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ErrorBuilder } from './error/ErrorBuilder';
 import { Expr } from './model/expr/Expr';
@@ -46,6 +46,8 @@ import { PropExpr } from './model/expr/PropExpr';
 import { AdditionExpr } from './model/expr/AdditionExpr';
 import { ValueOfExpr } from './model/expr/ValueOfExpr';
 import { ArrayIndexReassignCommand } from './model/command/ArrayIndexReassignCommand';
+import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
+import { ExprCommand } from './model/command/ExprCommand';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -454,6 +456,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new OmitCommand(expr, this.runtime, this.locationStack.at(-1)!, ctx);
     }
 
+    visitPlainPropCallCommand(ctx: PlainPropCallCommandContext): CustSpecComponent {
+        const propCall: Expr | ErrorComponent = this.processPropCall(ctx.suffixed(), ctx.ID(), ctx.expr(), ctx);
+        if (propCall instanceof ErrorComponent) return propCall;
+        return new ExprCommand(propCall, this.locationStack.at(-1)!);
+    }
+
     visitExpr(ctx: ExprContext): CustSpecComponent{
         return this.visit(ctx.disjunction());
     }
@@ -667,64 +675,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitPropSuffix(ctx: PropSuffixContext): CustSpecComponent {
-        const comp: CustSpecComponent = this.visit(ctx.suffixed()!);
-        if (comp instanceof ErrorComponent) return comp;
-        const expr: Expr = comp as Expr;
+        if (ctx.ID()) return this.processPropCall(ctx.suffixed(), ctx.ID()!, ctx.expr(), ctx);
+        else {
+            const comp: CustSpecComponent = this.visit(ctx.suffixed()!);
+            if (comp instanceof ErrorComponent) return comp;
+            const expr: Expr = comp as Expr;
 
-        if (ctx.ID()) {
-            const prop: string = ctx.ID()!.toString();
-            const argExprs: Expr[] = []
-
-            switch (prop) {
-                case "length":
-                    if (!(expr.type() as any in ValueType) && ctx.expr().length == 0) {
-                        const arrayType: ArrayType = expr.type() as ArrayType;
-                        if (arrayType.dimension > 0) break;
-                    }
-                case "label":
-                    if (expr.type() == ValueType.EDGE && ctx.expr().length == 0) break;
-                case "append": {
-                    const suffixedType: ValueType | ArrayType = expr.type();
-                    if (!(suffixedType as any in ValueType)) {
-                        const suffixedArrayType : ArrayType = suffixedType as ArrayType;
-                        const expectedType: ValueType | ArrayType =
-                            suffixedArrayType.dimension > 1
-                            ? {type: suffixedArrayType.type, dimension: suffixedArrayType.dimension - 1}
-                            : suffixedArrayType.type;
-
-                        if (ctx.expr().length == 1) {
-                            const newElementComp: CustSpecComponent = this.visit(ctx.expr(0));
-                            if (newElementComp instanceof ErrorComponent) return newElementComp;
-                            const newElementExpr: Expr = newElementComp as Expr;
-                            if (JSON.stringify(newElementExpr.type()) === JSON.stringify(expectedType)) {
-                                argExprs.push(newElementExpr);
-                                break;
-                            }
-                        }
-                    }
-                }
-                case "remove": {
-                    const suffixedType: ValueType | ArrayType = expr.type();
-                    if (!(suffixedType as any in ValueType)) {
-                        if (ctx.expr().length == 1) {
-                            const indexComp: CustSpecComponent = this.visit(ctx.expr(0));
-                            if (indexComp instanceof ErrorComponent) return indexComp;
-                            const indexExpr: Expr = indexComp as Expr;
-                            if (indexExpr.type() == ValueType.NUM) {
-                                argExprs.push(indexExpr);
-                                break;
-                            }
-                        }
-                    }
-                }
-                default:
-                    return new ErrorComponent(
-                        new ErrorBuilder(ctx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()
-                    );
-            }
-
-            return new PropExpr(expr, prop, argExprs, this.runtime, ctx);
-        } else {
             if (expr.type() != ValueType.SUBJECT)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx, [ValueType.SUBJECT], expr.type()).toString()
@@ -997,6 +953,63 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
 
     // ========================Helpers========================
+    private processPropCall(suffixed: SuffixedContext, id: TerminalNode, exprs: ExprContext[], ruleCtx: ParserRuleContext): PropExpr | ErrorComponent {
+        const comp: CustSpecComponent = this.visit(suffixed);
+        if (comp instanceof ErrorComponent) return comp;
+        const expr: Expr = comp as Expr;
+
+        const prop: string = id.toString();
+        const argExprs: Expr[] = [];
+
+        switch (prop) {
+            case "length":
+                if (!(expr.type() as any in ValueType) && exprs.length == 0)
+                    if ((expr.type() as ArrayType).dimension > 0) break;
+            case "label":
+                if (expr.type() == ValueType.EDGE && exprs.length == 0) break;
+            case "append": {
+                const suffixedType: ValueType | ArrayType = expr.type();
+                if (!(suffixedType as any in ValueType)) {
+                    const suffixedArrayType : ArrayType = suffixedType as ArrayType;
+                    const expectedType: ValueType | ArrayType =
+                        suffixedArrayType.dimension > 1
+                        ? {type: suffixedArrayType.type, dimension: suffixedArrayType.dimension - 1}
+                        : suffixedArrayType.type;
+
+                    if (exprs.length == 1) {
+                        const newElementComp: CustSpecComponent = this.visit(exprs[0]);
+                        if (newElementComp instanceof ErrorComponent) return newElementComp;
+                        const newElementExpr: Expr = newElementComp as Expr;
+                        if (JSON.stringify(newElementExpr.type()) === JSON.stringify(expectedType)) {
+                            argExprs.push(newElementExpr);
+                            break;
+                        }
+                    }
+                }
+            }
+            case "remove": {
+                const suffixedType: ValueType | ArrayType = expr.type();
+                if (!(suffixedType as any in ValueType)) {
+                    if (exprs.length == 1) {
+                        const indexComp: CustSpecComponent = this.visit(exprs[0]);
+                        if (indexComp instanceof ErrorComponent) return indexComp;
+                        const indexExpr: Expr = indexComp as Expr;
+                        if (indexExpr.type() == ValueType.NUM) {
+                            argExprs.push(indexExpr);
+                            break;
+                        }
+                    }
+                }
+            }
+            default:
+                return new ErrorComponent(
+                    new ErrorBuilder(ruleCtx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()
+                );
+        }
+
+        return new PropExpr(expr, prop, argExprs, this.runtime, ruleCtx);
+    }
+
     private validChar(char: string): boolean {
         return this.transformChar(char) != undefined;
     }

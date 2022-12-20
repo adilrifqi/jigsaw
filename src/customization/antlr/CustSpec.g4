@@ -14,7 +14,7 @@ command
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
     | OMIT expr SEMI                                                                # OmitCommand
-    // TODO: Make PropSuffixed callable as a command
+    | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR                               # PlainPropCallCommand
     ;
 
 expr: disjunction;
