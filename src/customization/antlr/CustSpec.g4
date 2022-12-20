@@ -154,8 +154,12 @@ LCURL   : '{';
 RCURL   : '}';
 LBRAC   : '[';
 RBRAC   : ']';
+DSLASH  : '//';
 
 ID      : LETTER (LETTER | DIGIT)* ;
+
+// skip comment lines
+COMMENT : DSLASH (~'\n')* '\n' -> skip ;
 
 // skip all whitespace
 WS : (' ' | '\r' | '\t' | '\n' | '\f')+ -> skip ;
