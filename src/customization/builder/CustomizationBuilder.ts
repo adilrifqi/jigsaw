@@ -683,7 +683,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     }
                 case "label":
                     if (expr.type() == ValueType.EDGE && ctx.expr().length == 0) break;
-                case "append":
+                case "append": {
                     const suffixedType: ValueType | ArrayType = expr.type();
                     if (!(suffixedType as any in ValueType)) {
                         const suffixedArrayType : ArrayType = suffixedType as ArrayType;
@@ -702,6 +702,21 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                             }
                         }
                     }
+                }
+                case "remove": {
+                    const suffixedType: ValueType | ArrayType = expr.type();
+                    if (!(suffixedType as any in ValueType)) {
+                        if (ctx.expr().length == 1) {
+                            const indexComp: CustSpecComponent = this.visit(ctx.expr(0));
+                            if (indexComp instanceof ErrorComponent) return indexComp;
+                            const indexExpr: Expr = indexComp as Expr;
+                            if (indexExpr.type() == ValueType.NUM) {
+                                argExprs.push(indexExpr);
+                                break;
+                            }
+                        }
+                    }
+                }
                 default:
                     return new ErrorComponent(
                         new ErrorBuilder(ctx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()

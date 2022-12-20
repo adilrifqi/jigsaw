@@ -34,6 +34,8 @@ export class PropExpr extends Expr {
                 return ValueType.STRING;
             case "append":
                 return ValueType.NUM;
+            case "remove":
+                return ValueType.NUM;
             default:
                 return ValueType.NUM;
         }
@@ -55,12 +57,25 @@ export class PropExpr extends Expr {
                     return (proppedValue as any[]).length;
                 case "label":
                     return (proppedValue as EdgeInfo).label;
-                case "append":
+                case "append": {
                     const argValue : Object | null = this.args[0].eval();
                     if (argValue instanceof RuntimeError) return argValue;
+
                     const proppedArray: (Object | null)[] = proppedValue as (Object | null)[];
                     proppedArray.push(argValue);
                     return proppedArray.length;
+                }
+                case "remove": {
+                    const argValue: Object = this.args[0].eval() as Object;
+                    if (argValue instanceof RuntimeError) return argValue;
+
+                    const proppedArray: (Object | null)[] = proppedValue as (Object | null)[];
+                    const index: number = argValue as number;
+                    if (index >= proppedArray.length || index < 0)
+                        return new RuntimeError(this.ctx, "Index out of bounds, index" + index + " to an array of size " + proppedArray.length);
+                    proppedArray.splice(index, 1);
+                    return proppedArray.length;
+                }
                 default:
                     return new RuntimeError(this.ctx, "Somehow the invalid property " + this.prop + " passed type-checking.");
             }

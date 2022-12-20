@@ -14,7 +14,7 @@ command
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
     | OMIT expr SEMI                                                                # OmitCommand
-    // TODO: Array operations (e.g. removing)
+    // TODO: Make PropSuffixed callable as a command
     ;
 
 expr: disjunction;
