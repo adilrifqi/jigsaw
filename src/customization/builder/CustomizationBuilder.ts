@@ -1021,6 +1021,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         }
                     }
             }
+            case "title":
+                if (expr.type() == ValueType.NODE && exprs.length == 0) break;
             default:
                 return new ErrorComponent(
                     new ErrorBuilder(ruleCtx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()

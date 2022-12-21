@@ -1,5 +1,5 @@
 import { ParserRuleContext } from "antlr4ts";
-import { EdgeInfo, NodeInfo } from "../../../../debugmodel/DiagramInfo";
+import { EdgeInfo, NodeInfo, VariableInfo } from "../../../../debugmodel/DiagramInfo";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
 import { ArrayType } from "./ArrayExpr";
@@ -37,6 +37,8 @@ export class PropExpr extends Expr {
             case "remove":
                 return ValueType.NUM;
             case "setTitle":
+                return ValueType.STRING;
+            case "title":
                 return ValueType.STRING;
             default:
                 return ValueType.NUM;
@@ -88,6 +90,21 @@ export class PropExpr extends Expr {
 
                     node.data.title = newLabel;
                     return newLabel;
+                }
+                case "title": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const titleInfo: VariableInfo | string = node.data.title;
+                    let title: string;
+                    if (typeof titleInfo === 'string') title = titleInfo;
+                    else {
+                        const scopeTopVar: boolean = node.data.scopeTopVar !== undefined && node.data.scopeTopVar !== null ? node.data.scopeTopVar : false;
+                        title = scopeTopVar ? titleInfo.name + "(" + titleInfo.type + ")" : titleInfo.type;
+                        if (!titleInfo.value.includes("@")) title += ": " + titleInfo.value;
+                    }
+
+                    return title;
                 }
                 default:
                     return new RuntimeError(this.ctx, "Somehow the invalid property " + this.prop + " passed type-checking.");
