@@ -131,37 +131,40 @@ NODE_TYPE   : 'Node';
 EDGE_TYPE   : 'Edge';
 SUBJECT_TYPE: 'Subject';
 
-SEMI    : ';';
-DOT     : '.';
-COMMA   : ',';
-APO     : '\'';
-QUOTE   : '"';
-LESS    : '<';
-LEQ     : '<=';
-EQUAL   : '==';
-NEQ     : '!=';
-GEQ     : '>=';
-ASS     : '=';
-GREATER : '>';
-PLUS    : '+';
-MIN     : '-';
-TIMES   : '*';
-DIV     : '/';
-NOT     : '!';
-OR      : '||';
-AND     : '&&';
-LPAR    : '(';
-RPAR    : ')';
-LCURL   : '{';
-RCURL   : '}';
-LBRAC   : '[';
-RBRAC   : ']';
-DSLASH  : '//';
+SEMI        : ';';
+DOT         : '.';
+COMMA       : ',';
+APO         : '\'';
+QUOTE       : '"';
+LESS        : '<';
+LEQ         : '<=';
+EQUAL       : '==';
+NEQ         : '!=';
+GEQ         : '>=';
+ASS         : '=';
+GREATER     : '>';
+PLUS        : '+';
+MIN         : '-';
+TIMES       : '*';
+DIV         : '/';
+NOT         : '!';
+OR          : '||';
+AND         : '&&';
+LPAR        : '(';
+RPAR        : ')';
+LCURL       : '{';
+RCURL       : '}';
+LBRAC       : '[';
+RBRAC       : ']';
+DSLASH      : '//';
+SLASH_STAR  : '/*';
+STAR_SLASH  : '*/';
 
 ID      : LETTER (LETTER | DIGIT)* ;
 
-// skip comment lines
-COMMENT : DSLASH (~'\n')* '\n' -> skip ;
+// skip comments
+COMMENT_LINE    : DSLASH (~'\n')* '\n' -> skip ;
+COMMENT_BLOCK   : SLASH_STAR .*? STAR_SLASH -> skip ;
 
 // skip all whitespace
-WS : (' ' | '\r' | '\t' | '\n' | '\f')+ -> skip ;
+WS  : (' ' | '\r' | '\t' | '\n' | '\f')+ -> skip ;
