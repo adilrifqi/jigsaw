@@ -997,7 +997,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             }
             case "remove": {
                 const suffixedType: ValueType | ArrayType = expr.type();
-                if (!(suffixedType as any in ValueType)) {
+                if (!(suffixedType as any in ValueType))
                     if (exprs.length == 1) {
                         const indexComp: CustSpecComponent = this.visit(exprs[0]);
                         if (indexComp instanceof ErrorComponent) return indexComp;
@@ -1007,7 +1007,19 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                             break;
                         }
                     }
-                }
+            }
+            case "setTitle": {
+                const suffixedType: ValueType | ArrayType = expr.type();
+                if (suffixedType == ValueType.NODE)
+                    if (exprs.length == 1) {
+                        const newLabelComp: CustSpecComponent = this.visit(exprs[0]);
+                        if (newLabelComp instanceof ErrorComponent) return newLabelComp;
+                        const newLabelExpr: Expr = newLabelComp as Expr;
+                        if (newLabelExpr.type() == ValueType.STRING) {
+                            argExprs.push(newLabelExpr);
+                            break;
+                        }
+                    }
             }
             default:
                 return new ErrorComponent(

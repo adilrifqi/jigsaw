@@ -9,13 +9,11 @@ function ObjectNode (
 ) {
     const titleInfo: VariableInfo | string = data.title;
     let title: string;
-    let titleStringGiven: boolean = true;
     if (typeof titleInfo === 'string') title = titleInfo;
     else {
         const scopeTopVar: boolean = data.scopeTopVar !== undefined &&  data.scopeTopVar !== null ? data.scopeTopVar : false;
         title = scopeTopVar ? titleInfo.name + "(" + titleInfo.type + ")" : titleInfo.type;
         if (!titleInfo.value.includes("@")) title += ": " + titleInfo.value;
-        titleStringGiven = false;
     }
 
     if (data.rows.length > 0) {

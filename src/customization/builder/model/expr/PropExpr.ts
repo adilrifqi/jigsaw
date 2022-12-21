@@ -1,5 +1,5 @@
 import { ParserRuleContext } from "antlr4ts";
-import { EdgeInfo } from "../../../../debugmodel/DiagramInfo";
+import { EdgeInfo, NodeInfo } from "../../../../debugmodel/DiagramInfo";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
 import { ArrayType } from "./ArrayExpr";
@@ -36,6 +36,8 @@ export class PropExpr extends Expr {
                 return ValueType.NUM;
             case "remove":
                 return ValueType.NUM;
+            case "setTitle":
+                return ValueType.STRING;
             default:
                 return ValueType.NUM;
         }
@@ -75,6 +77,17 @@ export class PropExpr extends Expr {
                         return new RuntimeError(this.ctx, "Index out of bounds, index" + index + " to an array of size " + proppedArray.length);
                     proppedArray.splice(index, 1);
                     return proppedArray.length;
+                }
+                case "setTitle": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot do setTitle on a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const newLabelValue: Object = this.args[0].eval() as Object;
+                    if (newLabelValue instanceof RuntimeError) return newLabelValue;
+                    const newLabel: string = newLabelValue as string;
+
+                    node.data.title = newLabel;
+                    return newLabel;
                 }
                 default:
                     return new RuntimeError(this.ctx, "Somehow the invalid property " + this.prop + " passed type-checking.");
