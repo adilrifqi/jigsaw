@@ -239,7 +239,12 @@ export class CustomizationRuntime extends CustSpecComponent {
 				if (edge.source === remNodeId || edge.target === remNodeId)
 					remEdgeIndices.push(i);
 			}
-			for (var remEdgeIndex of remEdgeIndices) this.edges.splice(remEdgeIndex, 1);
+
+			const edgesTemp: EdgeInfo[] = [];
+			this.edges.forEach(edge => edgesTemp.push(Object.assign({}, edge)));
+			this.edges = [];
+			for (var i = 0; i < edgesTemp.length; i++)
+				if (!remEdgeIndices.includes(i)) this.edges.push(edgesTemp[i]);
 
 			this.nodes.splice(remNodeIndex, 1);
 			return true;

@@ -89,7 +89,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     private createLocation(locIds: LocIdContext[], commands: CommandContext[], custLocations: CustLocationContext[]): CustSpecComponent {
         if (locIds.length == 1) {
-            const newLocationName: string = locIds[0].ID().toString();
+            const newLocationName: string = locIds[0].ID() ? locIds[0].ID()!.toString() : locIds[0].NUM_VALUE()!.toString();
             const type: LocationType = locIds[0].CLASS != undefined ? LocationType.CLASS : LocationType.FIELD;
 
             const newLocation: Location = new Location(newLocationName, type, this.runtime);
@@ -123,14 +123,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
             this.pushLocationToStack(newLocation);
         } else {
-            const newLocationName: string = locIds[locIds.length - 1].ID().toString();
+            const newLocationName: string = locIds[locIds.length - 1].ID() ? locIds[locIds.length - 1].ID()!.toString() : locIds[locIds.length - 1].NUM_VALUE()!.toString();
             const type: LocationType = locIds[locIds.length - 1].CLASS() != undefined ? LocationType.CLASS : LocationType.FIELD;
 
             var currentLocation: Location | undefined = this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined;
             var foundDirectParent: boolean = false;
 
             const ids: {id: string, type: LocationType}[] = [];
-            for (const locId of locIds) ids.push({id: locId.ID().toString(), type: locId.CLASS() != undefined ? LocationType.CLASS : LocationType.FIELD});
+            for (const locId of locIds) {
+                const locIdName: string = locId.ID() ? locId.ID()!.toString() : locId.NUM_VALUE()!.toString();
+                ids.push({id: locIdName, type: locId.CLASS() != undefined ? LocationType.CLASS : LocationType.FIELD});
+            }
 
             var idIndex: number = 0;
             for (; idIndex < ids.length - 1; idIndex++) {
@@ -211,19 +214,19 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     visitScopeCommand(ctx: ScopeCommandContext): CustSpecComponent {
         const commands: Command[] = [];
+        if (!this.openVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
+            );
         for (var commandCtx of ctx.command()) {
-            if (!this.openVariableScope())
-                return new ErrorComponent(
-                    new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
-                );
             const comp: CustSpecComponent = this.visit(commandCtx);
-            if (!this.closeVariableScope())
-                return new ErrorComponent(
-                    new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
-                );
             if (comp instanceof ErrorComponent) return comp;
             commands.push(comp as Command);
         }
+        if (!this.closeVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
+            );
 
         if (this.locationStack.length == 0)
             return new ErrorComponent(
@@ -685,7 +688,9 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx, [ValueType.SUBJECT], expr.type()).toString()
                 );
-            return new PropExpr(expr, ctx.locId()!.ID().toString(), [], this.runtime, ctx, true);
+
+            const locIdName: string = ctx.locId()!.ID() ? ctx.locId()!.ID()!.toString() : ctx.locId()!.NUM_VALUE()!.toString();
+            return new PropExpr(expr, locIdName, [], this.runtime, ctx, true);
         }
     }
 
@@ -837,7 +842,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Cannot access children class.").toString()
             );
-        else return new FieldSubjectExpr(ctx.locId().ID().toString(), this.runtime, ctx);
+        else {
+            const locIdName: string = ctx.locId().ID() ? ctx.locId().ID()!.toString() : ctx.locId().NUM_VALUE()!.toString();
+            return new FieldSubjectExpr(locIdName, this.runtime, ctx);
+        }
     }
 
     visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {

@@ -1,5 +1,7 @@
 grammar CustSpec;
 
+// TODO: Allow to get and set node labels
+// TODO: Custom descriptions
 // ================================Grammar================================
 start   : custLocation*;
 
@@ -69,7 +71,7 @@ primary
     | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
     ;
 
-locId   : (CLASS | FIELD) ID ; // TODO: METHOD, PARAM, and LOCAL
+locId   : (CLASS | FIELD) (ID | NUM_VALUE) ; // TODO: METHOD, PARAM, and LOCAL
 
 literal : numLit | stringLit | booleanLit ;
 
