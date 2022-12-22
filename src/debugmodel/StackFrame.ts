@@ -5,6 +5,9 @@ export class StackFrame {
     refKeyMap: Map<number, string> = new Map();
     seqRefMap: Map<number, number> = new Map();
 
+    private lazyRefKeyMap: Map<number, string> = new Map();
+    private lazySeqRefMap: Map<number, number> = new Map();
+
     private replaceVarsRefToVarKey: Map<number, string> = new Map();
 
     private scopeTopVars: Set<string> = new Set();
@@ -14,6 +17,17 @@ export class StackFrame {
 
     constructor(frameId: number) {
         this.frameId = frameId;
+    }
+
+    public handleLazyFollowUp(seq: number, newVarsRef: number): boolean {
+        if (this.lazySeqRefMap.has(seq)) {
+            const originalVarsRef: number = this.lazySeqRefMap.get(seq)!;
+            const varKey: string = this.lazyRefKeyMap.get(originalVarsRef)!;
+            this.refKeyMap.set(newVarsRef, varKey);
+            this.lazySeqRefMap.delete(seq);
+            return true;
+        }
+        return false;
     }
 
     public setVariable(variable: JigsawVariable, seq: number = -1) {
@@ -46,14 +60,22 @@ export class StackFrame {
             this.jigsawVariables.set(keyString, variable);
 
             // Associate the ref with the variable
-            this.refKeyMap.set(variable.variablesReference, keyString);
+            if (variable.lazy) this.lazyRefKeyMap.set(variable.variablesReference, keyString);
+            else this.refKeyMap.set(variable.variablesReference, keyString);
         }
 
         if (this.scopeTopToggle) this.scopeTopVars.add(keyString);
     }
 
     public addSeqRef(seq: number, varsRef: number) {
-        this.seqRefMap.set(seq, varsRef);
+        var varKey: string | undefined = this.refKeyMap.get(varsRef);
+        if (varKey != undefined) {
+            this.seqRefMap.set(seq, varsRef);
+            return;
+        }
+
+        varKey = this.lazyRefKeyMap.get(varsRef);
+        if (varKey != undefined) this.lazySeqRefMap.set(seq, varsRef);
     }
 
     public addReplaceVarsRefToVarKey(replaceVarsRef: number, seq: number) {
@@ -74,7 +96,7 @@ export class StackFrame {
     }
 
     public complete(): boolean {
-        return this.seqRefMap.size == 0;
+        return this.seqRefMap.size == 0 && this.lazySeqRefMap.size == 0;
     }
 
     public removeSeq(seq: number) {

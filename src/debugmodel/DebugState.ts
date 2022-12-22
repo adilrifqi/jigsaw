@@ -124,6 +124,15 @@ export class DebugState {
         return this.currentSmallestFrameId;
     }
 
+    public handleLazyFollowUp(seq: number, newVarsRef: number): boolean {
+        const frameId: number | undefined = this.variablesSeqToFrameId.get(seq);
+        if (frameId) {
+            this.variablesVarRefToFrameId.set(newVarsRef, frameId);
+            return this.callStack.get(frameId)!.handleLazyFollowUp(seq, newVarsRef);
+        }
+        return false;
+    }
+
 
     public clear() {
         this.callStack.clear();

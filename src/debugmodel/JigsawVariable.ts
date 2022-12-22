@@ -8,6 +8,7 @@ export class JigsawVariable {
     indexedVariables: number;
     evaluateName: string;
     variables: Map<string, string>;
+    lazy: boolean;
 
     constructor(
         name: string,
@@ -17,9 +18,10 @@ export class JigsawVariable {
         namedVariables: number,
         indexedVariables: number,
         evaluateName: string,
+        lazy: boolean = false,
 
         // Keys of DebugState.getInstance().jigsawVariables to name of field of reffed variable in the object
-        variables: Map<string, string> = new Map()
+        variables: Map<string, string> = new Map(),
         ) {
             this.name = name;
             this.value = value;
@@ -29,6 +31,7 @@ export class JigsawVariable {
             this.indexedVariables = indexedVariables;
             this.evaluateName = evaluateName;
             this.variables = variables;
+            this.lazy = lazy;
     }
 
     public setVariable(fieldName: string, varKey: string) {

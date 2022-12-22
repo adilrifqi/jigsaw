@@ -53,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			return {
 				onWillReceiveMessage(message) {
-					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
+					console.log(`> ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					if (message["command"] == "scopes") {
@@ -72,7 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				},
 				onDidSendMessage(message) {
-					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
+					console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					// Store the id of the first frame to not send multiple requests. Send requests for the rest
@@ -126,7 +126,12 @@ export function activate(context: vscode.ExtensionContext) {
 								const involvedFrameId: number = DebugState.getInstance().setVariableToFrame(jigsawVariable, seq);
 								involvedSeqs.add(seq);
 								if (involvedFrameId > -1) involvedFrames.add(involvedFrameId);
-							} else handleVariableValueReplacement(message);
+							} else {
+								const seq: number = message["request_seq"];
+								const varsRef: number = variable["variablesReference"];
+								if (!DebugState.getInstance().handleLazyFollowUp(seq, varsRef))
+									handleVariableValueReplacement(message);
+							}
 
 							const varValue: string = variable["value"];
 							if (varValue.includes("@")) {
@@ -293,6 +298,7 @@ function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefine
     const namedVariables: number = toParse["namedVariables"];
     const indexedVariables: number = toParse["indexedVariables"];
     const evaluateName: string = toParse["evaluateName"];
+	const lazy: boolean = toParse["presentationHint"] != undefined && toParse["presentationHint"]["lazy"] != undefined && toParse["presentationHint"]["lazy"];
 
     if (
         !name
@@ -305,7 +311,7 @@ function parseVariable(toParse: {[key: string]: any}): JigsawVariable | undefine
         ) {
         return undefined;
     }
-    return new JigsawVariable(name, value, type, variablesReference, namedVariables, indexedVariables, evaluateName);
+    return new JigsawVariable(name, value, type, variablesReference, namedVariables, indexedVariables, evaluateName, lazy);
 }
 
 function handleVariableValueReplacement(data: {[key: string]: any}) {
