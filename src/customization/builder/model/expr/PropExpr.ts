@@ -40,6 +40,16 @@ export class PropExpr extends Expr {
                 return ValueType.STRING;
             case "title":
                 return ValueType.STRING;
+            case "addRow":
+                return ValueType.NUM;
+            case "rows":
+                return {type: ValueType.STRING, dimension: 1};
+            case "clearRows":
+                return ValueType.NUM;
+            case "removeRow":
+                return ValueType.NUM;
+            case "setRows":
+                return ValueType.NUM;
             default:
                 return ValueType.NUM;
         }
@@ -105,6 +115,62 @@ export class PropExpr extends Expr {
                     }
 
                     return title;
+                }
+                case "addRow": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const newRowValue: Object = this.args[0].eval() as Object;
+                    if (newRowValue instanceof RuntimeError) return newRowValue;
+                    const newRowString: string = newRowValue as string;
+
+                    return node.data.rows.push(newRowString);
+                }
+                case "rows": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const result: string[] = [];
+                    for (const row of node.data.rows) {
+                        if (typeof row === "string") result.push(row);
+                        else result.push(row.name + "(" + row.type + "): " + row.value);
+                    }
+
+                    return result;
+                }
+                case "clearRows": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const result: number = node.data.rows.length;
+                    node.data.rows = [];
+                    return result;
+                }
+                case "removeRow": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const indexValue: Object = this.args[0].eval() as Object;
+                    if (indexValue instanceof RuntimeError) return indexValue;
+                    const index: number = indexValue as number;
+
+                    const rowsCount: number = node.data.rows.length;
+                    if (index > rowsCount - 1 || index < 0)
+                        return new RuntimeError(this.ctx, "Index out of bounds: given " + index + ", length " + rowsCount);
+
+                    node.data.rows.splice(index, 1);
+                    return rowsCount - 1;
+                }
+                case "setRows": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+
+                    const rowsValue: Object = this.args[0].eval() as Object;
+                    if (rowsValue instanceof RuntimeError) return rowsValue;
+                    const rows: string[] = rowsValue as string[];
+
+                    node.data.rows = rows;
+                    return rows.length;
                 }
                 default:
                     return new RuntimeError(this.ctx, "Somehow the invalid property " + this.prop + " passed type-checking.");

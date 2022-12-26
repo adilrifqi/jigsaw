@@ -996,8 +996,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 }
             }
             case "remove": {
-                const suffixedType: ValueType | ArrayType = expr.type();
-                if (!(suffixedType as any in ValueType))
+                if (!(expr.type() as any in ValueType))
                     if (exprs.length == 1) {
                         const indexComp: CustSpecComponent = this.visit(exprs[0]);
                         if (indexComp instanceof ErrorComponent) return indexComp;
@@ -1009,8 +1008,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     }
             }
             case "setTitle": {
-                const suffixedType: ValueType | ArrayType = expr.type();
-                if (suffixedType == ValueType.NODE)
+                if (expr.type() == ValueType.NODE)
                     if (exprs.length == 1) {
                         const newLabelComp: CustSpecComponent = this.visit(exprs[0]);
                         if (newLabelComp instanceof ErrorComponent) return newLabelComp;
@@ -1023,6 +1021,43 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             }
             case "title":
                 if (expr.type() == ValueType.NODE && exprs.length == 0) break;
+            case "addRow": {
+                if (expr.type() == ValueType.NODE && exprs.length == 1) {
+                    const newRowComp: CustSpecComponent = this.visit(exprs[0]);
+                    if (newRowComp instanceof ErrorComponent) return newRowComp;
+                    const newRowExpr: Expr = newRowComp as Expr;
+                    if (newRowExpr.type() == ValueType.STRING) {
+                        argExprs.push(newRowExpr);
+                        break;
+                    }
+                }
+            }
+            case "rows":
+                if (expr.type() == ValueType.NODE && exprs.length == 0) break;
+            case "clearRows":
+                if (expr.type() == ValueType.NODE && exprs.length == 0) break;
+            case "removeRow": {
+                if (expr.type() == ValueType.NODE && exprs.length == 1) {
+                    const indexComp: CustSpecComponent = this.visit(exprs[0]);
+                    if (indexComp instanceof ErrorComponent) return indexComp;
+                    const indexExpr: Expr = indexComp as Expr;
+                    if (indexExpr.type() == ValueType.NUM) {
+                        argExprs.push(indexExpr);
+                        break;
+                    }
+                }
+            }
+            case "setRows": {
+                if (expr.type() == ValueType.NODE && exprs.length == 1) {
+                    const rowsComp: CustSpecComponent = this.visit(exprs[0]);
+                    if (rowsComp instanceof ErrorComponent) return rowsComp;
+                    const rows: Expr = rowsComp as Expr;
+                    if (JSON.stringify(rows.type()) === JSON.stringify({type: ValueType.STRING, dimension: 1})) {
+                        argExprs.push(rows);
+                        break;
+                    }
+                }
+            }
             default:
                 return new ErrorComponent(
                     new ErrorBuilder(ruleCtx, "The property " + prop + " does not exist for expressions of type " + expr.type()).toString()

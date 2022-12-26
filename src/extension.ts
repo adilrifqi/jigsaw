@@ -10,7 +10,6 @@ import { StackFrame } from './debugmodel/StackFrame';
 
 var custRuntime: CustomizationRuntime | undefined = undefined;
 
-// TODO: Fix debugger to still display correct diagrams even when toString() is implemented
 export function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
 

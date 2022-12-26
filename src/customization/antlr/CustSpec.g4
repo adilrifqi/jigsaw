@@ -1,7 +1,5 @@
 grammar CustSpec;
 
-// TODO: Allow to get and set node labels
-// TODO: Custom descriptions
 // ================================Grammar================================
 start   : custLocation*;
 
@@ -16,7 +14,7 @@ command
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
     | OMIT expr SEMI                                                                # OmitCommand
-    | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR                               # PlainPropCallCommand
+    | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR SEMI                          # PlainPropCallCommand
     ;
 
 expr: disjunction;
