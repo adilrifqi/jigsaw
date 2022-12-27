@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -22,7 +22,7 @@ import { Command } from './model/command/Command';
 import { WhileCommand } from './model/command/WhileCommand';
 import { IfElseCommand } from './model/command/IfElseCommand';
 import { ScopeCommand } from './model/command/ScopeCommand';
-import { Location } from './model/location/Location';
+import { Location, LocationType } from './model/location/Location';
 import { TCLocationScope } from './model/TCLocationScope';
 import { CustomizationRuntime } from './model/CustomizationRuntime';
 import { NewEdgeExpr } from './model/expr/NewEdgeExpr';
@@ -31,7 +31,6 @@ import { VarRefExpr } from './model/expr/VarRefExpr';
 import { NewVarCommand } from './model/command/NewVarCommand';
 import { ReassignCommand } from './model/command/ReassignCommand';
 import { AddCommand } from './model/command/AddCommand';
-import { LocationType } from './model/location/LocationType';
 import { OmitCommand } from './model/command/OmitCommand';
 import { NodeOfExpr } from './model/expr/NodeOfExpr';
 import path = require('path');
@@ -48,6 +47,9 @@ import { ValueOfExpr } from './model/expr/ValueOfExpr';
 import { ArrayIndexReassignCommand } from './model/command/ArrayIndexReassignCommand';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ExprCommand } from './model/command/ExprCommand';
+import { ClassLocation } from './model/location/ClassLocation';
+import { FieldLocation } from './model/location/FieldLocation';
+import { MethodLocation } from './model/location/MethodLocation';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -88,112 +90,113 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     private createLocation(locIds: LocIdContext[], commands: CommandContext[], custLocations: CustLocationContext[]): CustSpecComponent {
-        if (locIds.length == 1) {
-            const newLocationName: string = locIds[0].ID() ? locIds[0].ID()!.toString() : locIds[0].NUM_VALUE()!.toString();
-            const type: LocationType = locIds[0].CLASS != undefined ? LocationType.CLASS : LocationType.FIELD;
-
-            const newLocation: Location = new Location(newLocationName, type, this.runtime);
-            if (this.locationStack.length > 0) {
-                var currentLocation: Location | undefined = this.locationStack.at(-1)!;
-                newLocation.setParent(currentLocation);
-                if (!currentLocation.addChild(newLocation))
-                    return new ErrorComponent(
-                        new ErrorBuilder(locIds[0], "Location with name " + newLocationName + " already exists in location " + currentLocation.getName()).toString()
-                    );
-            }
-
-            // Replace a temporary location with the same name in the same location if it exists
-            const toInspect: Location[] = this.locationStack.length == 0 ? this.topLocations : this.locationStack.at(-1)!.getChildren();
-            var toSwap: number = -1;
-            for (var i = 0; i < toInspect.length; i++) {
-                const location: Location = toInspect[i];
-                if (location.getType() == type && location.getName() === newLocationName) {
-                    toSwap = i;
-                    break;
-                }
-            }
-            if (toSwap > -1) {
-                var oldLocation: Location = toInspect[toSwap];
-                newLocation.setParent(oldLocation.getParent());
-                newLocation.setChildren(oldLocation.getChildren());
-                newLocation.setCommands(oldLocation.getCommands());
-                toInspect[toSwap] = newLocation;
-            } else if (!this.addTopLocation(newLocation))
-                return new ErrorComponent(new ErrorBuilder(locIds[0], "Top location must be a class.").toString());
-
-            this.pushLocationToStack(newLocation);
-        } else {
-            const newLocationName: string = locIds[locIds.length - 1].ID() ? locIds[locIds.length - 1].ID()!.toString() : locIds[locIds.length - 1].NUM_VALUE()!.toString();
-            const type: LocationType = locIds[locIds.length - 1].CLASS() != undefined ? LocationType.CLASS : LocationType.FIELD;
-
-            var currentLocation: Location | undefined = this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined;
-            var foundDirectParent: boolean = false;
-
-            const ids: {id: string, type: LocationType}[] = [];
-            for (const locId of locIds) {
-                const locIdName: string = locId.ID() ? locId.ID()!.toString() : locId.NUM_VALUE()!.toString();
-                ids.push({id: locIdName, type: locId.CLASS() != undefined ? LocationType.CLASS : LocationType.FIELD});
-            }
-
-            var idIndex: number = 0;
-            for (; idIndex < ids.length - 1; idIndex++) {
-                const nextLocation: Location | undefined = currentLocation === undefined
-                        ? this.getTopScopeLocation(ids[idIndex].id)
-                        : currentLocation.getChild(ids[idIndex].id);
-
-                if (nextLocation) {
-                    currentLocation = nextLocation;
-                    if (idIndex >= ids.length - 2) {
-                        foundDirectParent = true;
-                        break;
-                    }
-                } else break;
-            }
-
-            if (!foundDirectParent) {
-                const isNewTopLocation: boolean = idIndex == 0;
-                for (; idIndex < ids.length - 1; idIndex++) {
-                    const newLocation: Location = new Location(ids[idIndex].id, ids[idIndex].type, this.runtime);
-                    if (currentLocation) {
-                        currentLocation.addChild(newLocation);
-                        newLocation.setParent(currentLocation);
-                    }
-                    currentLocation = newLocation;
-                }
-
-                const newLocation: Location = new Location(newLocationName, type, this.runtime, currentLocation);
-                if (currentLocation) currentLocation.addChild(newLocation); // Can be null?
-                else return new ErrorComponent(new ErrorBuilder(locIds[0], "Bug with type checker. Found undefined where there shouldn't be.").toString());
-                if (isNewTopLocation && !this.addTopLocation(newLocation))
-                    return new ErrorComponent(new ErrorBuilder(locIds[0], "Top location must be a class.").toString());
-                this.pushLocationToStack(newLocation);
+        const newLocationStack: Location[] = [];
+        for (const locId of locIds) {
+            var thisLocation: Location;
+            if (locId.classLocId()) {
+                thisLocation = new ClassLocation(locId.classLocId()!.ID().toString(), this.runtime);
+            } else if (locId.fieldLocId()) {
+                const fieldName: string = locId.fieldLocId()!.ID() ? locId.fieldLocId()!.ID()!.toString() : locId.fieldLocId()!.NUM_VALUE()!.toString();
+                if (newLocationStack.length == 0 && this.locationStack.length == 0)
+                    return new ErrorComponent(new ErrorBuilder(locId, "Cannot declare field location " + fieldName + " without parent location.").toString());
+                const parentLocation: Location = newLocationStack.length > 0 ? newLocationStack[newLocationStack.length - 1] : this.locationStack[this.locationStack.length - 1];
+                thisLocation = new FieldLocation(fieldName, this.runtime, parentLocation);
             } else {
-                var toSwap: number = -1;
-                for (var i = 0; i < currentLocation!.getChildren().length; i++) {
-                    const currentCurrentLocationChild: Location = currentLocation!.getChildren()[i];
-                    if (currentCurrentLocationChild.getType() == type
-                            && currentCurrentLocationChild.getName() === newLocationName) {
-                        toSwap = i;
+                const methodLocId: MethodLocIdContext = locId.methodLocId()!;
+                var methodName: string = methodLocId.ID(0).toString() + "(";
+                if (newLocationStack.length == 0 && this.locationStack.length == 0)
+                    return new ErrorComponent(new ErrorBuilder(locId, "Cannot declare method location " + methodName + " without parent location.").toString());
+                const parentLocation: Location = newLocationStack.length > 0 ? newLocationStack[newLocationStack.length - 1] : this.locationStack[this.locationStack.length - 1];
+
+                const paramTypes: string[] = [];
+                var nextChildIndex: number = 3;
+                if (methodLocId.getChild(nextChildIndex).text !== ')') {
+                    var firstParamType: string = methodLocId.getChild(nextChildIndex++).text;
+                    while (methodLocId.getChild(nextChildIndex).text === "[") {
+                        firstParamType += "[]";
+                        nextChildIndex += 2;
+                    }
+                    paramTypes.push(firstParamType);
+                    methodName += firstParamType;
+
+                    while (methodLocId.getChild(nextChildIndex).text === ',') {
+                        nextChildIndex++;
+                        var nextParamType: string = methodLocId.getChild(nextChildIndex++).text;
+                        while (methodLocId.getChild(nextChildIndex).text === "[") {
+                            nextParamType += "[]";
+                            nextChildIndex += 2;
+                        }
+                        paramTypes.push(nextParamType);
+                        methodName += "," + nextParamType;
+                    }
+                }
+                methodName += ")";
+
+                thisLocation = new MethodLocation(methodName, this.runtime, parentLocation, paramTypes);
+            }
+
+            newLocationStack.push(thisLocation);
+        }
+        newLocationStack.at(-1)!.setPermanence(true);
+
+        // Case 1: Nothing's there yet or whatever's there has no overlap with the declared locations
+        // Case 2: Some overlap but branch into new locations eventually
+        // Case 3: It's an existing location that needs to be replaced
+        // Case 4: Subset of an existing location declaration -> Error!
+
+        const fromTopLocs: boolean = this.locationStack.length == 0;
+        var currentLocation: Location | undefined = fromTopLocs ? undefined : this.locationStack.at(-1)!;
+        var newLocIndex: number = 0;
+        for (; newLocIndex < newLocationStack.length; newLocIndex++) {
+            const nextNewLocation: Location = newLocationStack[newLocIndex];
+            const foundLocation: Location | undefined = !currentLocation
+                ? this.getTopScopeLocation(nextNewLocation.getName(), nextNewLocation.type())
+                : currentLocation.getChild(nextNewLocation.getName(), nextNewLocation.type());
+            if (foundLocation) currentLocation = foundLocation;
+            else break;
+        }
+
+        if (newLocIndex == newLocationStack.length) {
+            // Replace
+            if (currentLocation!.isPermanent())
+                return new ErrorComponent(new ErrorBuilder(locIds[newLocIndex - 1], "Cannot replace manually declared location " + currentLocation!.getName()).toString());
+
+            const replacer: Location = newLocationStack.at(-1)!;
+            replacer.setParent(currentLocation!.getParent());
+            replacer.setCommands(currentLocation!.getCommands());
+            replacer.setChildren(currentLocation!.getChildren());
+
+            if (newLocationStack.length == 1 && fromTopLocs) {
+                var topToSwap: number = -1;
+                for (var i = 0; i < this.topLocations.length; i++) {
+                    const thisTopLocation: Location = this.topLocations[i];
+                    if (thisTopLocation.getName() === replacer.getName() && thisTopLocation.type() == replacer.type()) {
+                        topToSwap = i;
                         break;
                     }
                 }
-                const newLocation: Location = new Location(newLocationName, type, this.runtime, currentLocation);
-                if (toSwap > -1) {
-                    const oldLocation: Location = currentLocation!.getChildren()[toSwap];
-                    newLocation.setParent(oldLocation.getParent());
-                    newLocation.setChildren(oldLocation.getChildren());
-                    newLocation.setCommands(oldLocation.getCommands());
-                    currentLocation!.getChildren()[toSwap] = newLocation;
-                } else if (!this.addTopLocation(newLocation))
-                    return new ErrorComponent(new ErrorBuilder(locIds[0], "Top location must be a class.").toString());
-
-                currentLocation!.addChild(newLocation);
-                this.pushLocationToStack(newLocation);
+                if (topToSwap > -1) {
+                    this.topLocations[topToSwap] = replacer;
+                } else return new ErrorComponent(new ErrorBuilder(locIds.at(-1)!, "Type-checker bug: cannot find top location to swap.").toString());
             }
         }
 
+        if (!currentLocation) {
+            currentLocation = newLocationStack[0];
+            this.topLocations.push(currentLocation);
+            newLocIndex++;
+        }
+        // Extend
+        for (; newLocIndex < newLocationStack.length; newLocIndex++) {
+            newLocationStack[newLocIndex].setParent(currentLocation);
+            currentLocation = newLocationStack[newLocIndex];
+        }
+
+
+        // Visit parse tree children
         this.openLocationScope();
-        const newLocation: Location = this.locationStack.at(-1)!;
+        const newLocation: Location = newLocationStack.at(-1)!;
+        this.pushLocationToStack(newLocation);
         for (var commandCtx of commands) {
             const visitResult: CustSpecComponent = this.visit(commandCtx);
             if (visitResult instanceof ErrorComponent) return visitResult;
@@ -689,7 +692,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     new TypeErrorBuilder(ctx, [ValueType.SUBJECT], expr.type()).toString()
                 );
 
-            const locIdName: string = ctx.locId()!.ID() ? ctx.locId()!.ID()!.toString() : ctx.locId()!.NUM_VALUE()!.toString();
+            const locIdName: string = ctx.fieldLocId()!.ID() ? ctx.fieldLocId()!.ID()!.toString() : ctx.fieldLocId()!.NUM_VALUE()!.toString();
             return new PropExpr(expr, locIdName, [], this.runtime, ctx, true);
         }
     }
@@ -838,14 +841,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
-        if (ctx.locId().CLASS())
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Cannot access children class.").toString()
-            );
-        else {
-            const locIdName: string = ctx.locId().ID() ? ctx.locId().ID()!.toString() : ctx.locId().NUM_VALUE()!.toString();
-            return new FieldSubjectExpr(locIdName, this.runtime, ctx);
-        }
+        const locIdName: string = ctx.fieldLocId().ID() ? ctx.fieldLocId().ID()!.toString() : ctx.fieldLocId().NUM_VALUE()!.toString();
+        return new FieldSubjectExpr(locIdName, this.runtime, ctx);
     }
 
     visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {
@@ -1093,28 +1090,28 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         }
     }
 
-    private getTopScopeLocation(locationName: string): Location | undefined {
+    private getTopScopeLocation(locationName: string, type: LocationType): Location | undefined {
         for (var location of this.topLocations) {
-            if (location.getName() === locationName) return location;
+            if (location.getName() === locationName && location.type() == type) return location;
         }
         return undefined;
     }
 
-    private addTopLocation(location: Location): boolean {
-        if (this.locationStack.length == 0) {
-            var currentLocation: Location = location;
-            var currentLocationParent: Location | undefined = location.getParent();
-            while (currentLocationParent) {
-                currentLocation = currentLocationParent;
-                currentLocationParent = currentLocation.getParent();
-            }
-            if (currentLocation.getType() == LocationType.FIELD) return false;
-            this.topLocations.push(currentLocation);
-            return true;
-        }
-        return false;
-        // this.locationStack.push(location);
-    }
+    // private addTopLocation(location: Location): boolean {
+    //     if (this.locationStack.length == 0) {
+    //         var currentLocation: Location = location;
+    //         var currentLocationParent: Location | undefined = location.getParent();
+    //         while (currentLocationParent) {
+    //             currentLocation = currentLocationParent;
+    //             currentLocationParent = currentLocation.getParent();
+    //         }
+    //         if (currentLocation.getType() == LocationType.FIELD) return false;
+    //         this.topLocations.push(currentLocation);
+    //         return true;
+    //     }
+    //     return false;
+    //     // this.locationStack.push(location);
+    // }
 
     private pushLocationToStack(location: Location) {
         this.locationStack.push(location);

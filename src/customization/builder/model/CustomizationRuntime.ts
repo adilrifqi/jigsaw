@@ -6,8 +6,7 @@ import { RuntimeError } from "../error/RuntimeError";
 import { CustSpecComponent } from "./CustSpecComponent";
 import { ArrayType } from "./expr/ArrayExpr";
 import { ValueType } from "./expr/ValueType";
-import { Location } from "./location/Location";
-import { LocationType } from "./location/LocationType";
+import { Location, LocationType } from "./location/Location";
 import { RTLocationScope, Variable } from "./RTLocationScope";
 
 export type Subject = {
@@ -50,8 +49,9 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return {nodes: this.nodes, edges: this.edges};
     }
 
+	// TODO: Update for methods
 	private customizationDispatch(variable: JigsawVariable, interestNames: {class?: string, field?: string}, location: Location, frame: StackFrame): RuntimeError | null | undefined {
-		switch (location.getType()) {
+		switch (location.type()) {
 			case LocationType.CLASS:
 				if (interestNames.class !== undefined && interestNames.class !== null)
 					return this.customizeLocation(variable, interestNames.class, location, frame);

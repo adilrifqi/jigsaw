@@ -6,7 +6,7 @@ import { ErrorComponent } from './customization/builder/model/ErrorComponent';
 import { DebugState } from './debugmodel/DebugState';
 import { EdgeInfo, NodeInfo } from './debugmodel/DiagramInfo';
 import { JigsawVariable } from './debugmodel/JigsawVariable';
-import { StackFrame } from './debugmodel/StackFrame';
+import { MethodSignature, StackFrame } from './debugmodel/StackFrame';
 
 var custRuntime: CustomizationRuntime | undefined = undefined;
 
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			return {
 				onWillReceiveMessage(message) {
-					console.log(`> ${JSON.stringify(message, undefined, 2)}`)
+					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					if (message["command"] == "scopes") {
@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				},
 				onDidSendMessage(message) {
-					console.log(`< ${JSON.stringify(message, undefined, 2)}`)
+					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					// Store the id of the first frame to not send multiple requests. Send requests for the rest
@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
 						const callStack: Map<number, StackFrame> = new Map();
 						for (var i = 0; i < stackFrames.length; i++) {
 							const frameId: number = stackFrames[i]["id"];
-            			    callStack.set(frameId, new StackFrame(frameId));
+            			    callStack.set(frameId, new StackFrame(frameId, MethodSignature.extractSignature(stackFrames[i]["name"])));
 
 							if (i > 0)
 								session.customRequest("scopes", {"frameId": stackFrames[i]["id"]});

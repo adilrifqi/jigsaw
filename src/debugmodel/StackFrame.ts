@@ -1,6 +1,8 @@
 import { JigsawVariable } from "./JigsawVariable";
 
 export class StackFrame {
+    signature: MethodSignature;
+
     jigsawVariables: Map<string, JigsawVariable> = new Map();
     refKeyMap: Map<number, string> = new Map();
     seqRefMap: Map<number, number> = new Map();
@@ -15,8 +17,9 @@ export class StackFrame {
 
     frameId: number;
 
-    constructor(frameId: number) {
+    constructor(frameId: number, signature: MethodSignature) {
         this.frameId = frameId;
+        this.signature = signature;
     }
 
     public handleLazyFollowUp(seq: number, newVarsRef: number): boolean {
@@ -101,5 +104,28 @@ export class StackFrame {
 
     public removeSeq(seq: number) {
         this.seqRefMap.delete(seq);
+    }
+}
+
+export class MethodSignature {
+    public readonly className: string;
+    public readonly methodName: string;
+    public readonly paramTypes: string[];
+
+    constructor(className: string, methodName: string, paramTypes: string[]) {
+        this.className = className;
+        this.methodName = methodName;
+        this.paramTypes = paramTypes;
+    }
+
+    public static extractSignature(signature: string): MethodSignature {
+        const dotSplit: string[] = signature.split('.');
+        const className: string = dotSplit[0];
+        const lParSplit: string[] = dotSplit[1].split('(');
+        const methodName: string = lParSplit[0];
+        const paramsString: string = lParSplit[1].substring(0, lParSplit[1].length - 1);
+        const paramTypes: string[] = paramsString.split(',');
+
+        return new MethodSignature(className, methodName, paramTypes);
     }
 }

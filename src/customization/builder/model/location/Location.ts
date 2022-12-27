@@ -3,37 +3,31 @@ import { RuntimeError } from "../../error/RuntimeError";
 import { Command } from "../command/Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { CustSpecComponent } from "../CustSpecComponent";
-import { LocationType } from "./LocationType";
 
-export class Location extends CustSpecComponent {
+export abstract class Location extends CustSpecComponent {
     
     private readonly name: string;
-    private readonly type: LocationType;
     private readonly runtime: CustomizationRuntime;
     
     private parent?: Location;
     private commands: Command[] = [];
     private children: Location[] = [];
 
-    constructor(name: string, type: LocationType, runtime: CustomizationRuntime);
-    constructor(name: string, type: LocationType, runtime: CustomizationRuntime, parent?: Location);
-    constructor(name: string, type: LocationType, runtime: CustomizationRuntime, parent?: Location, children?: Location[]);
-    constructor(name: string, type: LocationType, runtime: CustomizationRuntime, parent?: Location, children?: Location[], commands?: Command[]) {
+    private permanent: boolean = false;
+
+    constructor(name: string, runtime: CustomizationRuntime, parent?: Location, children?: Location[], commands?: Command[]) {
         super();
         this.name = name;
-        this.type = type;
         this.runtime = runtime;
-        this.parent = parent;
+        this.setParent(parent);
         this.children = children ? children : this.children;
         this.commands = commands ? commands : this.commands;
     }
 
+    public abstract type(): LocationType;
+
     public getName(): string {
         return this.name;
-    }
-
-    public getType(): LocationType {
-        return this.type;
     }
 
     public getParent(): Location | undefined {
@@ -41,23 +35,11 @@ export class Location extends CustSpecComponent {
     }
 
     public setParent(newParent: Location | undefined): boolean {
-        if (this.parent && newParent) return false;
+        // if (this.parent && newParent) return false;
         this.parent?.removeChild(this);
         this.parent = newParent;
         this.parent?.addChild(this);
         return true;
-    }
-
-    public getPathString(): string {
-        var result: string = this.name;
-
-        var nextParent: Location | undefined = this.parent;
-        while (nextParent) {
-            result = nextParent.getName() + "." + result;
-            nextParent = nextParent.getParent();
-        }
-
-        return result;
     }
 
     public getChildren(): Location[] {
@@ -91,9 +73,10 @@ export class Location extends CustSpecComponent {
         return false;
     }
 
-    public getChild(name: string): Location | undefined {
-        for (var child of this.children)
-            if (child.getName() === this.name) return child;
+    public getChild(name: string, type: LocationType): Location | undefined {
+        for (const child of this.children)
+            if (name === child.getName() && type == child.type())
+                return child;
         return undefined;
     }
 
@@ -111,6 +94,14 @@ export class Location extends CustSpecComponent {
         this.commands.push(command);
     }
 
+    public setPermanence(perm: boolean) {
+        this.permanent = perm;
+    }
+
+    public isPermanent(): boolean {
+        return this.permanent;
+    }
+
     public execute(variable: JigsawVariable): RuntimeError | undefined {
         // TODO: Do something with the variable
         this.runtime.openLocationScope();
@@ -123,14 +114,8 @@ export class Location extends CustSpecComponent {
         this.runtime.closeLocationScope();
         return undefined;
     }
+}
 
-    public getPath(): {name: string, type: LocationType}[] {
-        const result: {name: string, type: LocationType}[] = [];
-        var current: Location | undefined = this;
-        while (current) {
-            result.unshift({name: current.getName(), type: current.getType()});
-            current = current.getParent();
-        }
-        return result;
-    }
+export enum LocationType {
+    CLASS, FIELD, METHOD
 }
