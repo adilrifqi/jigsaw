@@ -21,6 +21,7 @@ export class ChildrenOfExpr extends Expr {
     public eval(): Object {
         const subjectExpr: Object = this.subjectExpr.eval() as Object;
         if (subjectExpr instanceof RuntimeError) return subjectExpr;
+        if (subjectExpr === null) return [];
         const subject: Subject = subjectExpr as Subject;
         return this.runtime.getChildrenOf(subject);
     }

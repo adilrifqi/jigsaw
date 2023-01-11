@@ -98,6 +98,10 @@ export class StackFrame {
         return this.scopeTopVars.has(varKey);
     }
 
+    public getScopeTopVars(): Set<string> {
+        return this.scopeTopVars;
+    }
+
     public complete(): boolean {
         return this.seqRefMap.size == 0 && this.lazySeqRefMap.size == 0;
     }
@@ -124,8 +128,22 @@ export class MethodSignature {
         const lParSplit: string[] = dotSplit[1].split('(');
         const methodName: string = lParSplit[0];
         const paramsString: string = lParSplit[1].substring(0, lParSplit[1].length - 1);
-        const paramTypes: string[] = paramsString.split(',');
+        const paramTypes: string[] = paramsString === '' ? [] : paramsString.split(',');
 
         return new MethodSignature(className, methodName, paramTypes);
+    }
+
+    public equals(other: MethodSignature): boolean {
+        if (this.className !== other.className || this.methodName !== other.methodName || this.paramTypes.length != other.paramTypes.length) return false;
+        for (var i = 0; i < this.paramTypes.length; i++)
+            if (this.paramTypes[i] !== other.paramTypes[i]) return false;
+        return true;
+    }
+
+    public toString(): string {
+        var result: string = this.className + "." + this.methodName + "(";
+        if (this.paramTypes.length > 0) result += this.paramTypes[0];
+        for (var i = 1; i < this.paramTypes.length; i++) result += "," + this.paramTypes[i];
+        return result;
     }
 }

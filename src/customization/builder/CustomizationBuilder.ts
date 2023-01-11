@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -50,6 +50,9 @@ import { ExprCommand } from './model/command/ExprCommand';
 import { ClassLocation } from './model/location/ClassLocation';
 import { FieldLocation } from './model/location/FieldLocation';
 import { MethodLocation } from './model/location/MethodLocation';
+import { LocalLocation } from './model/location/LocalLocation';
+import { LocalSubjectExpr } from './model/expr/LocalSubjectExpr';
+import { MethodSignature } from '../../debugmodel/StackFrame';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -100,13 +103,15 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 if (newLocationStack.length == 0 && this.locationStack.length == 0)
                     return new ErrorComponent(new ErrorBuilder(locId, "Cannot declare field location " + fieldName + " without parent location.").toString());
                 const parentLocation: Location = newLocationStack.length > 0 ? newLocationStack[newLocationStack.length - 1] : this.locationStack[this.locationStack.length - 1];
-                thisLocation = new FieldLocation(fieldName, this.runtime, parentLocation);
-            } else {
+                if (parentLocation.type() == LocationType.METHOD) return new ErrorComponent(new ErrorBuilder(locId, "Field location declared inside a method location.").toString());
+                thisLocation = new FieldLocation(fieldName, this.runtime);
+            } else if (locId.methodLocId()) {
                 const methodLocId: MethodLocIdContext = locId.methodLocId()!;
-                var methodName: string = methodLocId.ID(0).toString() + "(";
+                var signatureString: string = methodLocId.ID(0).toString() + "(";
                 if (newLocationStack.length == 0 && this.locationStack.length == 0)
-                    return new ErrorComponent(new ErrorBuilder(locId, "Cannot declare method location " + methodName + " without parent location.").toString());
+                    return new ErrorComponent(new ErrorBuilder(locId, "Cannot declare method location " + signatureString + " without parent location.").toString());
                 const parentLocation: Location = newLocationStack.length > 0 ? newLocationStack[newLocationStack.length - 1] : this.locationStack[this.locationStack.length - 1];
+                if (parentLocation.type() != LocationType.CLASS) return new ErrorComponent(new ErrorBuilder(locId, "Method location declared in a non-class location.").toString());
 
                 const paramTypes: string[] = [];
                 var nextChildIndex: number = 3;
@@ -117,7 +122,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         nextChildIndex += 2;
                     }
                     paramTypes.push(firstParamType);
-                    methodName += firstParamType;
+                    signatureString += firstParamType;
 
                     while (methodLocId.getChild(nextChildIndex).text === ',') {
                         nextChildIndex++;
@@ -127,12 +132,20 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                             nextChildIndex += 2;
                         }
                         paramTypes.push(nextParamType);
-                        methodName += "," + nextParamType;
+                        signatureString += "," + nextParamType;
                     }
                 }
-                methodName += ")";
+                signatureString += ")";
 
-                thisLocation = new MethodLocation(methodName, this.runtime, parentLocation, paramTypes);
+                thisLocation = new MethodLocation(new MethodSignature(parentLocation.getName(), methodLocId.ID(0).toString(), paramTypes), this.runtime);
+            } else {
+                const localVariableName: string = locId.localLocId()!.ID().text;
+                if (newLocationStack.length == 0 && this.locationStack.length == 0)
+                    return new ErrorComponent(new ErrorBuilder(locId, "Cannot declare local variable location " + localVariableName + " without parent location.").toString());
+                const parentLocation: Location = newLocationStack.length > 0 ? newLocationStack[newLocationStack.length - 1] : this.locationStack[this.locationStack.length - 1];
+                if (parentLocation.type() != LocationType.METHOD) return new ErrorComponent(new ErrorBuilder(locId, "Method location declared in a non-method location.").toString());
+
+                thisLocation = new LocalLocation(localVariableName, this.runtime);
             }
 
             newLocationStack.push(thisLocation);
@@ -843,6 +856,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
         const locIdName: string = ctx.fieldLocId().ID() ? ctx.fieldLocId().ID()!.toString() : ctx.fieldLocId().NUM_VALUE()!.toString();
         return new FieldSubjectExpr(locIdName, this.runtime, ctx);
+    }
+
+    visitLocalSubjectExpr(ctx: LocalSubjectExprContext): CustSpecComponent {
+        const locIdName: string = ctx.localLocId().ID().toString();
+        return new LocalSubjectExpr(locIdName, this.runtime);
     }
 
     visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {

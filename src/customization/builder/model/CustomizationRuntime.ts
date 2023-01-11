@@ -1,12 +1,13 @@
 import { DebugState } from "../../../debugmodel/DebugState";
 import { EdgeInfo, NodeInfo, VariableInfo } from "../../../debugmodel/DiagramInfo";
 import { JigsawVariable } from "../../../debugmodel/JigsawVariable";
-import { StackFrame } from "../../../debugmodel/StackFrame";
+import { MethodSignature, StackFrame } from "../../../debugmodel/StackFrame";
 import { RuntimeError } from "../error/RuntimeError";
 import { CustSpecComponent } from "./CustSpecComponent";
 import { ArrayType } from "./expr/ArrayExpr";
 import { ValueType } from "./expr/ValueType";
 import { Location, LocationType } from "./location/Location";
+import { MethodLocation } from "./location/MethodLocation";
 import { RTLocationScope, Variable } from "./RTLocationScope";
 
 export type Subject = {
@@ -19,7 +20,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	private nodes: NodeInfo[] = [];
 	private edges: EdgeInfo[] = [];
-	private stackPos: number = 0;
+	private frame!: StackFrame;
 
 	private currentLocation!: Location;
 	private currentVariable!: JigsawVariable;
@@ -35,36 +36,61 @@ export class CustomizationRuntime extends CustSpecComponent {
 	public applyCustomization(nodes: NodeInfo[] = [], edges: EdgeInfo[] = [], stackPos: number = 0): {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError {
 		this.nodes = nodes;
 		this.edges = edges;
-		this.stackPos = stackPos;
 
-		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(stackPos);
-		if (frame)
-			for (const [varKey, variable] of frame.jigsawVariables)
-				for (const topLocation of this.topLocations) {
-					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topLocation, frame);
-					if (dispatchResult === null) break;
-					else if (dispatchResult instanceof RuntimeError) return dispatchResult;
-				}
+		const frame: StackFrame = DebugState.getInstance().getFrameByPos(stackPos)!;
+		this.frame = frame;
+		for (const [varKey, variable] of frame.jigsawVariables)
+			for (const topLocation of this.topLocations) {
+				const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topLocation);
+				if (dispatchResult === null) break;
+				else if (dispatchResult instanceof RuntimeError) return dispatchResult;
+			}
 
 		return {nodes: this.nodes, edges: this.edges};
     }
 
 	// TODO: Update for methods
-	private customizationDispatch(variable: JigsawVariable, interestNames: {class?: string, field?: string}, location: Location, frame: StackFrame): RuntimeError | null | undefined {
+	private customizationDispatch(variable: JigsawVariable, interestNames: {class?: string, field?: string, method?: MethodSignature, local?: string}, location: Location): RuntimeError | null | undefined {
 		switch (location.type()) {
 			case LocationType.CLASS:
 				if (interestNames.class !== undefined && interestNames.class !== null)
-					return this.customizeLocation(variable, interestNames.class, location, frame);
+					return this.customizeLocation(variable, interestNames.class, location);
 				break;
 			case LocationType.FIELD:
 				if (interestNames.field !== undefined && interestNames.field !== null)
-					return this.customizeLocation(variable, interestNames.field, location, frame);
+					return this.customizeLocation(variable, interestNames.field, location);
+				break;
+			case LocationType.METHOD:
+				if (interestNames.method)
+					return this.customizeMethod(interestNames.method, location as MethodLocation);
+				break;
+			case LocationType.LOCAL:
+				if (interestNames.local !== undefined && interestNames.local !== null)
+					return this.customizeLocation(variable, interestNames.local, location);
 				break;
 		}
 		return undefined;
 	}
 
-	private customizeLocation(variable: JigsawVariable, interestName: string, location: Location, frame: StackFrame): RuntimeError | null | undefined {
+	private customizeMethod(signature: MethodSignature, mLocation: MethodLocation): RuntimeError | null | undefined {
+		if (this.frame.signature.equals(signature)) {
+			const executionResult: RuntimeError | undefined = mLocation.execute();
+			if (executionResult) return executionResult;
+
+			for (const varKey of this.frame.getScopeTopVars()) {
+				const variable: JigsawVariable = this.frame.jigsawVariables.get(varKey)!;
+				for (const child of mLocation.getChildren()) {
+					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type, local: variable.name}, child);
+					if (dispatchResult === null) break;
+					else if (dispatchResult instanceof RuntimeError) return dispatchResult;
+				}
+			}
+			return null;
+		}
+		return undefined;
+	}
+
+	private customizeLocation(variable: JigsawVariable, interestName: string, location: Location): RuntimeError | null | undefined {
 		if (interestName === location.getName()) {
 			this.currentLocation = location;
 			this.currentVariable = variable;
@@ -73,9 +99,10 @@ export class CustomizationRuntime extends CustSpecComponent {
 			if (executionResult) return executionResult;
 
 			for (const [fieldName, varsVarKey] of variable.variables) {
-				const varsVarVariable: JigsawVariable = frame.jigsawVariables.get(varsVarKey)!;
+				const varsVarVariable: JigsawVariable = this.frame.jigsawVariables.get(varsVarKey)!;
 				for (var child of location.getChildren()) {
-					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(varsVarVariable, {class: varsVarVariable.type, field: fieldName}, child, frame);
+					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(varsVarVariable,
+						{class: varsVarVariable.type, field: fieldName, method: child instanceof MethodLocation ? child.signature : undefined}, child);
 					if (dispatchResult === null) break;
 					else if (dispatchResult instanceof RuntimeError) return dispatchResult;
 				}
@@ -101,33 +128,25 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	public getParentsOf(subject: Subject): Subject[] {
 		const result: Subject[] = [];
-		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
-		if (frame)
-			for (const [varKey, variable] of frame.jigsawVariables)
-				for (const [_, fieldKey] of variable.variables)
-					if (fieldKey === subject.id) result.push({id: varKey});
+		for (const [varKey, variable] of this.frame.jigsawVariables)
+			for (const [_, fieldKey] of variable.variables)
+				if (fieldKey === subject.id) result.push({id: varKey});
 		return result;
     }
 
 	public getFieldOfName(subject: Subject, fieldName: string): Subject | null {
-		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
-		if (frame) {
-			const variable: JigsawVariable = frame.jigsawVariables.get(subject.id)!;
-			for (const [varFieldName, varFieldKey] of variable.variables)
-				if (varFieldName === fieldName)
-					return {id: varFieldKey};
-		}
+		const variable: JigsawVariable = this.frame.jigsawVariables.get(subject.id)!;
+		for (const [varFieldName, varFieldKey] of variable.variables)
+			if (varFieldName === fieldName)
+				return {id: varFieldKey};
 		return null
 	}
 
 	public getChildrenOf(subject: Subject): Subject[] {
 		const result: Subject[] = [];
-		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
-		if (frame) {
-			const variable: JigsawVariable = frame.jigsawVariables.get(subject.id)!;
-			for (const [_, fieldKey] of variable.variables)
-				result.push({id: fieldKey});
-		}
+		const variable: JigsawVariable = this.frame.jigsawVariables.get(subject.id)!;
+		for (const [_, fieldKey] of variable.variables)
+			result.push({id: fieldKey});
 		return result;
 	}
 
@@ -138,51 +157,56 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return null;
 	}
 
+	public getLocalVariable(localVariableName: string): Subject | null {
+		for (const localVarId of this.frame.getScopeTopVars()) {
+			const variable: JigsawVariable = this.frame.jigsawVariables.get(localVarId)!;
+			if (variable.name === localVariableName) return {id: localVarId};
+		}
+		return null;
+	}
+
 	public getSubjectValue(subject: Subject): {value: Object, type: ValueType | ArrayType} | null {
-		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
-		if (frame) {
-			const variable: JigsawVariable | undefined = frame.jigsawVariables.get(subject.id);
-			if (variable) {
-				var typeString: string = variable.type;
-				if (typeString.endsWith("]")) {
-					const arrayResult: Object[] = [];
-					for (const [_, fieldKey] of variable.variables)  {
-						const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: fieldKey});
-						if (fieldValue === null) return null;
-						arrayResult.push(fieldValue.value);
-					}
-
-					var deepestType: ValueType;
-					var dimension: number = 0;
-					var reduced: string = typeString;
-					while (reduced.endsWith("]")) {
-						reduced = reduced.substring(0, reduced.length - 2);
-						dimension++;
-					}
-					switch (reduced) {
-						case "boolean":
-							deepestType = ValueType.BOOLEAN;
-							break;
-						case "int":
-							deepestType = ValueType.NUM;
-							break;
-						case "String":
-							deepestType = ValueType.STRING;
-							break;
-						default:
-							return null;
-					}
-
-					return {value: arrayResult, type: {type: deepestType, dimension: dimension}};
-				} 
-				if (variable.type === "boolean") return {value: variable.value === "true", type: ValueType.BOOLEAN};
-				if (variable.type === "int") return {value: +variable.value, type: ValueType.NUM};
-				if (variable.type === "String")  {
-					const stringValue: string = variable.value as string;
-					return {value: stringValue.substring(1, stringValue.length - 1), type: ValueType.STRING};
+		const variable: JigsawVariable | undefined = this.frame.jigsawVariables.get(subject.id);
+		if (variable) {
+			var typeString: string = variable.type;
+			if (typeString.endsWith("]")) {
+				const arrayResult: Object[] = [];
+				for (const [_, fieldKey] of variable.variables)  {
+					const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: fieldKey});
+					if (fieldValue === null) return null;
+					arrayResult.push(fieldValue.value);
 				}
-				return null;
+
+				var deepestType: ValueType;
+				var dimension: number = 0;
+				var reduced: string = typeString;
+				while (reduced.endsWith("]")) {
+					reduced = reduced.substring(0, reduced.length - 2);
+					dimension++;
+				}
+				switch (reduced) {
+					case "boolean":
+						deepestType = ValueType.BOOLEAN;
+						break;
+					case "int":
+						deepestType = ValueType.NUM;
+						break;
+					case "String":
+						deepestType = ValueType.STRING;
+						break;
+					default:
+						return null;
+				}
+
+				return {value: arrayResult, type: {type: deepestType, dimension: dimension}};
 			}
+			if (variable.type === "boolean") return {value: variable.value === "true", type: ValueType.BOOLEAN};
+			if (variable.type === "int") return {value: +variable.value, type: ValueType.NUM};
+			if (variable.type === "String")  {
+				const stringValue: string = variable.value as string;
+				return {value: stringValue.substring(1, stringValue.length - 1), type: ValueType.STRING};
+			}
+			return null;
 		}
 		return null;
 	}
@@ -292,10 +316,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	public getFieldNodesOfNodes(originNodes: NodeInfo[], fieldName: string): NodeInfo[] {
 		const result: NodeInfo[] = [];
-		const frame: StackFrame | undefined = DebugState.getInstance().getFrameByPos(this.stackPos);
-		if (!frame) throw new Error("getFieldNodesOfNodes: invalid stackPos");
 		for (var originNode of originNodes) {
-			const variable: JigsawVariable | undefined = frame.jigsawVariables.get(originNode.id);
+			const variable: JigsawVariable | undefined = this.frame.jigsawVariables.get(originNode.id);
 			if (!variable) continue;
 			const fieldKey: string | undefined = variable.variables.get(fieldName);
 			if (fieldKey === undefined || fieldKey === null) continue;

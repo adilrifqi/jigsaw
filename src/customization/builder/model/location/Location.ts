@@ -102,7 +102,7 @@ export abstract class Location extends CustSpecComponent {
         return this.permanent;
     }
 
-    public execute(variable: JigsawVariable): RuntimeError | undefined {
+    public execute(variable?: JigsawVariable): RuntimeError | undefined {
         // TODO: Do something with the variable
         this.runtime.openLocationScope();
 
@@ -117,5 +117,5 @@ export abstract class Location extends CustSpecComponent {
 }
 
 export enum LocationType {
-    CLASS, FIELD, METHOD
+    CLASS, FIELD, METHOD, LOCAL
 }

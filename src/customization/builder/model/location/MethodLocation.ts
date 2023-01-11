@@ -1,13 +1,17 @@
+import { JigsawVariable } from "../../../../debugmodel/JigsawVariable";
+import { MethodSignature } from "../../../../debugmodel/StackFrame";
+import { RuntimeError } from "../../error/RuntimeError";
 import { Command } from "../command/Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
+import { ClassLocation } from "./ClassLocation";
 import { Location, LocationType } from "./Location";
 
 export class MethodLocation extends Location {
-    private readonly paramTypes: string[];
+    public readonly signature: MethodSignature;
 
-    constructor(name: string, runtime: CustomizationRuntime, parent: Location, paramTypes: string[], children?: Location[], commands?: Command[]) {
-        super(name, runtime, parent, children, commands);
-        this.paramTypes = paramTypes;
+    constructor(signature: MethodSignature, runtime: CustomizationRuntime, parent?: Location, children?: Location[], commands?: Command[]) {
+        super(signature.toString(), runtime, parent, children, commands);
+        this.signature = signature;
     }
 
     public type(): LocationType {

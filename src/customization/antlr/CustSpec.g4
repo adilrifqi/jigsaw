@@ -46,7 +46,7 @@ term: left=term TIMES right=negation
 negation: (MIN | NOT)? suffixed ;
 
 suffixed
-    : suffixed DOT (ID LPAR (expr (COMMA expr)*)? RPAR | fieldLocId)# PropSuffix // TODO: Make work with locId
+    : suffixed DOT (ID LPAR (expr (COMMA expr)*)? RPAR | fieldLocId)# PropSuffix
     | suffixed LBRAC expr RBRAC                                     # ArrayAccessSuffix // TODO: Get Subject in array of subjects
     | primary                                                       # PrimaryExpr
     ;
@@ -61,7 +61,8 @@ primary
     | CHILDREN                          # ChildrenExpr
     | CHILDREN_OF expr                  # ChildrenOfExpr
     | VALUE_OF expr type                # ValueOfExpr
-    | fieldLocId                        # FieldSubjectExpr // TODO: Make work with locId
+    | fieldLocId                        # FieldSubjectExpr
+    | localLocId                        # LocalSubjectExpr
     | NODE_OF expr                      # NodeOfExpr
     | EDGES_OF expr expr                # EdgesOfExpr
     | literal                           # LiteralExpr
@@ -69,10 +70,11 @@ primary
     | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
     ;
 
-locId   : classLocId | fieldLocId | methodLocId ; // TODO: PARAM, and LOCAL
+locId   : classLocId | fieldLocId | methodLocId | localLocId ; // TODO: PARAM
 classLocId  : CLASS ID;
 fieldLocId  : FIELD (ID | NUM_VALUE);
 methodLocId : METHOD ID LPAR (ID (LBRAC RBRAC)* (COMMA ID (LBRAC RBRAC)*)*)? RPAR;
+localLocId  : LOCAL ID;
 
 literal : numLit | stringLit | booleanLit ;
 

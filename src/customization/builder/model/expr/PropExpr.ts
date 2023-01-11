@@ -58,7 +58,13 @@ export class PropExpr extends Expr {
     public eval(): Object {
         const proppedValue: Object | null = this.proppedExpr.eval();
         if (proppedValue instanceof RuntimeError) return proppedValue;
-        if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot access property of null");
+        if (proppedValue === null) {
+            switch (this.type()) {
+                case ValueType.NUM: return 0;
+                case ValueType.STRING: return "null";
+                default: return [];
+            }
+        }
 
         if (this.isSubjectProp) {
             const fieldSubject: Subject | null = this.runtime.getFieldOfName(proppedValue as Subject, this.prop);

@@ -23,6 +23,7 @@ export class NodeOfExpr extends Expr {
     public eval(): Object | null {
         const subjectExpr: Object = this.subjectExpr.eval() as Object;
         if (subjectExpr instanceof RuntimeError) return subjectExpr;
+        if (subjectExpr === null) return null;
         const subject: Subject = subjectExpr as Subject;
         return this.runtime.getSubjectNode(subject);
     }

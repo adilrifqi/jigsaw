@@ -23,9 +23,21 @@ export class ValueOfExpr extends Expr {
         return this.declaredType;
     }
 
-    public eval(): Object {
+    public eval(): Object | null {
         const subjectExprValue: Object = this.subjectExpr.eval() as Object;
         if (subjectExprValue instanceof RuntimeError) return subjectExprValue;
+        if (subjectExprValue === null) {
+            switch (this.type()) {
+                // NUM, BOOLEAN, STRING, NODE, EDGE, SUBJECT
+                case ValueType.NUM: return 0;
+                case ValueType.BOOLEAN: return false;
+                case ValueType.STRING: return "null";
+                case ValueType.NODE: return null;
+                case ValueType.EDGE: return null;
+                case ValueType.SUBJECT: return null;
+                default: return null;
+            }
+        }
 
         const subjectValue: {value: Object, type: ValueType | ArrayType} | null = this.runtime.getSubjectValue(subjectExprValue as Subject);
         if (subjectValue === null) return new RuntimeError(this.ctx, "Cannot get the value the subject of the variable of this type.");
