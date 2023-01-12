@@ -1,9 +1,11 @@
 grammar CustSpec;
 
 // ================================Grammar================================
-start   : custLocation*;
+start   : statement*;
 
-custLocation: locId (DOT locId)* LCURL command* custLocation* RCURL;
+statement   : custLocation | command;
+
+custLocation: locId (DOT locId)* LCURL statement* RCURL;
 
 command
     : LCURL command* RCURL                                                          # ScopeCommand

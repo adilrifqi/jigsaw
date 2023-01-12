@@ -1,17 +1,10 @@
 import { RuntimeError } from "../../error/RuntimeError";
-import { CustSpecComponent } from "../CustSpecComponent";
 import { Location } from "../location/Location";
+import { Statement } from "../Statement";
 
-export abstract class Command extends CustSpecComponent {
-    protected location: Location;
-
+export abstract class Command extends Statement {
     constructor(location: Location) {
-        super();
-        this.location = location;
-    }
-
-    public setLocation(location: Location) {
-        this.location = location;
+        super(location);
     }
 
     public abstract execute(): RuntimeError | undefined;

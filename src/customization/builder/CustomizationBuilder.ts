@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -53,20 +53,24 @@ import { MethodLocation } from './model/location/MethodLocation';
 import { LocalLocation } from './model/location/LocalLocation';
 import { LocalSubjectExpr } from './model/expr/LocalSubjectExpr';
 import { MethodSignature } from '../../debugmodel/StackFrame';
+import { Statement } from './model/Statement';
 
 
+// TODO: Implement referencing variables of a different location scope
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
 export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecComponent> implements CustSpecVisitor<CustSpecComponent> {
     private locationStack: Location[] = [];
-    private topLocations: Location[] = []; // Not to be added to the runtime before all visitations have been done.
+    private topStatements: Statement[] = []; // Not to be added to the runtime before all visitations have been done.
     private locVarsStack: TCLocationScope[] = [];
     private runtime: CustomizationRuntime = new CustomizationRuntime();
 
     public buildCustomization(spec: string): CustomizationRuntime | ErrorComponent {
         this.locationStack = [];
-        this.topLocations = [];
+        this.topStatements = [];
         this.locVarsStack = [];
         this.runtime = new CustomizationRuntime();
+
+        this.openLocationScope();
         
         const lexer: Lexer = new CustSpecLexer(CharStreams.fromString(spec));
         const parser: CustSpecParser = new CustSpecParser(new CommonTokenStream(lexer));
@@ -75,24 +79,28 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const visitResult: CustSpecComponent = this.visit(tree);
         if (visitResult instanceof ErrorComponent) return visitResult;
 
-        this.runtime.setTopLocations(this.topLocations);
+        this.runtime.setTopStatements(this.topStatements);
         return this.runtime;
     }
 
     visitStart(ctx: StartContext): CustSpecComponent {
-        for (var location of ctx.custLocation()) {
-            const comp: CustSpecComponent = this.visit(location);
+        for (const statement of ctx.statement()) {
+            const comp: CustSpecComponent = this.visit(statement);
             if (comp instanceof ErrorComponent) return comp;
-            // this.topLocations.push(comp as Location);
+            this.topStatements.push(comp as Statement);
         }
         return this.runtime;
     }
 
-    visitCustLocation(ctx: CustLocationContext): CustSpecComponent {
-        return this.createLocation(ctx.locId(), ctx.command(), ctx.custLocation());
+    visitStatement(ctx: StatementContext): CustSpecComponent {
+        return this.visit(ctx.getChild(0));
     }
 
-    private createLocation(locIds: LocIdContext[], commands: CommandContext[], custLocations: CustLocationContext[]): CustSpecComponent {
+    visitCustLocation(ctx: CustLocationContext): CustSpecComponent {
+        return this.createLocation(ctx.locId(), ctx.statement());
+    }
+
+    private createLocation(locIds: LocIdContext[], statements: StatementContext[]): CustSpecComponent {
         const newLocationStack: Location[] = [];
         for (const locId of locIds) {
             var thisLocation: Location;
@@ -176,27 +184,27 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
             const replacer: Location = newLocationStack.at(-1)!;
             replacer.setParent(currentLocation!.getParent());
-            replacer.setCommands(currentLocation!.getCommands());
-            replacer.setChildren(currentLocation!.getChildren());
+            replacer.setStatements(currentLocation!.getStatements());
 
+            const topLocations: Location[] = this.getTopLocations();
             if (newLocationStack.length == 1 && fromTopLocs) {
                 var topToSwap: number = -1;
-                for (var i = 0; i < this.topLocations.length; i++) {
-                    const thisTopLocation: Location = this.topLocations[i];
+                for (var i = 0; i < topLocations.length; i++) {
+                    const thisTopLocation: Location = topLocations[i];
                     if (thisTopLocation.getName() === replacer.getName() && thisTopLocation.type() == replacer.type()) {
                         topToSwap = i;
                         break;
                     }
                 }
                 if (topToSwap > -1) {
-                    this.topLocations[topToSwap] = replacer;
+                    topLocations[topToSwap] = replacer;
                 } else return new ErrorComponent(new ErrorBuilder(locIds.at(-1)!, "Type-checker bug: cannot find top location to swap.").toString());
             }
         }
 
         if (!currentLocation) {
             currentLocation = newLocationStack[0];
-            this.topLocations.push(currentLocation);
+            // this.topLocations.push(currentLocation);
             newLocIndex++;
         }
         // Extend
@@ -210,15 +218,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         this.openLocationScope();
         const newLocation: Location = newLocationStack.at(-1)!;
         this.pushLocationToStack(newLocation);
-        for (var commandCtx of commands) {
-            const visitResult: CustSpecComponent = this.visit(commandCtx);
+        for (const statementCtx of statements) {
+            const visitResult: CustSpecComponent = this.visit(statementCtx);
             if (visitResult instanceof ErrorComponent) return visitResult;
-            newLocation.addCommand(visitResult as Command);
-        }
-        for (var locationCtx of custLocations) {
-            const visitResult: CustSpecComponent = this.visit(locationCtx);
-            if (visitResult instanceof ErrorComponent) return visitResult;
-            newLocation.addChild(visitResult as Location);
+            newLocation.addStatement(visitResult as Statement);
         }
         if (!this.closeLocationScope()) {
             return new ErrorComponent(
@@ -1109,27 +1112,19 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     private getTopScopeLocation(locationName: string, type: LocationType): Location | undefined {
-        for (var location of this.topLocations) {
+        for (var location of this.getTopLocations()) {
             if (location.getName() === locationName && location.type() == type) return location;
         }
         return undefined;
     }
 
-    // private addTopLocation(location: Location): boolean {
-    //     if (this.locationStack.length == 0) {
-    //         var currentLocation: Location = location;
-    //         var currentLocationParent: Location | undefined = location.getParent();
-    //         while (currentLocationParent) {
-    //             currentLocation = currentLocationParent;
-    //             currentLocationParent = currentLocation.getParent();
-    //         }
-    //         if (currentLocation.getType() == LocationType.FIELD) return false;
-    //         this.topLocations.push(currentLocation);
-    //         return true;
-    //     }
-    //     return false;
-    //     // this.locationStack.push(location);
-    // }
+    private getTopLocations(): Location[] {
+        const result: Location[] = [];
+        for (const topStatement of this.topStatements)
+            if (topStatement instanceof Location)
+                result.push(topStatement);
+        return result;
+    }
 
     private pushLocationToStack(location: Location) {
         this.locationStack.push(location);
