@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -56,6 +56,7 @@ import { MethodSignature } from '../../debugmodel/StackFrame';
 import { Statement } from './model/Statement';
 import { ParentVarExpr } from './model/expr/ParentVarExpr';
 import { ParentVarAssignCommand } from './model/command/ParentVarAssignCommand';
+import { IsNullExpr } from './model/expr/IsNullExpr';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -1017,6 +1018,16 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (foundType === undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Variable with the name " + varName + " does not exist in the target scope.").toString());
             return new ParentVarExpr(varName, foundType, parentsWritten, this.runtime);
         }
+    }
+
+    visitIsNullExpr(ctx: IsNullExprContext): CustSpecComponent {
+        const comp: CustSpecComponent = this.visit(ctx.expr());
+        if (comp instanceof ErrorComponent) return comp;
+        const expr: Expr = comp as Expr;
+        if (expr.type() != ValueType.SUBJECT)
+            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString());
+
+        return new IsNullExpr(expr, this.runtime);
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {

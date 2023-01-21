@@ -189,6 +189,11 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return null;
 	}
 
+	public subjectValueIsNull(subject: Subject): boolean {
+		const variable: JigsawVariable = this.frame.jigsawVariables.get(subject.id)!;
+		return variable.value === "null";
+	}
+
 	public getLocalVariable(localVariableName: string): Subject | null {
 		for (const localVarId of this.frame.getScopeTopVars()) {
 			const variable: JigsawVariable = this.frame.jigsawVariables.get(localVarId)!;

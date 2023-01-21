@@ -72,6 +72,7 @@ primary
     | LPAR expr RPAR                    # ParExpr
     | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
     | (PARENT DOT)+ ID                  # ParentVarExpr
+    | IS_NULL expr                      # IsNullExpr
     ;
 
 locId   : classLocId | fieldLocId | methodLocId | localLocId ; // TODO: PARAM
@@ -122,6 +123,7 @@ EDGES_OF    : 'edgesOf';
 VALUE_OF    : 'valueOf';
 NEW_NODE    : 'newNode';
 NEW_EDGE    : 'newEdge';
+IS_NULL     : 'isNull';
 
 IF      : 'if';
 ELSE    : 'else';
