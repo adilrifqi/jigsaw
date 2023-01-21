@@ -893,8 +893,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
-        const locIdName: string = ctx.fieldLocId().ID() ? ctx.fieldLocId().ID()!.toString() : ctx.fieldLocId().NUM_VALUE()!.toString();
-        return new FieldSubjectExpr(locIdName, this.runtime, ctx);
+        const locIdNames: string[] = [];
+        for (const fieldLocId of ctx.fieldLocId())
+            locIdNames.push(fieldLocId.ID() ? fieldLocId.ID()!.toString() : fieldLocId.NUM_VALUE()!.toString());
+        return new FieldSubjectExpr(locIdNames, this.runtime, ctx);
     }
 
     visitLocalSubjectExpr(ctx: LocalSubjectExprContext): CustSpecComponent {

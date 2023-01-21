@@ -64,7 +64,7 @@ primary
     | CHILDREN                          # ChildrenExpr
     | CHILDREN_OF expr                  # ChildrenOfExpr
     | VALUE_OF expr type                # ValueOfExpr
-    | fieldLocId                        # FieldSubjectExpr
+    | fieldLocId (DOT fieldLocId)*      # FieldSubjectExpr
     | localLocId                        # LocalSubjectExpr
     | NODE_OF expr                      # NodeOfExpr
     | EDGES_OF expr expr                # EdgesOfExpr
