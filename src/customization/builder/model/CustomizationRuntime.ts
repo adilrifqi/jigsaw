@@ -55,8 +55,9 @@ export class CustomizationRuntime extends CustSpecComponent {
 			} else if (topStatement instanceof Location) {
 				for (const [varKey, variable] of frame.jigsawVariables) {
 					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topStatement);
-					if (dispatchResult === null) break;
-					else if (dispatchResult instanceof RuntimeError) return dispatchResult;
+					// if (dispatchResult === null) break;
+					// else
+					if (dispatchResult instanceof RuntimeError) return dispatchResult;
 				}
 			}
 		}

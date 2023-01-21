@@ -1,4 +1,3 @@
-import { ConsoleReporter } from "@vscode/test-electron";
 import { JigsawVariable } from "./JigsawVariable";
 import { StackFrame } from "./StackFrame";
 
@@ -31,6 +30,12 @@ export class DebugState {
     public setCallStack(newCallStack: Map<number, StackFrame>) {
         this.callStack = newCallStack;
         this.currentSmallestFrameId = Math.min(...this.callStack.keys());
+    }
+
+    public removeRequestSeqFromAllFrames(requestSeq: number) {
+        for (const [_, stackFrame] of this.callStack) {
+            stackFrame.removeSeq(requestSeq);
+        }
     }
 
     public setScopesSeqToFrameId(seq: number, frameId: number) {

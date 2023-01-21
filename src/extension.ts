@@ -130,6 +130,7 @@ export function activate(context: vscode.ExtensionContext) {
 								const varsRef: number = variable["variablesReference"];
 								if (!DebugState.getInstance().handleLazyFollowUp(seq, varsRef))
 									handleVariableValueReplacement(message);
+								DebugState.getInstance().removeRequestSeqFromAllFrames(seq);
 							}
 
 							const varValue: string = variable["value"];

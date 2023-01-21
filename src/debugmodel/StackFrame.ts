@@ -81,6 +81,11 @@ export class StackFrame {
         if (varKey != undefined) this.lazySeqRefMap.set(seq, varsRef);
     }
 
+    public removeSeq(seq: number) {
+        this.seqRefMap.delete(seq);
+        this.lazySeqRefMap.delete(seq);
+    }
+
     public addReplaceVarsRefToVarKey(replaceVarsRef: number, seq: number) {
         const oldVarsRef: number | undefined = this.seqRefMap.get(seq);
         const varKey: string | undefined = oldVarsRef == undefined ? undefined : this.refKeyMap.get(oldVarsRef);
@@ -104,10 +109,6 @@ export class StackFrame {
 
     public complete(): boolean {
         return this.seqRefMap.size == 0 && this.lazySeqRefMap.size == 0;
-    }
-
-    public removeSeq(seq: number) {
-        this.seqRefMap.delete(seq);
     }
 }
 
