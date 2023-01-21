@@ -70,6 +70,7 @@ primary
     | literal                           # LiteralExpr
     | LPAR expr RPAR                    # ParExpr
     | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
+    | (PARENT DOT)+ ID                  # ParentVarExpr
     ;
 
 locId   : classLocId | fieldLocId | methodLocId | localLocId ; // TODO: PARAM
@@ -110,6 +111,7 @@ LOCAL   : 'l:';
 ADD         : 'add';
 OMIT        : 'omit';
 HERE        : 'here';
+PARENT      : 'parent';
 PARENTS     : 'parents';
 PARENTS_OF  : 'parentsOf';
 CHILDREN    : 'children';

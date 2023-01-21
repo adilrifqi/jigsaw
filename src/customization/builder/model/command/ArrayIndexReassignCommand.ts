@@ -12,7 +12,7 @@ export class ArrayIndexReassignCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(arrayExpr: Expr, indexExprs: Expr[], newValueExpr: Expr, runtime: CustomizationRuntime, location: Location, ctx: ParserRuleContext) {
+    constructor(arrayExpr: Expr, indexExprs: Expr[], newValueExpr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
         super(location);
         this.arrayExpr = arrayExpr;
         this.indexExprs = indexExprs;

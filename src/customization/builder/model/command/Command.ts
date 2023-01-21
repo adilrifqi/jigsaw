@@ -3,7 +3,7 @@ import { Location } from "../location/Location";
 import { Statement } from "../Statement";
 
 export abstract class Command extends Statement {
-    constructor(location: Location) {
+    constructor(location?: Location) {
         super(location);
     }
 

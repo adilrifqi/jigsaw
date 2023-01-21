@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -54,6 +54,7 @@ import { LocalLocation } from './model/location/LocalLocation';
 import { LocalSubjectExpr } from './model/expr/LocalSubjectExpr';
 import { MethodSignature } from '../../debugmodel/StackFrame';
 import { Statement } from './model/Statement';
+import { ParentVarExpr } from './model/expr/ParentVarExpr';
 
 
 // TODO: Implement referencing variables of a different location scope
@@ -247,11 +248,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
             );
 
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
-            );
-        return new ScopeCommand(commands, this.runtime, this.locationStack.at(-1)!, ctx);
+        return new ScopeCommand(commands, this.runtime, ctx, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
@@ -311,11 +308,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Variable with name " + varName + " already exists in this scope.").toString()
             );
 
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
-            );
-        return new NewVarCommand(varName, expr, declaredType, this.runtime, this.locationStack.at(-1)!, ctx);
+        return new NewVarCommand(varName, expr, declaredType, this.runtime, ctx, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitReassignCommand(ctx: ReassignCommandContext): CustSpecComponent {
@@ -323,11 +316,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (this.locVarsStack.length == 0)
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Bug in type checker where scope does not exist where it should").toString()
-            );
-
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
             );
 
         const type: ValueType | ArrayType | undefined = this.getTCType(varName);
@@ -345,7 +333,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [type!], expr.type()).toString()
             );
             
-        return new ReassignCommand(varName, expr, this.runtime, this.locationStack.at(-1)!, ctx);
+        return new ReassignCommand(varName, expr, this.runtime, ctx, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitArrayIndexReassignCommand(ctx: ArrayIndexReassignCommandContext): CustSpecComponent {
@@ -378,7 +366,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (JSON.stringify(expectedType) !== JSON.stringify(newValueExpr.type()))
             return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
 
-        return new ArrayIndexReassignCommand(arrayExpr, indexExprs, newValueExpr, this.runtime, this.locationStack.at(-1)!, ctx);
+        return new ArrayIndexReassignCommand(arrayExpr, indexExprs, newValueExpr, this.runtime, ctx, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
@@ -425,11 +413,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (commandComp instanceof ErrorComponent) return commandComp;
         const command: Command = commandComp as Command;
 
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
-            );
-        return new WhileCommand(expr, command, this.locationStack.at(-1)!);
+        return new WhileCommand(expr, command, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitAddCommand(ctx: AddCommandContext): CustSpecComponent {
@@ -452,7 +436,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, {type: ValueType.NODE, dimension: 1}, {type: ValueType.EDGE, dimension: 1}], expr.type()).toString()
             );
 
-        return new AddCommand(expr, this.runtime, this.locationStack.at(-1)!, ctx);
+        return new AddCommand(expr, this.runtime, ctx, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitOmitCommand(ctx: OmitCommandContext): CustSpecComponent {
@@ -475,7 +459,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, {type: ValueType.NODE, dimension: 1}, {type: ValueType.EDGE, dimension: 1}], expr.type()).toString()
             );
 
-        return new OmitCommand(expr, this.runtime, this.locationStack.at(-1)!, ctx);
+        return new OmitCommand(expr, this.runtime, ctx, this.locationStack.length > 0 ? this.locationStack.at(-1)! : undefined);
     }
 
     visitPlainPropCallCommand(ctx: PlainPropCallCommandContext): CustSpecComponent {
@@ -934,6 +918,51 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             ? {type: type as ValueType, dimension: 1}
             : {type: (type as ArrayType).type, dimension: (type as ArrayType).dimension + 1}
         );
+    }
+
+    visitParentVarExpr(ctx: ParentVarExprContext): CustSpecComponent {
+        const parentsWritten: number = ctx.PARENT().length;
+        const varName: string = ctx.ID().text;
+        if (this.locationStack.length == 0) return new ErrorComponent(new ErrorBuilder(ctx, "Cannot use the parent prefix in the global scope").toString());
+        else {
+            var targetLocationScope: TCLocationScope | undefined = undefined;
+            var traversed: number = 0;
+            var locationStackIndex: number = this.locationStack.length - 1;
+            while (true) {
+                if (locationStackIndex < 0) return new ErrorComponent(new ErrorBuilder(ctx, "The number of parents written goes beyond the global scope.").toString());
+                if (locationStackIndex == 0) {
+                    var currLoc: Location = this.locationStack[0];
+                    traversed++;
+                    while (currLoc.getParent()) {
+                        traversed++;
+                        currLoc = currLoc.getParent()!;
+                    }
+                } else {
+                    var currLoc: Location = this.locationStack[locationStackIndex];
+                    const targetLoc: Location = this.locationStack[locationStackIndex - 1];
+                    while (targetLoc != currLoc) {
+                        currLoc = currLoc.getParent()!;
+                        traversed++;
+                    }
+                }
+                if (traversed > parentsWritten)
+                    return new ErrorComponent(new ErrorBuilder(ctx, "Variable reference of a non-manually declared ancestor.").toString());
+                else if (traversed == parentsWritten) {
+                    // locVarsStack.length == locationStack.length + 1 => this scope is associated with an ancestor location, not the current one.
+                    targetLocationScope = this.locVarsStack[locationStackIndex];
+                    break;
+                }
+
+                locationStackIndex--;
+            }
+
+            if (!targetLocationScope)
+                return new ErrorComponent(new ErrorBuilder(ctx, "Type-checker error: Cannot find target location scope").toString());
+
+            const foundType: ValueType | ArrayType | undefined = targetLocationScope.getType(varName);
+            if (foundType === undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Variable with the name " + varName + " does not exist in the target scope.").toString());
+            return new ParentVarExpr(varName, foundType, parentsWritten, this.runtime);
+        }
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {

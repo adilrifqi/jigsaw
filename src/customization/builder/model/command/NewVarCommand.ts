@@ -14,7 +14,7 @@ export class NewVarCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(varName: string, expr: Expr, type: ValueType | ArrayType, runtime: CustomizationRuntime, location: Location, ctx: ParserRuleContext) {
+    constructor(varName: string, expr: Expr, type: ValueType | ArrayType, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
         super(location);
         this.varName = varName;
         this.expr = expr;

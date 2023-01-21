@@ -9,7 +9,7 @@ export class ScopeCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(commands: Command[], runtime: CustomizationRuntime, location: Location, ctx: ParserRuleContext) {
+    constructor(commands: Command[], runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
         super(location);
         this.commands = commands;
         this.runtime = runtime;

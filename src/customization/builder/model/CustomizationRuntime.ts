@@ -235,6 +235,11 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return null;
 	}
 
+	public getAncestorLocationVariable(varName: string, upwardCount: number): Object | null {
+		const scope: RTLocationScope = this.runtimeScopes[this.runtimeScopes.length - 1 - upwardCount];
+		return scope.getVariable(varName)!.value;
+	}
+
 	// ====================Customization Methods====================
 	public addNode(newNode: NodeInfo): boolean {
 		for (const node of this.nodes)

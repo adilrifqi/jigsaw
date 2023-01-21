@@ -7,7 +7,7 @@ export class WhileCommand extends Command {
     private readonly condition: Expr;
     private readonly command: Command;
 
-    constructor(condition: Expr, command: Command, location: Location) {
+    constructor(condition: Expr, command: Command, location?: Location) {
         super(location);
         this.condition = condition;
         this.command = command;

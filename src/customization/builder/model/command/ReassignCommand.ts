@@ -11,7 +11,7 @@ export class ReassignCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime, location: Location, ctx: ParserRuleContext) {
+    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
         super(location);
         this.varName = varName;
         this.expr = expr;

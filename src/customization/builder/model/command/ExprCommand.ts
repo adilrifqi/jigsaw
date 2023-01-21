@@ -6,7 +6,7 @@ import { Command } from "./Command";
 export class ExprCommand extends Command {
     private readonly expr: Expr;
 
-    constructor(expr: Expr, location: Location) {
+    constructor(expr: Expr, location?: Location) {
         super(location);
         this.expr = expr;
     }

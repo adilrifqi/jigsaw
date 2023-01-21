@@ -7,7 +7,7 @@ export class IfElseCommand extends Command {
     private readonly conditions: Expr[];
     private readonly commands: Command[];
 
-    constructor(conditions: Expr[], commands: Command[], location: Location) {
+    constructor(conditions: Expr[], commands: Command[], location?: Location) {
         super(location);
         this.conditions = conditions;
         this.commands = commands;
