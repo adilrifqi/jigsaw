@@ -240,6 +240,11 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return scope.getVariable(varName)!.value;
 	}
 
+	public updateAncestorLocationVariable(varName: string, upwardCount: number, value: Object | null, type: ValueType | ArrayType): boolean {
+		const scope: RTLocationScope = this.runtimeScopes[this.runtimeScopes.length - 1 - upwardCount];
+		return scope.updateVariable(varName, type, value);
+	}
+
 	// ====================Customization Methods====================
 	public addNode(newNode: NodeInfo): boolean {
 		for (const node of this.nodes)

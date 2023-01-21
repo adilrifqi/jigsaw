@@ -12,6 +12,7 @@ command
     | type ID ASS expr SEMI                                                         # NewVarCommand
     | ID ASS expr SEMI                                                              # ReassignCommand
     | expr (LBRAC expr RBRAC)+ ASS expr SEMI                                        # ArrayIndexReassignCommand
+    | (PARENT DOT)+ ID ASS expr SEMI                                                # ParentVarAssignCommand
     | IF LPAR expr RPAR command (ELSE IF LPAR expr RPAR command)* (ELSE command)?   # IfCommand
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
     | ADD expr SEMI                                                                 # AddCommand
