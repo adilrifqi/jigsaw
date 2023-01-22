@@ -230,7 +230,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(locIds[0], "Type-checker has a bug where locations are closed more than they were opened.").toString()
             );
         }
-        return this.locationStack.pop()!;
+        this.locationStack.pop();
+
+        for (var i = 0; i < newLocationStack.length - 1; i++)
+            newLocationStack[0].addStatement(newLocationStack[i + 1]);
+
+        return newLocationStack[0];
     }
 
     visitScopeCommand(ctx: ScopeCommandContext): CustSpecComponent {

@@ -51,9 +51,12 @@ export abstract class Location extends Statement {
             for (const child of this.getChildrenLocations())
                 if (child.getName() === newStatement.getName() && child.type() == newStatement.type())
                     return false;
-        this.statements.push(newStatement);
-        newStatement.setParent(this);
-        return true;
+        if (!this.statements.includes(newStatement)) {
+            this.statements.push(newStatement);
+            newStatement.setParent(this);
+            return true;
+        }
+        return false;
     }
 
     public getStatements(): Statement[] {

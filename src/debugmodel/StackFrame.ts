@@ -145,6 +145,7 @@ export class MethodSignature {
         var result: string = this.className + "." + this.methodName + "(";
         if (this.paramTypes.length > 0) result += this.paramTypes[0];
         for (var i = 1; i < this.paramTypes.length; i++) result += "," + this.paramTypes[i];
+        result += ")";
         return result;
     }
 }

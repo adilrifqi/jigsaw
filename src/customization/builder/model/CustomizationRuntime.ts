@@ -26,6 +26,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	private currentLocation!: Location;
 	private currentVariable!: JigsawVariable;
+	private executedMethodLocations!: MethodLocation[];
 
 	public getTopLocations(): Location[]  {
 		const result: Location[] = [];
@@ -43,6 +44,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.nodes = nodes;
 		this.edges = edges;
 		this.runtimeScopes = [];
+		this.executedMethodLocations = [];
 		this.openLocationScope();
 
 		const frame: StackFrame = DebugState.getInstance().getFrameByPos(stackPos)!;
@@ -77,7 +79,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 				break;
 			case LocationType.METHOD:
 				if (interestNames.method)
-					return this.customizeMethod(interestNames.method, location as MethodLocation);
+					return this.customizeMethod(location as MethodLocation);
 				break;
 			case LocationType.LOCAL:
 				if (interestNames.local !== undefined && interestNames.local !== null)
@@ -87,8 +89,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return undefined;
 	}
 
-	private customizeMethod(signature: MethodSignature, mLocation: MethodLocation): RuntimeError | null | undefined {
-		if (this.frame.signature.equals(signature)) {
+	private customizeMethod(mLocation: MethodLocation): RuntimeError | null | undefined {
+		if (this.frame.signature.equals(mLocation.signature)) {
 			this.openLocationScope();
 			for (const statement of mLocation.getStatements()) {
 				if (statement instanceof Command) {
@@ -120,18 +122,38 @@ export class CustomizationRuntime extends CustSpecComponent {
 					const commandResult: RuntimeError | undefined = statement.execute();
 					if (commandResult) return commandResult;
 				} else if (statement instanceof Location) {
-					for (const [fieldName, varsVarKey] of variable.variables) {
-						const varsVarVariable: JigsawVariable = this.frame.jigsawVariables.get(varsVarKey)!;
-						const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(varsVarVariable,
-							{class: varsVarVariable.type, field: fieldName, method: statement instanceof MethodLocation ? statement.signature : undefined}, statement);
-						if (dispatchResult === null) break;
-						else if (dispatchResult instanceof RuntimeError) return dispatchResult;
-					}
+					if (statement instanceof MethodLocation && !this.executedMethodLocations.includes(statement)) {
+						const result: RuntimeError | null | undefined = this.customizeMethod(statement);
+						if (result === null) break;
+						else if (result instanceof RuntimeError) return result;
+						this.executedMethodLocations.push(statement);
+					} else
+						for (const [fieldName, varsVarKey] of variable.variables) {
+							const varsVarVariable: JigsawVariable = this.frame.jigsawVariables.get(varsVarKey)!;
+							const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(varsVarVariable,
+								{class: varsVarVariable.type, field: fieldName, method: statement instanceof MethodLocation ? statement.signature : undefined}, statement);
+							if (dispatchResult === null) break;
+							else if (dispatchResult instanceof RuntimeError) return dispatchResult;
+						}
 				}
 			}
 			this.closeLocationScope();
 
 			return null;
+		} else {
+			const childrenLocations: Location[] = location.getChildrenLocations();
+			this.openLocationScope();
+			for (const childLocation of childrenLocations) {
+				if (childLocation instanceof MethodLocation) {
+					if (!this.executedMethodLocations.includes(childLocation)) {
+						const result: RuntimeError | null | undefined = this.customizeMethod(childLocation);
+						if (result === null) break;
+						else if (result instanceof RuntimeError) return result;
+						this.executedMethodLocations.push(childLocation);
+					}
+				}
+			}
+			this.closeLocationScope();
 		}
 		return undefined;
 	}
