@@ -132,11 +132,9 @@ WHILE   : 'while';
 TRUE    : 'true';
 FALSE   : 'false';
 
-SHORT_TYPE  : 'short';
 NUM_TYPE    : 'num';
-CHAR_TYPE   : 'char';
-BOOLEAN_TYPE: 'boolean';
-STRING_TYPE : 'String';
+BOOLEAN_TYPE: 'bool';
+STRING_TYPE : 'string';
 NODE_TYPE   : 'Node';
 EDGE_TYPE   : 'Edge';
 SUBJECT_TYPE: 'Subject';
