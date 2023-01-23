@@ -119,6 +119,10 @@ export function activate(context: vscode.ExtensionContext) {
 						const involvedFrames: Set<number> = new Set();
             			const involvedSeqs: Set<number> = new Set();
 						for (var variable of message["body"]["variables"]) {
+							if (variable["name"] === "Class has no fields") {
+								DebugState.getInstance().removeRequestSeqFromAllFrames(message["request_seq"]);
+								continue;
+							}
 							const jigsawVariable: JigsawVariable | undefined = parseVariable(variable);
 							if (jigsawVariable) {
 								const seq: number = message["request_seq"];
