@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -33,7 +33,6 @@ import { ReassignCommand } from './model/command/ReassignCommand';
 import { AddCommand } from './model/command/AddCommand';
 import { OmitCommand } from './model/command/OmitCommand';
 import { NodeOfExpr } from './model/expr/NodeOfExpr';
-import path = require('path');
 import { ArrayExpr, ArrayType } from './model/expr/ArrayExpr';
 import { ArrayAccessExpr } from './model/expr/ArrayAccessExpr';
 import { EdgesOfExpr } from './model/expr/EdgesOfExpr';
@@ -57,6 +56,7 @@ import { Statement } from './model/Statement';
 import { ParentVarExpr } from './model/expr/ParentVarExpr';
 import { ParentVarAssignCommand } from './model/command/ParentVarAssignCommand';
 import { IsNullExpr } from './model/expr/IsNullExpr';
+import { MapType, NewMapExpr } from './model/expr/NewMapExpr';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -258,25 +258,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
-        var deepestType: ValueType;
-        var dimension: number = 0;
-        var currentTypeCtx: TypeContext = ctx.type();
-        while (currentTypeCtx.type()) {
-            dimension++;
-            currentTypeCtx = currentTypeCtx.type()!;
-        }
-        
-        if (currentTypeCtx.basicType()!.NUM_TYPE()) deepestType = ValueType.NUM;
-        else if (currentTypeCtx.basicType()!.BOOLEAN_TYPE()) deepestType = ValueType.BOOLEAN;
-        else if (currentTypeCtx.basicType()!.STRING_TYPE()) deepestType = ValueType.STRING;
-        else if (currentTypeCtx.basicType()!.NODE_TYPE()) deepestType = ValueType.NODE;
-        else if (currentTypeCtx.basicType()!.EDGE_TYPE()) deepestType = ValueType.EDGE;
-        else if (currentTypeCtx.basicType()!.SUBJECT_TYPE()) deepestType = ValueType.SUBJECT;
-        else return new ErrorComponent(
-            new ErrorBuilder(ctx.type(), "Invalid type " + ctx.type().toString() + ".").toString()
-        );
-
-        const declaredType: ValueType | ArrayType = dimension == 0 ? deepestType : {type: deepestType, dimension: dimension};
+        const declaredType: ValueType | ArrayType | MapType = this.extractType(ctx.type());
         const varName: string = ctx.ID().toString();
 
         const exprComp: CustSpecComponent = this.visit(ctx.expr());
@@ -291,11 +273,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
             );
-        else if (!(declaredType as any in ValueType)) {
+        else if (declaredType instanceof ArrayType) {
             // If the given array type is of dimension 0 then it's fine
             // If they're both arrays with different types, raise error
             const declaredArrayType: ArrayType = declaredType as ArrayType;
-            if (expr.type() as any in ValueType)
+            if (!(expr.type() instanceof ArrayType))
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
                 );
@@ -304,7 +286,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
                 );
-        } else if (JSON.stringify(declaredType) != JSON.stringify(expr.type()))
+        } else if (JSON.stringify(declaredType) !== JSON.stringify(expr.type()))
             return new ErrorComponent(
                 new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
             );
@@ -324,7 +306,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Bug in type checker where scope does not exist where it should").toString()
             );
 
-        const type: ValueType | ArrayType | undefined = this.getTCType(varName);
+        const type: ValueType | ArrayType | MapType | undefined = this.getTCType(varName);
         if (type === undefined)
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Variable " + varName + " does not exist in this scope.").toString()
@@ -346,7 +328,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const arrayComp: CustSpecComponent = this.visit(ctx.expr(0));
         if (arrayComp instanceof ErrorComponent) return arrayComp;
         const arrayExpr: Expr = arrayComp as Expr;
-        if (arrayExpr.type() as any in ValueType)
+        if (!(arrayExpr.type() instanceof ArrayType))
             return new ErrorComponent(new ErrorBuilder(ctx.expr(0), "Cannot update index of non-array expression").toString());
         const arrayType: ArrayType = arrayExpr.type() as ArrayType;
 
@@ -361,10 +343,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             indexExprs.push(indexExpr);
         }
 
-        const expectedType: ValueType | ArrayType =
+        const expectedType: ValueType | ArrayType | MapType =
             indicesCount == arrayType.dimension
             ? arrayType.type
-            : {type: arrayType.type, dimension: arrayType.dimension - indicesCount};
+            : new ArrayType(arrayType.type, arrayType.dimension - indicesCount);
 
         const newValueComp: CustSpecComponent = this.visit(ctx.expr(ctx.expr().length - 1));
         if (newValueComp instanceof ErrorComponent) return newValueComp;
@@ -414,7 +396,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (!targetLocationScope)
                 return new ErrorComponent(new ErrorBuilder(ctx, "Type-checker error: Cannot find target location scope").toString());
 
-            const foundType: ValueType | ArrayType | undefined = targetLocationScope.getType(varName);
+            const foundType: ValueType | ArrayType | MapType | undefined = targetLocationScope.getType(varName);
             if (foundType === undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Variable with the name " + varName + " does not exist in the target scope.").toString());
 
             const exprComp: CustSpecComponent = this.visit(ctx.expr());
@@ -455,7 +437,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
             );
-        return new IfElseCommand(conditions, commands, this.locationStack.at(-1)!);
+        return new IfElseCommand(conditions, commands, ctx, this.locationStack.at(-1)!);
     }
 
     visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
@@ -471,27 +453,27 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (commandComp instanceof ErrorComponent) return commandComp;
         const command: Command = commandComp as Command;
 
-        return new WhileCommand(expr, command, this.locationStack.at(-1));
+        return new WhileCommand(expr, command, ctx, this.locationStack.at(-1));
     }
 
     visitAddCommand(ctx: AddCommandContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
-        const exprType: ValueType | ArrayType = expr.type();
+        const exprType: ValueType | ArrayType | MapType = expr.type();
         var mistype: boolean = false;
 
         if (exprType as any in ValueType) {
             if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
-        } else {
+        } else if (exprType instanceof ArrayType) {
             const arrayType: ArrayType = exprType as ArrayType;
             if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
                 mistype = true;
-        }
+        } else mistype = true;
 
         if (mistype)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, {type: ValueType.NODE, dimension: 1}, {type: ValueType.EDGE, dimension: 1}], expr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], expr.type()).toString()
             );
 
         return new AddCommand(expr, this.runtime, ctx, this.locationStack.at(-1));
@@ -501,20 +483,20 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
-        const exprType: ValueType | ArrayType = expr.type();
+        const exprType: ValueType | ArrayType | MapType = expr.type();
         var mistype: boolean = false;
 
         if (exprType as any in ValueType) {
             if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
-        } else {
+        } else if (exprType instanceof ArrayType) {
             const arrayType: ArrayType = exprType as ArrayType;
             if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
                 mistype = true;
-        }
+        } else mistype = true;
 
         if (mistype)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, {type: ValueType.NODE, dimension: 1}, {type: ValueType.EDGE, dimension: 1}], expr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], expr.type()).toString()
             );
 
         return new OmitCommand(expr, this.runtime, ctx, this.locationStack.at(-1));
@@ -639,12 +621,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             const leftComp: CustSpecComponent = this.visit(ctx._left);
             if (leftComp instanceof ErrorComponent) return leftComp;
             const leftExpr: Expr = leftComp as Expr;
-            const leftType: ValueType | ArrayType = leftExpr.type();
+            const leftType: ValueType | ArrayType | MapType = leftExpr.type();
 
             const rightComp: CustSpecComponent = this.visit(ctx._right);
             if (rightComp instanceof ErrorComponent) return rightComp;
             const rightExpr: Expr = rightComp as Expr;
-            const rightType: ValueType | ArrayType = rightExpr.type();
+            const rightType: ValueType | ArrayType | MapType = rightExpr.type();
 
             if (leftType == ValueType.STRING
                 && rightType != ValueType.NUM
@@ -665,8 +647,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     new TypeErrorBuilder(ctx._right, [ValueType.NUM], rightType).toString()
                 );
 
-            if (!(leftType as any in ValueType)) {
-                if (rightType as any in ValueType)
+            if (leftType instanceof ArrayType) {
+                if (!(rightType instanceof ArrayType))
                     return new ErrorComponent(
                         new TypeErrorBuilder(ctx._right, [leftType], rightType).toString()
                     );
@@ -682,6 +664,15 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             else if (leftType != ValueType.STRING && leftType != ValueType.NUM)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx._left, [ValueType.STRING, ValueType.NUM], leftType).toString()
+                );
+
+            if (leftType instanceof MapType)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx._left, [ValueType.STRING, ValueType.NUM], leftType).toString()
+                );
+            if (rightType instanceof MapType)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx._right, [ValueType.STRING, ValueType.NUM], rightType).toString()
                 );
 
             return new AdditionExpr(leftExpr, rightExpr);
@@ -759,7 +750,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const arrayComp: CustSpecComponent = this.visit(ctx.suffixed()!);
         if (arrayComp instanceof ErrorComponent) return arrayComp;
         const arrayExpr: Expr = arrayComp as Expr;
-        if (arrayExpr.type() as any in ValueType)
+        if (!(arrayExpr.type() instanceof ArrayExpr))
             return new ErrorComponent(
                 new ErrorBuilder(ctx.suffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
             );
@@ -786,7 +777,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     visitIdExpr(ctx: IdExprContext): CustSpecComponent {
         const varName: string = ctx.ID().toString();
-        const type: ValueType | ArrayType | undefined = this.getTCType(varName);
+        const type: ValueType | ArrayType | MapType | undefined = this.getTCType(varName);
         if (type === undefined)
             return new ErrorComponent(
                 new ErrorBuilder(ctx, "Variable " + varName + " is not defined in this scope").toString()
@@ -880,22 +871,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString()
             );
 
-        var deepestType: ValueType;
-        var dimension: number = 0;
-        var currentTypeCtx: TypeContext = ctx.type();
-        while (currentTypeCtx.type()) {
-            dimension++;
-            currentTypeCtx = currentTypeCtx.type()!;
-        }
-        if (currentTypeCtx.basicType()!.NUM_TYPE()) deepestType = ValueType.NUM;
-        else if (currentTypeCtx.basicType()!.BOOLEAN_TYPE()) deepestType = ValueType.BOOLEAN;
-        else if (currentTypeCtx.basicType()!.STRING_TYPE()) deepestType = ValueType.STRING;
-        else return new ErrorComponent(
-            new ErrorBuilder(ctx.type(), "Invalid type " + ctx.type().toString() + ".").toString()
-        );
-        const declaredType: ValueType | ArrayType = dimension == 0 ? deepestType : {type: deepestType, dimension: dimension};
+        const declaredType: ValueType | ArrayType | MapType = this.extractType(ctx.type());
+        if (!this.validValueOfType(declaredType))
+            return new ErrorComponent(new ErrorBuilder(ctx.type(), "Invalid target type " + JSON.stringify(declaredType)).toString());
 
         return new ValueOfExpr(expr, declaredType, this.runtime, ctx);
+    }
+
+    private validValueOfType(type: ValueType | ArrayType | MapType): boolean {
+        if (type instanceof MapType) return this.validValueOfType(type.keyType) && this.validValueOfType(type.valueType);
+        if (type instanceof ArrayType) return this.validValueOfType(type.type);
+        else return type == ValueType.BOOLEAN || type == ValueType.NUM || type == ValueType.STRING;
     }
 
     visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
@@ -958,7 +944,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         var exprComp: CustSpecComponent = this.visit(ctx.expr(0));
         if (exprComp instanceof ErrorComponent) return exprComp;
         var expr: Expr = exprComp as Expr;
-        const type: ValueType | ArrayType = expr.type();
+        const type: ValueType | ArrayType | MapType = expr.type();
         contents.push(expr);
 
         for (var i = 1; i < ctx.expr().length; i++) {
@@ -974,9 +960,9 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
         return new ArrayExpr(
             contents,
-            (type as any in ValueType)
-            ? {type: type as ValueType, dimension: 1}
-            : {type: (type as ArrayType).type, dimension: (type as ArrayType).dimension + 1}
+            !(type instanceof ArrayType)
+            ? new ArrayType(type, 1)
+            : new ArrayType((type as ArrayType).type, (type as ArrayType).dimension + 1)
         );
     }
 
@@ -1019,7 +1005,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (!targetLocationScope)
                 return new ErrorComponent(new ErrorBuilder(ctx, "Type-checker error: Cannot find target location scope").toString());
 
-            const foundType: ValueType | ArrayType | undefined = targetLocationScope.getType(varName);
+            const foundType: ValueType | ArrayType | MapType | undefined = targetLocationScope.getType(varName);
             if (foundType === undefined) return new ErrorComponent(new ErrorBuilder(ctx, "Variable with the name " + varName + " does not exist in the target scope.").toString());
             return new ParentVarExpr(varName, foundType, parentsWritten, this.runtime);
         }
@@ -1033,6 +1019,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT], expr.type()).toString());
 
         return new IsNullExpr(expr, this.runtime);
+    }
+
+    visitNewMapExpr(ctx: NewMapExprContext): CustSpecComponent {
+        const keyType: ValueType | ArrayType | MapType = this.extractType(ctx.type(0));
+        const valueType: ValueType | ArrayType | MapType = this.extractType(ctx.type(1));
+        return new NewMapExpr(new MapType(keyType, valueType));
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {
@@ -1088,17 +1080,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
         switch (prop) {
             case "length":
-                if (!(expr.type() as any in ValueType) && exprs.length == 0)
+                if (expr.type() instanceof ArrayType && exprs.length == 0)
                     if ((expr.type() as ArrayType).dimension > 0) break;
             case "label":
                 if (expr.type() == ValueType.EDGE && exprs.length == 0) break;
             case "append": {
-                const suffixedType: ValueType | ArrayType = expr.type();
-                if (!(suffixedType as any in ValueType)) {
+                const suffixedType: ValueType | ArrayType | MapType = expr.type();
+                if (suffixedType instanceof ArrayType) {
                     const suffixedArrayType : ArrayType = suffixedType as ArrayType;
-                    const expectedType: ValueType | ArrayType =
+                    const expectedType: ValueType | ArrayType | MapType =
                         suffixedArrayType.dimension > 1
-                        ? {type: suffixedArrayType.type, dimension: suffixedArrayType.dimension - 1}
+                        ? new ArrayType(suffixedArrayType.type, suffixedArrayType.dimension - 1)
                         : suffixedArrayType.type;
 
                     if (exprs.length == 1) {
@@ -1169,8 +1161,43 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     const rowsComp: CustSpecComponent = this.visit(exprs[0]);
                     if (rowsComp instanceof ErrorComponent) return rowsComp;
                     const rows: Expr = rowsComp as Expr;
-                    if (JSON.stringify(rows.type()) === JSON.stringify({type: ValueType.STRING, dimension: 1})) {
+                    if (JSON.stringify(rows.type()) === JSON.stringify(new ArrayType(ValueType.STRING, 1))) {
                         argExprs.push(rows);
+                        break;
+                    }
+                }
+            }
+            case "size":
+                if (expr.type() instanceof MapType && exprs.length == 0) break;
+            case "put": {
+                if (expr.type() instanceof MapType && exprs.length == 2) {
+                    const mapType: MapType = expr.type() as MapType;
+
+                    const keyComp: CustSpecComponent = this.visit(exprs[0]);
+                    if (keyComp instanceof ErrorComponent) return keyComp;
+                    const key: Expr = keyComp as Expr;
+                    if (JSON.stringify(key.type()) === JSON.stringify(mapType.keyType)) {
+                        argExprs.push(key);
+                        const valueComp: CustSpecComponent = this.visit(exprs[1]);
+                        if (valueComp instanceof ErrorComponent) return valueComp;
+                        const value: Expr = valueComp as Expr;
+                        if (JSON.stringify(value.type()) === JSON.stringify(mapType.valueType)) {
+                            argExprs.push(value);
+                            break;
+                        }
+                    }
+                }
+            }
+            case "containsKey":
+            case "get": {
+                if (expr.type() instanceof MapType && exprs.length == 1) {
+                    const mapType: MapType = expr.type() as MapType;
+
+                    const keyComp: CustSpecComponent = this.visit(exprs[0]);
+                    if (keyComp instanceof ErrorComponent) return keyComp;
+                    const key: Expr = keyComp as Expr;
+                    if (JSON.stringify(key.type()) === JSON.stringify(mapType.keyType)) {
+                        argExprs.push(key);
                         break;
                     }
                 }
@@ -1182,10 +1209,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         }
 
         return new PropExpr(expr, prop, argExprs, this.runtime, ruleCtx);
-    }
-
-    private validChar(char: string): boolean {
-        return this.transformChar(char) != undefined;
     }
     
     private transformChar(char: string): string | undefined {
@@ -1250,7 +1273,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return this.locVarsStack.at(-1)!.closeVariableScope();
     }
 
-    private addTCVariable(name: string, type: ValueType | ArrayType): boolean {
+    private addTCVariable(name: string, type: ValueType | ArrayType | MapType): boolean {
         if (this.locVarsStack.length == 0) return false;
         return this.locVarsStack.at(-1)!.addVariable(name, type);
     }
@@ -1260,8 +1283,27 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return this.locVarsStack.at(-1)!.containsVariable(name);
     }
 
-    private getTCType(name: string): ValueType | ArrayType | undefined {
+    private getTCType(name: string): ValueType | ArrayType | MapType | undefined {
         if (this.locVarsStack.length == 0) return undefined;
         return this.locVarsStack.at(-1)!.getType(name);
+    }
+
+    private extractType(typeCtx: TypeContext): ValueType | ArrayType | MapType {
+        const typeCtxs: TypeContext[] = typeCtx.type();
+        if (typeCtxs.length == 1) {
+            const innerType: ValueType | ArrayType | MapType = this.extractType(typeCtxs[0]);
+            if (innerType instanceof ArrayType)
+                return new ArrayType(innerType.type, innerType.dimension + 1);
+            else return new ArrayType(innerType, 1);
+        } else if (typeCtxs.length == 2)
+            return new MapType(this.extractType(typeCtxs[0]), this.extractType(typeCtxs[1]));
+        else {
+            if (typeCtx.basicType()!.NUM_TYPE()) return ValueType.NUM;
+            else if (typeCtx.basicType()!.BOOLEAN_TYPE()) return ValueType.BOOLEAN;
+            else if (typeCtx.basicType()!.STRING_TYPE()) return ValueType.STRING;
+            else if (typeCtx.basicType()!.NODE_TYPE()) return ValueType.NODE;
+            else if (typeCtx.basicType()!.EDGE_TYPE()) return ValueType.EDGE;
+            else return ValueType.SUBJECT;
+        }
     }
 }

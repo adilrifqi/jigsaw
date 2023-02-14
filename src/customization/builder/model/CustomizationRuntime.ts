@@ -6,6 +6,7 @@ import { RuntimeError } from "../error/RuntimeError";
 import { Command } from "./command/Command";
 import { CustSpecComponent } from "./CustSpecComponent";
 import { ArrayType } from "./expr/ArrayExpr";
+import { MapType } from "./expr/NewMapExpr";
 import { ValueType } from "./expr/ValueType";
 import { Location, LocationType } from "./location/Location";
 import { MethodLocation } from "./location/MethodLocation";
@@ -275,7 +276,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return scope.getVariable(varName)!.value;
 	}
 
-	public updateAncestorLocationVariable(varName: string, upwardCount: number, value: Object | null, type: ValueType | ArrayType): boolean {
+	public updateAncestorLocationVariable(varName: string, upwardCount: number, value: Object | null, type: ValueType | ArrayType | MapType): boolean {
 		const scope: RTLocationScope = this.runtimeScopes[this.runtimeScopes.length - 1 - upwardCount];
 		return scope.updateVariable(varName, type, value);
 	}
@@ -412,12 +413,12 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	// ====================Scope Methods====================
-	public addVarible(name: string, type: ValueType | ArrayType, value: any): boolean {
+	public addVarible(name: string, type: ValueType | ArrayType | MapType, value: any): boolean {
 		if (this.runtimeScopes.length == 0) return false;
 		return this.runtimeScopes.at(-1)!.addVarible(name, type, value);
     }
 
-    public reassignVariable(name: string, type: ValueType | ArrayType, value: any): boolean {
+    public reassignVariable(name: string, type: ValueType | ArrayType | MapType, value: any): boolean {
         if (this.runtimeScopes.length == 0) return false;
 		return this.runtimeScopes.at(-1)!.updateVariable(name, type, value);
     }

@@ -1,3 +1,4 @@
+import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { Expr } from "../expr/Expr";
 import { Location } from "../location/Location";
@@ -6,17 +7,20 @@ import { Command } from "./Command";
 export class IfElseCommand extends Command {
     private readonly conditions: Expr[];
     private readonly commands: Command[];
+    private readonly ctx: ParserRuleContext;
 
-    constructor(conditions: Expr[], commands: Command[], location?: Location) {
+    constructor(conditions: Expr[], commands: Command[], ctx: ParserRuleContext, location?: Location) {
         super(location);
         this.conditions = conditions;
         this.commands = commands;
+        this.ctx = ctx;
     }
 
     public execute(): RuntimeError | undefined {
         for (var i = 0; i < this.conditions.length; i++) {
             const conditionExpr: Expr = this.conditions[i];
-            const conditionValue: Object = conditionExpr.eval() as Object;
+            const conditionValue: Object | null = conditionExpr.eval();
+            if (conditionValue === null) return new RuntimeError(this.ctx, "null as condition.");
             if (conditionValue instanceof RuntimeError) return conditionValue;
 
             const condition: boolean = conditionValue as boolean;

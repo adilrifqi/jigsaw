@@ -19,8 +19,8 @@ export class AdditionExpr extends Expr {
         // num + num = num
         // num + string = string
         // array + array = array
-        const leftType: ValueType | ArrayType = this.leftExpr.type();
-        const rightType: ValueType | ArrayType = this.rightExpr.type();
+        const leftType: ValueType | ArrayType = this.leftExpr.type() as ValueType | ArrayType;
+        const rightType: ValueType | ArrayType = this.rightExpr.type() as ValueType | ArrayType;
 
         if (leftType == ValueType.STRING) this.resultType = ValueType.STRING;
         else if (rightType == ValueType.STRING) this.resultType = ValueType.STRING;

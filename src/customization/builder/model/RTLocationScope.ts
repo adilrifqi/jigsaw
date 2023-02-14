@@ -1,4 +1,5 @@
 import { ArrayType } from "./expr/ArrayExpr";
+import { MapType } from "./expr/NewMapExpr";
 import { ValueType } from "./expr/ValueType";
 
 export class RTLocationScope {
@@ -8,13 +9,13 @@ export class RTLocationScope {
         this.openVariableScope();
     }
 
-    public addVarible(name: string, type: ValueType | ArrayType, value: Object | null): boolean {
+    public addVarible(name: string, type: ValueType | ArrayType | MapType, value: Object | null): boolean {
         if (this.vars.length == 0 || this.containsVariable(name)) return false;
         this.vars.at(-1)!.set(name, new Variable(name, type, value));
         return true;
     }
 
-    public updateVariable(name: string, type: ValueType | ArrayType, value: Object | null): boolean {
+    public updateVariable(name: string, type: ValueType | ArrayType | MapType, value: Object | null): boolean {
         for (var i = this.vars.length - 1; i >= 0; i--) {
             const scope: Map<string, Variable> = this.vars[i];
             if (scope.has(name)) {
@@ -49,10 +50,10 @@ export class RTLocationScope {
 
 export class Variable {
     public readonly name: string;
-    public readonly type: ValueType | ArrayType;
+    public readonly type: ValueType | ArrayType | MapType;
     public readonly value: Object | null;
 
-    constructor(name: string, type: ValueType | ArrayType, value: Object | null) {
+    constructor(name: string, type: ValueType | ArrayType | MapType, value: Object | null) {
         this.name = name;
         this.type = type;
         this.value = value;

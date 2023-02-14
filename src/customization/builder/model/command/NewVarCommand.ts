@@ -3,6 +3,7 @@ import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { ArrayType } from "../expr/ArrayExpr";
 import { Expr } from "../expr/Expr";
+import { MapType } from "../expr/NewMapExpr";
 import { ValueType } from "../expr/ValueType";
 import { Location } from "../location/Location";
 import { Command } from "./Command";
@@ -10,11 +11,11 @@ import { Command } from "./Command";
 export class NewVarCommand extends Command {
     private readonly varName: string;
     private readonly expr: Expr;
-    private readonly type: ValueType | ArrayType;
+    private readonly type: ValueType | ArrayType | MapType;
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(varName: string, expr: Expr, type: ValueType | ArrayType, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
+    constructor(varName: string, expr: Expr, type: ValueType | ArrayType | MapType, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
         super(location);
         this.varName = varName;
         this.expr = expr;
@@ -26,6 +27,9 @@ export class NewVarCommand extends Command {
     public execute(): RuntimeError | undefined {
         const exprValue: Object | null = this.expr.eval();
         if (exprValue instanceof RuntimeError) return exprValue;
+
+        if (this.type != ValueType.NODE && this.type != ValueType.EDGE && exprValue === null)
+            return new RuntimeError(this.ctx, "Cannot assign null to this type");
 
         if (!this.runtime.addVarible(
             this.varName,

@@ -4,15 +4,16 @@ import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Variable } from "../RTLocationScope";
 import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
+import { MapType } from "./NewMapExpr";
 import { ValueType } from "./ValueType";
 
 export class VarRefExpr extends Expr {
     private readonly varName: string;
-    private readonly varType: ValueType | ArrayType;
+    private readonly varType: ValueType | ArrayType | MapType;
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(varName: string, varType: ValueType | ArrayType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+    constructor(varName: string, varType: ValueType | ArrayType | MapType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
         super();
         this.varName = varName;
         this.varType = varType;
@@ -20,7 +21,7 @@ export class VarRefExpr extends Expr {
         this.ctx = ctx;
     }
 
-    public type(): ValueType | ArrayType {
+    public type(): ValueType | ArrayType | MapType {
         return this.varType;
     }
 

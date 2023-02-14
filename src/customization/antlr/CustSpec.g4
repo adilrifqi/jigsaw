@@ -55,24 +55,25 @@ suffixed
     ;
 
 primary
-    : ID                                # IdExpr
-    | NEW_NODE expr                     # NewNodeExpr
-    | NEW_EDGE expr expr expr           # NewEdgeExpr
-    | PARENTS                           # ParentsExpr
-    | PARENTS_OF expr                   # ParentsOfExpr
-    | HERE                              # HereExpr
-    | CHILDREN                          # ChildrenExpr
-    | CHILDREN_OF expr                  # ChildrenOfExpr
-    | VALUE_OF expr type                # ValueOfExpr
-    | fieldLocId (DOT fieldLocId)*      # FieldSubjectExpr
-    | localLocId                        # LocalSubjectExpr
-    | NODE_OF expr                      # NodeOfExpr
-    | EDGES_OF expr expr                # EdgesOfExpr
-    | literal                           # LiteralExpr
-    | LPAR expr RPAR                    # ParExpr
-    | LBRAC (expr (COMMA expr)*)? RBRAC # ArrayExpr
-    | (PARENT DOT)+ ID                  # ParentVarExpr
-    | IS_NULL expr                      # IsNullExpr
+    : ID                                    # IdExpr
+    | NEW_NODE expr                         # NewNodeExpr
+    | NEW_EDGE expr expr expr               # NewEdgeExpr
+    | PARENTS                               # ParentsExpr
+    | PARENTS_OF expr                       # ParentsOfExpr
+    | HERE                                  # HereExpr
+    | CHILDREN                              # ChildrenExpr
+    | CHILDREN_OF expr                      # ChildrenOfExpr
+    | VALUE_OF expr type                    # ValueOfExpr
+    | fieldLocId (DOT fieldLocId)*          # FieldSubjectExpr
+    | localLocId                            # LocalSubjectExpr
+    | NODE_OF expr                          # NodeOfExpr
+    | EDGES_OF expr expr                    # EdgesOfExpr
+    | literal                               # LiteralExpr
+    | LPAR expr RPAR                        # ParExpr
+    | LBRAC (expr (COMMA expr)*)? RBRAC     # ArrayExpr
+    | (PARENT DOT)+ ID                      # ParentVarExpr
+    | IS_NULL expr                          # IsNullExpr
+    | NEW_MAP LESS type COMMA type GREATER  # NewMapExpr
     ;
 
 locId   : classLocId | fieldLocId | methodLocId | localLocId ; // TODO: PARAM
@@ -89,7 +90,7 @@ stringLit   : STRING_VALUE;
 
 booleanLit  : TRUE | FALSE ;
 
-type        : basicType | type LBRAC RBRAC;
+type        : basicType | type LBRAC RBRAC | MAP LESS type COMMA type GREATER;
 
 basicType   : NUM_TYPE | BOOLEAN_TYPE | STRING_TYPE | NODE_TYPE | EDGE_TYPE | SUBJECT_TYPE ;
 
@@ -138,6 +139,8 @@ STRING_TYPE : 'string';
 NODE_TYPE   : 'Node';
 EDGE_TYPE   : 'Edge';
 SUBJECT_TYPE: 'Subject';
+MAP         : 'Map';
+NEW_MAP     : 'newMap';
 
 SEMI        : ';';
 DOT         : '.';

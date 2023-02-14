@@ -1,7 +1,10 @@
 import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime } from "../CustomizationRuntime";
+import { ArrayType } from "../expr/ArrayExpr";
 import { Expr } from "../expr/Expr";
+import { MapType } from "../expr/NewMapExpr";
+import { ValueType } from "../expr/ValueType";
 import { Location } from "../location/Location";
 import { Command } from "./Command";
 
@@ -22,19 +25,29 @@ export class ArrayIndexReassignCommand extends Command {
     }
 
     public execute(): RuntimeError | undefined {
-        const arrayResult: Object = this.arrayExpr.eval() as Object;
+        const arrayResult: Object | null = this.arrayExpr.eval();
+        if (arrayResult === null) return new RuntimeError(this.ctx, "null as array.");
         if (arrayResult instanceof RuntimeError) return arrayResult;
         const array: (Object | null)[] = arrayResult as (Object | null)[];
 
         const indices: number[] = [];
         for (const indexExpr of this.indexExprs) {
-            const indexResult: Object = indexExpr.eval() as Object;
+            const indexResult: Object | null = indexExpr.eval();
+            if (indexResult === null) return new RuntimeError(this.ctx, "null as index.");
             if (indexResult instanceof RuntimeError) return indexResult;
             indices.push(indexResult as number);
         }
 
         const newValueResult: Object | null = this.newValueExpr.eval();
         if (newValueResult instanceof RuntimeError) return newValueResult;
+
+        const arrayType: ArrayType = this.arrayExpr.type() as ArrayType;
+        const targetType: ValueType | ArrayType | MapType
+            = this.indexExprs.length >= arrayType.dimension
+            ? arrayType.type
+            : new ArrayType(arrayType.type, arrayType.dimension - this.indexExprs.length);
+        if (targetType != ValueType.NODE && targetType != ValueType.EDGE && newValueResult === null)
+            return new RuntimeError(this.ctx, "Cannot assign null as an element");
 
         var currentArray: (Object | null)[] = array;
         for (var i = 0; i < indices.length - 1; i++) {

@@ -1,20 +1,21 @@
 import { ArrayType } from "./expr/ArrayExpr";
+import { MapType } from "./expr/NewMapExpr";
 import { ValueType } from "./expr/ValueType";
 
 export class TCLocationScope {
-    private readonly vars: Map<String, ValueType | ArrayType>[] = [];
+    private readonly vars: Map<String, ValueType | ArrayType | MapType>[] = [];
 
     constructor() {
         this.openVariableScope();
     }
 
-    public addVariable(name: string, type: ValueType | ArrayType): boolean {
+    public addVariable(name: string, type: ValueType | ArrayType | MapType): boolean {
         if (this.vars.length == 0 || this.containsVariable(name)) return false;
         this.vars.at(-1)!.set(name, type);
         return true;
     }
 
-    public getType(name: string): ValueType | ArrayType | undefined {
+    public getType(name: string): ValueType | ArrayType | MapType | undefined {
         for (var i = this.vars.length - 1; i >= 0; i--) {
             if (this.vars[i].has(name)) return this.vars[i].get(name);
         }

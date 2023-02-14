@@ -3,15 +3,16 @@ import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
 import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
+import { MapType } from "./NewMapExpr";
 import { ValueType } from "./ValueType";
 
 export class ValueOfExpr extends Expr {
     private readonly subjectExpr: Expr;
-    private readonly declaredType: ValueType | ArrayType;
+    private readonly declaredType: ValueType | ArrayType | MapType;
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(subjectExpr: Expr, declaredType: ValueType | ArrayType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+    constructor(subjectExpr: Expr, declaredType: ValueType | ArrayType | MapType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
         super();
         this.subjectExpr = subjectExpr;
         this.declaredType = declaredType;
@@ -19,7 +20,7 @@ export class ValueOfExpr extends Expr {
         this.ctx = ctx;
     }
 
-    public type(): ValueType | ArrayType {
+    public type(): ValueType | ArrayType | MapType {
         return this.declaredType;
     }
 

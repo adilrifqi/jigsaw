@@ -4,6 +4,7 @@ import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
 import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
+import { MapType } from "./NewMapExpr";
 import { ValueType } from "./ValueType";
 
 export class PropExpr extends Expr {
@@ -24,7 +25,7 @@ export class PropExpr extends Expr {
         this.isSubjectProp = isSubjectProp;
     }
 
-    public type(): ValueType | ArrayType {
+    public type(): ValueType | ArrayType | MapType {
         if (this.isSubjectProp) return ValueType.SUBJECT;
 
         switch (this.prop) {
@@ -50,12 +51,20 @@ export class PropExpr extends Expr {
                 return ValueType.NUM;
             case "setRows":
                 return ValueType.NUM;
+            case "size":
+                return ValueType.NUM;
+            case "put":
+                return ValueType.NUM;
+            case "containsKey":
+                return ValueType.BOOLEAN;
+            case "get":
+                return (this.proppedExpr.type() as MapType).valueType;
             default:
                 return ValueType.NUM;
         }
     }
 
-    public eval(): Object {
+    public eval(): Object | null {
         const proppedValue: Object | null = this.proppedExpr.eval();
         if (proppedValue instanceof RuntimeError) return proppedValue;
         if (proppedValue === null) {
@@ -177,6 +186,48 @@ export class PropExpr extends Expr {
 
                     node.data.rows = rows;
                     return rows.length;
+                }
+                case "size": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the size of a null map.");
+                    return (proppedValue as Map<Object, Object | null>).size;
+                }
+                case "put": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the size of a null map.");
+                    const map: Map<Object, Object | null> = proppedValue as Map<Object, Object | null>;
+
+                    const keyValue: Object | null = this.args[0].eval();
+                    if (keyValue === null) return new RuntimeError(this.ctx, "Cannot put to map with a null key.");
+                    if (keyValue instanceof RuntimeError) return keyValue;
+                    const key: Object = keyValue as Object;
+
+                    const value: Object | null = this.args[1].eval();
+                    if (value instanceof RuntimeError) return value;
+
+                    map.set(key, value);
+                    return map.size;
+                }
+                case "containsKey": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the size of a null map.");
+                    const map: Map<Object, Object | null> = proppedValue as Map<Object, Object | null>;
+
+                    const keyValue: Object | null = this.args[0].eval();
+                    if (keyValue === null) return new RuntimeError(this.ctx, "Cannot put to map with a null key.");
+                    if (keyValue instanceof RuntimeError) return keyValue;
+                    const key: Object = keyValue as Object;
+
+                    return map.has(key);
+                }
+                case "get": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the size of a null map.");
+                    const map: Map<Object, Object | null> = proppedValue as Map<Object, Object | null>;
+
+                    const keyValue: Object | null = this.args[0].eval();
+                    if (keyValue === null) return new RuntimeError(this.ctx, "Cannot put to map with a null key.");
+                    if (keyValue instanceof RuntimeError) return keyValue;
+                    const key: Object = keyValue as Object;
+
+                    if (map.has(key)) return map.get(key) as Object | null;
+                    else return null;
                 }
                 default:
                     return new RuntimeError(this.ctx, "Somehow the invalid property " + this.prop + " passed type-checking.");

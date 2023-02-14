@@ -2,6 +2,7 @@ import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
+import { MapType } from "./NewMapExpr";
 import { ValueType } from "./ValueType";
 
 export class ArrayAccessExpr extends Expr {
@@ -16,7 +17,7 @@ export class ArrayAccessExpr extends Expr {
         this.ctx = ctx;
     }
 
-    public type(): ValueType | ArrayType {
+    public type(): ValueType | ArrayType | MapType {
         const arrayType: ArrayType = this.arrayExpr.type() as ArrayType;
         if (arrayType.dimension <= 1) return arrayType.type;
         return {type: arrayType.type, dimension: arrayType.dimension - 1};
