@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CollectionForLoopContext, CommandContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, ForCommandContext, ForInitContext, ForUpdateContext, HereExprContext, IdExprContext, IfCommandContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CollectionForLoopContext, CommandContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -59,6 +59,8 @@ import { IsNullExpr } from './model/expr/IsNullExpr';
 import { MapType, NewMapExpr } from './model/expr/NewMapExpr';
 import { ConditionForLoopCommand } from './model/command/ConditionForLoopCommand';
 import { CollectionForloopCommand } from './model/command/CollectionForLoopCommand';
+import { PlusPlusExpr } from './model/expr/PlusPlusExpr';
+import { PlusPlusCommand } from './model/command/PlusPlusCommand';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -615,6 +617,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new ExprCommand(propCall, this.locationStack.at(-1)!);
     }
 
+    visitPlusPlusCommand(ctx: PlusPlusCommandContext): CustSpecComponent {
+        const comp: CustSpecComponent = this.visit(ctx.plusPlus());
+        if (comp instanceof ErrorBuilder) return comp;
+        return new PlusPlusCommand(comp as PlusPlusExpr, this.locationStack.at(-1)!);
+    }
+
     visitExpr(ctx: ExprContext): CustSpecComponent{
         return this.visit(ctx.disjunction());
     }
@@ -857,7 +865,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const arrayComp: CustSpecComponent = this.visit(ctx.suffixed()!);
         if (arrayComp instanceof ErrorComponent) return arrayComp;
         const arrayExpr: Expr = arrayComp as Expr;
-        if (!(arrayExpr.type() instanceof ArrayExpr))
+        if (!(arrayExpr.type() instanceof ArrayType))
             return new ErrorComponent(
                 new ErrorBuilder(ctx.suffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
             );
@@ -1132,6 +1140,22 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const keyType: ValueType | ArrayType | MapType = this.extractType(ctx.type(0));
         const valueType: ValueType | ArrayType | MapType = this.extractType(ctx.type(1));
         return new NewMapExpr(new MapType(keyType, valueType));
+    }
+
+    visitPlusPlusExpr(ctx: PlusPlusExprContext): CustSpecComponent {
+        return this.visit(ctx.plusPlus());
+    }
+    visitGetIncExpr(ctx: GetIncExprContext): CustSpecComponent {
+        return this.getPlusPlusExpr(ctx, ctx.ID().text, true, false);
+    }
+    visitIncGetExpr(ctx: IncGetExprContext): CustSpecComponent {
+        return this.getPlusPlusExpr(ctx, ctx.ID().text, true, true);
+    }
+    visitGetDecExpr(ctx: GetDecExprContext): CustSpecComponent {
+        return this.getPlusPlusExpr(ctx, ctx.ID().text, false, false);
+    }
+    visitDecGetExpr(ctx: DecGetExprContext): CustSpecComponent {
+        return this.getPlusPlusExpr(ctx, ctx.ID().text, false, true);
     }
 
     visitLiteral(ctx: LiteralContext): CustSpecComponent {
@@ -1412,5 +1436,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             else if (typeCtx.basicType()!.EDGE_TYPE()) return ValueType.EDGE;
             else return ValueType.SUBJECT;
         }
+    }
+
+    private getPlusPlusExpr(ctx: ParserRuleContext, varName: string, inc: boolean, opFirst: boolean): CustSpecComponent {
+        const type: ValueType | ArrayType | MapType | undefined = this.getTCType(varName);
+        if (type === undefined)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Variable " + varName + " is not defined in this scope").toString()
+            );
+        if (type != ValueType.NUM)
+            return new ErrorComponent(new TypeErrorBuilder(ctx, [ValueType.NUM], type).toString());
+
+        return new PlusPlusExpr(varName, inc, opFirst, this.runtime);
     }
 }

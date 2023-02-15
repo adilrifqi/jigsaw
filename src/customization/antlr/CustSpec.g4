@@ -30,6 +30,7 @@ semiLessCommand
     | ADD expr                                          # AddCommand
     | OMIT expr                                         # OmitCommand
     | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR   # PlainPropCallCommand
+    | plusPlus                                          # PlusPlusCommand
     ;
 
 expr: disjunction;
@@ -86,6 +87,14 @@ primary
     | (PARENT DOT)+ ID                      # ParentVarExpr
     | IS_NULL expr                          # IsNullExpr
     | NEW_MAP LESS type COMMA type GREATER  # NewMapExpr
+    | plusPlus                              # PlusPlusExpr
+    ;
+
+plusPlus
+    : ID PLUS PLUS                          # GetIncExpr
+    | PLUS PLUS ID                          # IncGetExpr
+    | ID MIN MIN                            # GetDecExpr
+    | MIN MIN ID                            # DecGetExpr
     ;
 
 locId   : classLocId | fieldLocId | methodLocId | localLocId ; // TODO: PARAM
