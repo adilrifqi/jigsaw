@@ -15,7 +15,7 @@ export class ChildrenOfExpr extends Expr {
     }
 
     public type(): ArrayType {
-        return {type: ValueType.SUBJECT, dimension: 1};
+        return new ArrayType(ValueType.SUBJECT, 1);
     }
 
     public eval(): Object {

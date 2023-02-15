@@ -20,14 +20,13 @@ export class ArrayExpr extends Expr {
         super();
         this.contents = contents;
         if (arrayType) this.arrayType = arrayType;
-        else if (this.contents.length == 0) this.arrayType = {type: ValueType.NUM, dimension: 0};
+        else if (this.contents.length == 0) this.arrayType = new ArrayType(ValueType.NUM, 0);
         else {
             const elementType: ValueType | ArrayType | MapType = this.contents[0].type();
-            if (elementType as any in ValueType) this.arrayType = {type: elementType as ValueType, dimension: 1};
-            else {
+            if (elementType instanceof ArrayType) {
                 const elementArrayType: ArrayType = elementType as ArrayType;
-                this.arrayType = {type: elementArrayType.type, dimension: elementArrayType.dimension + 1};
-            }
+                this.arrayType = new ArrayType(elementArrayType.type, elementArrayType.dimension + 1);
+            } else this.arrayType = new ArrayType(elementType as ValueType | MapType, 1);
         }
     }
 

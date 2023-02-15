@@ -9,15 +9,27 @@ custLocation: locId (DOT locId)* LCURL statement* RCURL;
 
 command
     : LCURL command* RCURL                                                          # ScopeCommand
-    | type ID ASS expr SEMI                                                         # NewVarCommand
-    | ID ASS expr SEMI                                                              # ReassignCommand
-    | expr (LBRAC expr RBRAC)+ ASS expr SEMI                                        # ArrayIndexReassignCommand
-    | (PARENT DOT)+ ID ASS expr SEMI                                                # ParentVarAssignCommand
     | IF LPAR expr RPAR command (ELSE IF LPAR expr RPAR command)* (ELSE command)?   # IfCommand
     | WHILE LPAR expr RPAR command                                                  # WhileCommand
-    | ADD expr SEMI                                                                 # AddCommand
-    | OMIT expr SEMI                                                                # OmitCommand
-    | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR SEMI                          # PlainPropCallCommand
+    | forLoop                                                                       # ForCommand
+    | semiLessCommand SEMI                                                          # SemiCommand
+    ;
+
+forLoop
+    : FOR LPAR forInit? SEMI expr? SEMI forUpdate? RPAR command # ConditionForLoop
+    | FOR LPAR type ID COLON expr RPAR command                  # CollectionForLoop
+    ;
+forInit     : semiLessCommand;
+forUpdate   : semiLessCommand;
+
+semiLessCommand
+    : type ID ASS expr                                  # NewVarCommand
+    | ID ASS expr                                       # ReassignCommand
+    | expr (LBRAC expr RBRAC)+ ASS expr                 # ArrayIndexReassignCommand
+    | (PARENT DOT)+ ID ASS expr                         # ParentVarAssignCommand
+    | ADD expr                                          # AddCommand
+    | OMIT expr                                         # OmitCommand
+    | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR   # PlainPropCallCommand
     ;
 
 expr: disjunction;
@@ -142,6 +154,7 @@ SUBJECT_TYPE: 'Subject';
 MAP         : 'Map';
 NEW_MAP     : 'newMap';
 
+COLON       : ':';
 SEMI        : ';';
 DOT         : '.';
 COMMA       : ',';

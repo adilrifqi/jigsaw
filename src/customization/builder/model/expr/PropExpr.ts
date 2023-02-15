@@ -44,7 +44,7 @@ export class PropExpr extends Expr {
             case "addRow":
                 return ValueType.NUM;
             case "rows":
-                return {type: ValueType.STRING, dimension: 1};
+                return new ArrayType(ValueType.STRING, 1);
             case "clearRows":
                 return ValueType.NUM;
             case "removeRow":

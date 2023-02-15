@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CommandContext, ComparisonContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, HereExprContext, IdExprContext, IfCommandContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CollectionForLoopContext, CommandContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, ForCommandContext, ForInitContext, ForUpdateContext, HereExprContext, IdExprContext, IfCommandContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -57,6 +57,8 @@ import { ParentVarExpr } from './model/expr/ParentVarExpr';
 import { ParentVarAssignCommand } from './model/command/ParentVarAssignCommand';
 import { IsNullExpr } from './model/expr/IsNullExpr';
 import { MapType, NewMapExpr } from './model/expr/NewMapExpr';
+import { ConditionForLoopCommand } from './model/command/ConditionForLoopCommand';
+import { CollectionForloopCommand } from './model/command/CollectionForLoopCommand';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -257,6 +259,160 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new ScopeCommand(commands, this.runtime, ctx, this.locationStack.at(-1));
     }
 
+    visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
+        const conditions: Expr[] = [];
+        const commands: Command[] = [];
+        for (var i = 0; i < ctx.expr().length; i++) {
+            const exprComp: CustSpecComponent = this.visit(ctx.expr(i));
+            if (exprComp instanceof ErrorComponent) return exprComp;
+            const expr: Expr = exprComp as Expr;
+            if (expr.type() != ValueType.BOOLEAN)
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr(i), [ValueType.BOOLEAN], expr.type()).toString()
+                );
+            conditions.push(expr);
+            
+            const commandComp: CustSpecComponent = this.visit(ctx.command(i));
+            if (commandComp instanceof ErrorComponent) return commandComp;
+            commands.push(commandComp as Command);
+        }
+
+        if (ctx.command().length > ctx.expr().length) {
+            const commandComp: CustSpecComponent = this.visit(ctx.command(ctx.command().length - 1));
+            if (commandComp instanceof ErrorComponent) return commandComp;
+            commands.push(commandComp as Command);
+        }
+
+        if (this.locationStack.length == 0)
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
+            );
+        return new IfElseCommand(conditions, commands, ctx, this.locationStack.at(-1)!);
+    }
+
+    visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (expr.type() != ValueType.BOOLEAN)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.BOOLEAN], expr.type()).toString()
+            );
+        
+        if (!this.openVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
+            );
+        const commandComp: CustSpecComponent = this.visit(ctx.command());
+        if (commandComp instanceof ErrorComponent) return commandComp;
+        const command: Command = commandComp as Command;
+        if (!this.closeVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
+            );
+
+        return new WhileCommand(expr, command, ctx, this.runtime, this.locationStack.at(-1));
+    }
+
+    visitForCommand(ctx: ForCommandContext): CustSpecComponent {
+        return this.visit(ctx.forLoop());
+    }
+
+    visitSemiCommand(ctx: SemiCommandContext): CustSpecComponent {
+        return this.visit(ctx.semiLessCommand());
+    }
+
+    visitConditionForLoop(ctx: ConditionForLoopContext): CustSpecComponent {
+        if (!this.openVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
+            );
+
+        const forInitComp: CustSpecComponent | undefined = !ctx.forInit() ? undefined : this.visit(ctx.forInit()!);
+        var forInit: Command | undefined = undefined;
+        if (forInitComp) {
+            if (forInitComp instanceof ErrorComponent) return forInitComp;
+            forInit = forInitComp as Command;
+        }
+
+        const exprComp: CustSpecComponent | undefined = !ctx.expr() ? undefined : this.visit(ctx.expr()!);
+        var expr: Expr = new BooleanLitExpr(true);
+        if (exprComp) {
+            if (exprComp instanceof ErrorComponent) return exprComp;
+            expr = exprComp as Expr;
+            if (expr.type() != ValueType.BOOLEAN)
+                return new ErrorComponent(new TypeErrorBuilder(ctx.expr()!, [ValueType.BOOLEAN], expr.type()).toString());
+        }
+
+        const forUpdateComp: CustSpecComponent | undefined = !ctx.forUpdate() ? undefined : this.visit(ctx.forUpdate()!);
+        var forUpdate: Command | undefined = undefined;
+        if (forUpdateComp) {
+            if (forUpdateComp instanceof ErrorComponent) return forUpdateComp;
+            forUpdate = forUpdateComp as Command;
+        }
+
+        if (!this.openVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
+            );
+        const commandComp: CustSpecComponent = this.visit(ctx.command());
+        if (commandComp instanceof ErrorComponent) return commandComp;
+        const command: Command = commandComp as Command;
+        if (!this.closeVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
+            );
+
+        if (!this.closeVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
+            );
+
+        return new ConditionForLoopCommand(forInit, expr, forUpdate, command, this.runtime, ctx, this.locationStack.at(-1));
+    }
+    visitForInit(ctx: ForInitContext): CustSpecComponent {return this.visit(ctx.semiLessCommand());}
+    visitForUpdate(ctx: ForUpdateContext): CustSpecComponent {return this.visit(ctx.semiLessCommand());}
+
+    visitCollectionForLoop(ctx: CollectionForLoopContext): CustSpecComponent {
+        const varName: string = ctx.ID().text;
+
+        if (!this.openVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where no location scope exists").toString()
+            );
+
+        const exprComp: CustSpecComponent = this.visit(ctx.expr());
+        if (exprComp instanceof ErrorComponent) return exprComp;
+        const expr: Expr = exprComp as Expr;
+        if (!(expr.type() instanceof ArrayType))
+            return new ErrorComponent(new ErrorBuilder(ctx.expr(), "Expected an array type, given " + expr.type()).toString());
+        const arrayType: ArrayType = expr.type() as ArrayType;
+        const innerType: ValueType | ArrayType | MapType
+            = arrayType.dimension == 1
+            ? arrayType.type
+            : new ArrayType(arrayType.type, arrayType.dimension - 1);
+
+        const declaredType: ValueType | ArrayType | MapType = this.extractType(ctx.type());
+        if (JSON.stringify(innerType) !== JSON.stringify(declaredType))
+            return new ErrorComponent(new TypeErrorBuilder(ctx.type(), [innerType], declaredType).toString());
+
+        if (!this.addTCVariable(varName, declaredType))
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Variable with name " + varName + " already exists in this scope.").toString()
+            );
+
+        const commandComp: CustSpecComponent = this.visit(ctx.command());
+        if (commandComp instanceof ErrorComponent) return commandComp;
+        const command: Command = commandComp as Command;
+
+        if (!this.closeVariableScope())
+            return new ErrorComponent(
+                new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
+            );
+
+        return new CollectionForloopCommand(declaredType, varName, expr, command, ctx, this.runtime, this.locationStack.at(-1));
+    }
+
     visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
         const declaredType: ValueType | ArrayType | MapType = this.extractType(ctx.type());
         const varName: string = ctx.ID().toString();
@@ -409,53 +565,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         }
     }
 
-    visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
-        const conditions: Expr[] = [];
-        const commands: Command[] = [];
-        for (var i = 0; i < ctx.expr().length; i++) {
-            const exprComp: CustSpecComponent = this.visit(ctx.expr(i));
-            if (exprComp instanceof ErrorComponent) return exprComp;
-            const expr: Expr = exprComp as Expr;
-            if (expr.type() != ValueType.BOOLEAN)
-                return new ErrorComponent(
-                    new TypeErrorBuilder(ctx.expr(i), [ValueType.BOOLEAN], expr.type()).toString()
-                );
-            conditions.push(expr);
-            
-            const commandComp: CustSpecComponent = this.visit(ctx.command(i));
-            if (commandComp instanceof ErrorComponent) return commandComp;
-            commands.push(commandComp as Command);
-        }
-
-        if (ctx.command().length > ctx.expr().length) {
-            const commandComp: CustSpecComponent = this.visit(ctx.command(ctx.command().length - 1));
-            if (commandComp instanceof ErrorComponent) return commandComp;
-            commands.push(commandComp as Command);
-        }
-
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
-            );
-        return new IfElseCommand(conditions, commands, ctx, this.locationStack.at(-1)!);
-    }
-
-    visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
-        const exprComp: CustSpecComponent = this.visit(ctx.expr());
-        if (exprComp instanceof ErrorComponent) return exprComp;
-        const expr: Expr = exprComp as Expr;
-        if (expr.type() != ValueType.BOOLEAN)
-            return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.BOOLEAN], expr.type()).toString()
-            );
-        
-        const commandComp: CustSpecComponent = this.visit(ctx.command());
-        if (commandComp instanceof ErrorComponent) return commandComp;
-        const command: Command = commandComp as Command;
-
-        return new WhileCommand(expr, command, ctx, this.locationStack.at(-1));
-    }
-
     visitAddCommand(ctx: AddCommandContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
@@ -463,13 +572,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const exprType: ValueType | ArrayType | MapType = expr.type();
         var mistype: boolean = false;
 
-        if (exprType as any in ValueType) {
-            if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
-        } else if (exprType instanceof ArrayType) {
+        if (exprType instanceof ArrayType) {
             const arrayType: ArrayType = exprType as ArrayType;
             if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
                 mistype = true;
-        } else mistype = true;
+        } else if (exprType instanceof MapType) mistype = true;
+        else if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
 
         if (mistype)
             return new ErrorComponent(
@@ -486,13 +594,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const exprType: ValueType | ArrayType | MapType = expr.type();
         var mistype: boolean = false;
 
-        if (exprType as any in ValueType) {
-            if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
-        } else if (exprType instanceof ArrayType) {
+        if (exprType instanceof ArrayType) {
             const arrayType: ArrayType = exprType as ArrayType;
             if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
                 mistype = true;
-        } else mistype = true;
+        } else if (exprType instanceof MapType) mistype = true;
+        else if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
 
         if (mistype)
             return new ErrorComponent(
@@ -1105,7 +1212,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 }
             }
             case "remove": {
-                if (!(expr.type() as any in ValueType))
+                if (expr.type() instanceof ArrayType)
                     if (exprs.length == 1) {
                         const indexComp: CustSpecComponent = this.visit(exprs[0]);
                         if (indexComp instanceof ErrorComponent) return indexComp;

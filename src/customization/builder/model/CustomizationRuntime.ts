@@ -258,7 +258,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 						return null;
 				}
 
-				return {value: arrayResult, type: {type: deepestType, dimension: dimension}};
+				return {value: arrayResult, type: new ArrayType(deepestType, dimension)};
 			}
 			if (variable.type === "boolean") return {value: variable.value === "true", type: ValueType.BOOLEAN};
 			if (variable.type === "int") return {value: +variable.value, type: ValueType.NUM};

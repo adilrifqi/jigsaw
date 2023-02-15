@@ -33,7 +33,7 @@ export class OmitCommand extends Command {
             else if (arrayType.type == ValueType.NODE)
                 this.runtime.omitNodes(value as NodeInfo[]);
             else this.runtime.omitEdges(value as EdgeInfo[]);
-        } else if (exprType as any in ValueType) {
+        } else {
             if (value !== null && value !== undefined) {
                 if (this.expr.type() == ValueType.NODE)
                     this.runtime.omitNode(value as NodeInfo);

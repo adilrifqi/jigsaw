@@ -38,7 +38,8 @@ export class AdditionExpr extends Expr {
         const rightValue: Object = this.rightExpr.eval() as Object;
         if (rightValue instanceof RuntimeError) return rightValue;
 
-        if (this.resultType as any in ValueType) {
+        if (this.resultType instanceof ArrayType) return (leftValue as any[]).concat(rightValue as any[]);
+        else {
             const valueType: ValueType = this.resultType as ValueType;
             if (valueType == ValueType.NUM) return (leftValue as number) + (rightValue as number);
             else {
@@ -47,6 +48,6 @@ export class AdditionExpr extends Expr {
                     else return (leftValue as string) + (rightValue as string);
                 } else return (leftValue as number) + (rightValue as string); 
             }
-        } else return (leftValue as any[]).concat(rightValue as any[]);
+        }
     }
 }

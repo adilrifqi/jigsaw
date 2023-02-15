@@ -21,7 +21,7 @@ export class EdgesOfExpr extends Expr {
     }
 
     public type(): ArrayType {
-        return {type: ValueType.EDGE, dimension: 1};
+        return new ArrayType(ValueType.EDGE, 1);
     }
 
     public eval(): Object {
