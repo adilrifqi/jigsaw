@@ -61,6 +61,7 @@ import { ConditionForLoopCommand } from './model/command/ConditionForLoopCommand
 import { CollectionForloopCommand } from './model/command/CollectionForLoopCommand';
 import { PlusPlusExpr } from './model/expr/PlusPlusExpr';
 import { PlusPlusCommand } from './model/command/PlusPlusCommand';
+import { ThrowingErrorListener } from './error/ThrowingErrorListener';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -79,14 +80,24 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         this.openLocationScope();
         
         const lexer: Lexer = new CustSpecLexer(CharStreams.fromString(spec));
+        lexer.removeErrorListeners();
+        lexer.addErrorListener(ThrowingErrorListener.instance);
+
         const parser: CustSpecParser = new CustSpecParser(new CommonTokenStream(lexer));
-        const tree: ParseTree = parser.start();
+        parser.removeErrorListeners();
+        parser.addErrorListener(ThrowingErrorListener.instance);
 
-        const visitResult: CustSpecComponent = this.visit(tree);
-        if (visitResult instanceof ErrorComponent) return visitResult;
+        try {
+            const tree: ParseTree = parser.start();
 
-        this.runtime.setTopStatements(this.topStatements);
-        return this.runtime;
+            const visitResult: CustSpecComponent = this.visit(tree);
+            if (visitResult instanceof ErrorComponent) return visitResult;
+
+            this.runtime.setTopStatements(this.topStatements);
+            return this.runtime;
+        } catch (error) {
+            return new ErrorComponent((error as Error).message);
+        }
     }
 
     visitStart(ctx: StartContext): CustSpecComponent {
