@@ -731,7 +731,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     new TypeErrorBuilder(ctx._right, [ValueType.NUM], rightExpr.type()).toString()
                 );
             
-            return new BinaryNumOp(leftExpr, rightExpr, NumOp.SUB);
+            return new BinaryNumOp(leftExpr, rightExpr, NumOp.SUB, ctx);
         } else {
             const leftComp: CustSpecComponent = this.visit(ctx._left);
             if (leftComp instanceof ErrorComponent) return leftComp;
@@ -817,7 +817,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new BinaryNumOp(
                 leftExpr,
                 rightExpr,
-                ctx.TIMES() != undefined ? NumOp.MULT : NumOp.DIV
+                ctx.TIMES() != undefined ? NumOp.MULT : NumOp.DIV,
+                ctx
             );
         }
     }
