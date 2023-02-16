@@ -43,8 +43,16 @@ export class ValueOfExpr extends Expr {
         const subjectValue: {value: Object, type: ValueType | ArrayType} | null = this.runtime.getSubjectValue(subjectExprValue as Subject);
         if (subjectValue === null) return new RuntimeError(this.ctx, "Cannot get the value the subject of the variable of this type.");
 
-        const valueTypeHere: string = typeof subjectValue;
-        if (JSON.stringify(this.declaredType) !== JSON.stringify(subjectValue.type))
+        const subjectValueType: ValueType | ArrayType = subjectValue.type;
+        if (subjectValueType instanceof ArrayType) {
+            if (this.declaredType instanceof ArrayType) {
+                if (subjectValueType.type !== undefined) {
+                    if (JSON.stringify(this.declaredType) !== JSON.stringify(subjectValue.type))
+                        return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
+                } else if (subjectValueType.dimension > this.declaredType.dimension)
+                    return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
+            } else return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
+        } else if (JSON.stringify(this.declaredType) !== JSON.stringify(subjectValue.type))
             return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
 
         return subjectValue.value;

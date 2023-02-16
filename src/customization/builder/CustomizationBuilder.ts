@@ -400,11 +400,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (!(expr.type() instanceof ArrayType))
             return new ErrorComponent(new ErrorBuilder(ctx.expr(), "Expected an array type, given " + expr.type()).toString());
         const arrayType: ArrayType = expr.type() as ArrayType;
-        const innerType: ValueType | ArrayType | MapType
+        const innerType: ValueType | ArrayType | MapType | undefined
             = arrayType.dimension == 1
             ? arrayType.type
             : new ArrayType(arrayType.type, arrayType.dimension - 1);
 
+        if (innerType === undefined) return new ErrorComponent(new ErrorBuilder(ctx.expr(), "For loop to iterate over ambiguous type.").toString());
         const declaredType: ValueType | ArrayType | MapType = this.extractType(ctx.type());
         if (JSON.stringify(innerType) !== JSON.stringify(declaredType))
             return new ErrorComponent(new TypeErrorBuilder(ctx.type(), [innerType], declaredType).toString());
@@ -434,24 +435,27 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (exprComp instanceof ErrorComponent) return exprComp;
         const expr: Expr = exprComp as Expr;
 
-        if (declaredType == ValueType.NODE && expr.type() != ValueType.NODE && expr.type() !== null)
-            return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE], expr.type()).toString()
-            );
-        else if (declaredType == ValueType.EDGE && expr.type() != ValueType.EDGE && expr.type() !== null)
-            return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
-            );
-        else if (declaredType instanceof ArrayType) {
-            // If the given array type is of dimension 0 then it's fine
-            // If they're both arrays with different types, raise error
-            const declaredArrayType: ArrayType = declaredType as ArrayType;
+        // if (declaredType == ValueType.NODE && expr.type() != ValueType.NODE && expr.type() !== null)
+        //     return new ErrorComponent(
+        //         new TypeErrorBuilder(ctx.expr(), [ValueType.NODE], expr.type()).toString()
+        //     );
+        // else if (declaredType == ValueType.EDGE && expr.type() != ValueType.EDGE && expr.type() !== null)
+        //     return new ErrorComponent(
+        //         new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
+        //     );
+        if (declaredType instanceof ArrayType) {
             if (!(expr.type() instanceof ArrayType))
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
                 );
             const givenArrayType: ArrayType = expr.type() as ArrayType;
-            if (givenArrayType.dimension > 0 && JSON.stringify(declaredArrayType) !== JSON.stringify(givenArrayType))
+            const declaredArrayType: ArrayType = declaredType as ArrayType;
+
+            if (givenArrayType.type !== undefined && JSON.stringify(declaredArrayType) !== JSON.stringify(givenArrayType))
+                return new ErrorComponent(
+                    new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
+                );
+            else if (givenArrayType.dimension > declaredArrayType.dimension)
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.expr(), [declaredType], expr.type()).toString()
                 );
@@ -512,7 +516,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             indexExprs.push(indexExpr);
         }
 
-        const expectedType: ValueType | ArrayType | MapType =
+        const expectedType: ValueType | ArrayType | MapType | undefined =
             indicesCount == arrayType.dimension
             ? arrayType.type
             : new ArrayType(arrayType.type, arrayType.dimension - indicesCount);
@@ -520,8 +524,24 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const newValueComp: CustSpecComponent = this.visit(ctx.expr(ctx.expr().length - 1));
         if (newValueComp instanceof ErrorComponent) return newValueComp;
         const newValueExpr: Expr = newValueComp as Expr;
-        if (JSON.stringify(expectedType) !== JSON.stringify(newValueExpr.type()))
-            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
+        const newValueType: ValueType | ArrayType | MapType = newValueExpr.type();
+
+        if (expectedType !== undefined) {
+            if (!(expectedType instanceof ArrayType)) {
+                if (JSON.stringify(expectedType) !== JSON.stringify(newValueType))
+                    return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
+            } else {
+                if (!(newValueType instanceof ArrayType))
+                    return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
+                else {
+                    if (expectedType.type !== undefined) {
+                        if (JSON.stringify(expectedType) !== JSON.stringify(newValueType))
+                            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
+                    } else if (newValueType.type !== undefined && newValueType.dimension < expectedType.dimension)
+                        return new ErrorComponent(new TypeErrorBuilder(ctx.expr(ctx.expr().length - 1), [expectedType], newValueExpr.type()).toString());
+                }
+            }
+        }
 
         return new ArrayIndexReassignCommand(arrayExpr, indexExprs, newValueExpr, this.runtime, ctx, this.locationStack.at(-1));
     }
@@ -881,6 +901,8 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(
                 new ErrorBuilder(ctx.suffixed()!, "Indexed expression must be an array. Found " + arrayExpr.type()).toString()
             );
+        else if ((arrayExpr.type() as ArrayType).type === undefined)
+            return new ErrorComponent(new ErrorBuilder(ctx.suffixed()!, "Cannot get element of an array of ambiguous type.").toString());
         const arrayType: ArrayType = arrayExpr.type() as ArrayType;
         if (arrayType.dimension == 0)
             return new ErrorComponent(
@@ -1007,7 +1029,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
     private validValueOfType(type: ValueType | ArrayType | MapType): boolean {
         if (type instanceof MapType) return this.validValueOfType(type.keyType) && this.validValueOfType(type.valueType);
-        if (type instanceof ArrayType) return this.validValueOfType(type.type);
+        if (type instanceof ArrayType) {
+            if (type.type === undefined) return false;
+            return this.validValueOfType(type.type);
+        }
         else return type == ValueType.BOOLEAN || type == ValueType.NUM || type == ValueType.STRING;
     }
 
@@ -1071,14 +1096,24 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         var exprComp: CustSpecComponent = this.visit(ctx.expr(0));
         if (exprComp instanceof ErrorComponent) return exprComp;
         var expr: Expr = exprComp as Expr;
-        const type: ValueType | ArrayType | MapType = expr.type();
+        var type: ValueType | ArrayType | MapType = expr.type();
         contents.push(expr);
 
         for (var i = 1; i < ctx.expr().length; i++) {
             exprComp = this.visit(ctx.expr(i));
             if (exprComp instanceof ErrorComponent) return exprComp;
             expr = exprComp as Expr;
-            if (JSON.stringify(type) !== JSON.stringify(expr.type()))
+            const currentType: ValueType | ArrayType | MapType = expr.type();
+
+            if (type instanceof ArrayType && type.type === undefined) {
+                if (currentType instanceof ArrayType) {
+                    if (currentType.type !== undefined) {
+                        if (currentType.dimension < type.dimension)
+                            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(i), [type], expr.type()).toString());
+                        type = currentType;
+                    } else if (currentType.dimension > type.dimension) type = currentType;
+                } else return new ErrorComponent(new TypeErrorBuilder(ctx.expr(i), [type], expr.type()).toString());
+            } else if (JSON.stringify(type) !== JSON.stringify(expr.type()))
                 return new ErrorComponent(
                     new TypeErrorBuilder(ctx.expr(i), [type], expr.type()).toString()
                 );
@@ -1231,7 +1266,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 const suffixedType: ValueType | ArrayType | MapType = expr.type();
                 if (suffixedType instanceof ArrayType) {
                     const suffixedArrayType : ArrayType = suffixedType as ArrayType;
-                    const expectedType: ValueType | ArrayType | MapType =
+                    const expectedType: ValueType | ArrayType | MapType | undefined =
                         suffixedArrayType.dimension > 1
                         ? new ArrayType(suffixedArrayType.type, suffixedArrayType.dimension - 1)
                         : suffixedArrayType.type;
@@ -1240,9 +1275,18 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         const newElementComp: CustSpecComponent = this.visit(exprs[0]);
                         if (newElementComp instanceof ErrorComponent) return newElementComp;
                         const newElementExpr: Expr = newElementComp as Expr;
-                        if (JSON.stringify(newElementExpr.type()) === JSON.stringify(expectedType)) {
-                            argExprs.push(newElementExpr);
-                            break;
+                        const newElementType: ValueType | ArrayType | MapType = newElementExpr.type();
+                        var valid: boolean = false;
+
+                        if (expectedType === undefined) valid = true;
+                        else if (!(expectedType instanceof ArrayType)) valid = JSON.stringify(newElementType) === JSON.stringify(expectedType);
+                        else if (expectedType instanceof ArrayType) {
+                            if (expectedType.type !== undefined)
+                                valid = JSON.stringify(newElementType) === JSON.stringify(expectedType);
+                            else if (newElementType instanceof ArrayType) {
+                                if (newElementType.type === undefined) valid = true;
+                                else valid = newElementType.dimension >= expectedType.dimension;
+                            }
                         }
                     }
                 }

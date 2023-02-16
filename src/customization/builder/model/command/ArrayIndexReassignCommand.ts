@@ -44,7 +44,7 @@ export class ArrayIndexReassignCommand extends Command {
         const arrayType: ArrayType = this.arrayExpr.type() as ArrayType;
         const targetType: ValueType | ArrayType | MapType
             = this.indexExprs.length >= arrayType.dimension
-            ? arrayType.type
+            ? arrayType.type!
             : new ArrayType(arrayType.type, arrayType.dimension - this.indexExprs.length);
         if (targetType != ValueType.NODE && targetType != ValueType.EDGE && newValueResult === null)
             return new RuntimeError(this.ctx, "Cannot assign null as an element");

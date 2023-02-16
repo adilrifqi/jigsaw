@@ -4,9 +4,9 @@ import { MapType } from "./NewMapExpr";
 import { ValueType } from "./ValueType";
 
 export class ArrayType {
-    public readonly type: ValueType | MapType;
+    public readonly type: ValueType | MapType | undefined;
     public readonly dimension: number;
-    constructor(type: ValueType | MapType, dimension: number) {
+    constructor(type: ValueType | MapType | undefined, dimension: number) {
         this.type = type;
         this.dimension = dimension;
     }
@@ -20,14 +20,27 @@ export class ArrayExpr extends Expr {
         super();
         this.contents = contents;
         if (arrayType) this.arrayType = arrayType;
-        else if (this.contents.length == 0) this.arrayType = new ArrayType(ValueType.NUM, 0);
-        else {
-            const elementType: ValueType | ArrayType | MapType = this.contents[0].type();
-            if (elementType instanceof ArrayType) {
-                const elementArrayType: ArrayType = elementType as ArrayType;
-                this.arrayType = new ArrayType(elementArrayType.type, elementArrayType.dimension + 1);
-            } else this.arrayType = new ArrayType(elementType as ValueType | MapType, 1);
+        else this.arrayType = ArrayExpr.extractArrayType(contents);
+    }
+
+    public static extractArrayType(contents: Expr[]): ArrayType {
+        if (contents.length == 0) return new ArrayType(undefined, 1);
+
+        var highestUndefinedArrayType: ArrayType | undefined = undefined;
+        for (const expr of contents) {
+            const currentInnerType: ValueType | ArrayType | MapType = expr.type();
+            if (currentInnerType as any in ValueType) return new ArrayType(currentInnerType as ValueType, 1);
+            if (currentInnerType instanceof MapType) return new ArrayType(currentInnerType as MapType, 1);
+
+            const currentInnerArrayType: ArrayType = currentInnerType as ArrayType;
+            if (currentInnerArrayType.type === undefined) {
+                if (highestUndefinedArrayType === undefined) highestUndefinedArrayType = new ArrayType(undefined, currentInnerArrayType.dimension + 1);
+                else if (currentInnerArrayType.dimension > highestUndefinedArrayType.dimension) highestUndefinedArrayType = currentInnerArrayType;
+            }
+            else return new ArrayType(currentInnerArrayType.type, currentInnerArrayType.dimension + 1);
         }
+
+        return highestUndefinedArrayType!;
     }
 
     public type(): ArrayType {

@@ -19,7 +19,7 @@ export class ArrayAccessExpr extends Expr {
 
     public type(): ValueType | ArrayType | MapType {
         const arrayType: ArrayType = this.arrayExpr.type() as ArrayType;
-        if (arrayType.dimension <= 1) return arrayType.type;
+        if (arrayType.dimension <= 1) return arrayType.type!;
         return new ArrayType(arrayType.type, arrayType.dimension - 1);
     }
 

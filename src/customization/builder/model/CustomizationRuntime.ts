@@ -229,7 +229,29 @@ export class CustomizationRuntime extends CustSpecComponent {
 		const variable: JigsawVariable | undefined = this.frame.jigsawVariables.get(subject.id);
 		if (variable) {
 			var typeString: string = variable.type;
-			if (typeString.endsWith("]")) {
+			if (variable.value.includes("size=") && variable.value.includes("List")) {
+				if (variable.value.includes("size=0")) return {value: [], type: new ArrayType(undefined, 1)};
+
+				const arrayResult: Object[] = [];
+				var innerType: ValueType | ArrayType | undefined;
+				for (const [_, elementKey] of variable.variables) {
+					const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: elementKey});
+					if (fieldValue === null) return null;
+					arrayResult.push(fieldValue.value);
+
+					const fieldValueType: ValueType | ArrayType = fieldValue.type;
+					if (innerType === undefined) innerType = fieldValueType;
+					else if (innerType instanceof ArrayType && innerType.type === undefined) {
+						const fieldValueArrayType: ArrayType = fieldValueType as ArrayType;
+						if (fieldValueArrayType.type !== undefined) innerType = fieldValueArrayType;
+						else if (fieldValueArrayType.dimension > innerType.dimension) innerType = fieldValueArrayType;
+					}
+				}
+
+				const newDeepestType: ValueType | undefined = innerType! instanceof ArrayType ? innerType.type as (ValueType | undefined) : innerType!;
+				const newDimension: number = innerType! instanceof ArrayType ? innerType.dimension + 1 : 1;
+				return {value: arrayResult, type: new ArrayType(newDeepestType, newDimension)};
+			} else if (typeString.endsWith("]")) {
 				const arrayResult: Object[] = [];
 				for (const [_, fieldKey] of variable.variables)  {
 					const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: fieldKey});
@@ -262,9 +284,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 			}
 			if (variable.type === "boolean") return {value: variable.value === "true", type: ValueType.BOOLEAN};
 			if (variable.type === "int") return {value: +variable.value, type: ValueType.NUM};
-			if (variable.type === "String")  {
+			if (variable.type === "String" || variable.type === "char")  {
 				const stringValue: string = variable.value as string;
 				return {value: stringValue.substring(1, stringValue.length - 1), type: ValueType.STRING};
+			}
+			if (variable.type === "Integer") {
+				const getResult: {value: Object, type: ValueType | ArrayType} = this.getSubjectValue({id: variable.variables.get("value")!}) as {value: Object, type: ValueType | ArrayType};
+				return {value: +getResult.value, type: ValueType.NUM};
 			}
 			return null;
 		}
