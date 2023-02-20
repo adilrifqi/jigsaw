@@ -49,6 +49,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.executedMethodLocations = [];
 		this.openLocationScope();
 
+		this.nodes.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
 		const frame: StackFrame = DebugState.getInstance().getFrameByPos(stackPos)!;
 		this.frame = frame;
 
@@ -168,13 +170,19 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public getSubjectNode(subject: Subject): NodeInfo | null {
-		var result: NodeInfo | null = null;
-		for (const node of this.nodes)
-			if (node.id === subject.id) {
-				result = node;
-				break;
-			}
-		return result;
+		const id: string = subject.id;
+
+		let left: number = 0;
+  		let right: number = this.nodes.length - 1;
+  		while (left <= right) {
+    		const mid: number = Math.floor((left + right) / 2);
+			const currNode: NodeInfo = this.nodes[mid];
+    		if (currNode.id === id) return currNode;
+    		if (id < currNode.id) right = mid - 1;
+    		else left = mid + 1;
+  		}
+
+  		return null;
 	}
 
 	public getCurrentSubject(): Subject {
