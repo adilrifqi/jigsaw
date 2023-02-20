@@ -56,6 +56,10 @@ export class StackFrame {
                 if (reffer) {
                     keyString = keyString.includes("@") ? keyString : reffer.value + "." + variable.name;
                     reffer.setVariable(variable.name, keyString);
+
+                    // Set parent info to variable
+                    if (!this.jigsawVariables.has(keyString)) variable.addParent(reffer.id);
+                    else this.jigsawVariables.get(keyString)!.addParent(reffer.id);
                 }
             }
         }

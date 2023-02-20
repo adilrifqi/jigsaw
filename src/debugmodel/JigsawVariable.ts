@@ -8,6 +8,7 @@ export class JigsawVariable {
     indexedVariables: number;
     evaluateName: string;
     variables: Map<string, string>;
+    parents: Set<string>;
     lazy: boolean;
 
     constructor(
@@ -31,11 +32,16 @@ export class JigsawVariable {
             this.indexedVariables = indexedVariables;
             this.evaluateName = evaluateName;
             this.variables = variables;
+            this.parents = new Set();
             this.lazy = lazy;
     }
 
     public setVariable(fieldName: string, varKey: string) {
         this.variables.set(fieldName, varKey);
+    }
+
+    public addParent(parentKey: string) {
+        this.parents.add(parentKey);
     }
 
     public getFields(): Map<string, string> {

@@ -191,9 +191,10 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	public getParentsOf(subject: Subject): Subject[] {
 		const result: Subject[] = [];
-		for (const [varKey, variable] of this.frame.jigsawVariables)
-			for (const [_, fieldKey] of variable.variables)
-				if (fieldKey === subject.id) result.push({id: varKey});
+		const subjectVariable: JigsawVariable | undefined = this.frame.jigsawVariables.get(subject.id);
+		if (subjectVariable)
+			for (const parentVarKey of subjectVariable.parents)
+				result.push({id: parentVarKey});
 		return result;
     }
 
