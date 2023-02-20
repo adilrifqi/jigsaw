@@ -315,10 +315,27 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	// ====================Customization Methods====================
 	public addNode(newNode: NodeInfo): boolean {
-		for (const node of this.nodes)
-			if (node.id === newNode.id)
-				return false;
-		this.nodes.push(newNode);
+		var left: number = 0;
+    	var right: number = this.nodes.length - 1;
+
+    	while (left < right) {
+    		const mid: number = Math.floor((left + right) / 2);
+    	    const midNode: NodeInfo = this.nodes[mid];
+    	    const afterMidNode: NodeInfo = this.nodes[mid + 1];
+
+			if (midNode.id === newNode.id || newNode.id === afterMidNode.id) return false;
+        	if (midNode.id < newNode.id && newNode.id < afterMidNode.id) {
+        	    this.nodes.splice(mid + 1, 0, newNode);
+        	    return true;
+        	}
+        	if (midNode.id < newNode.id) left = mid + 1;
+        	else right = mid - 1;
+    	}
+
+    	const rightNode: NodeInfo = this.nodes[right];
+    	if (newNode.id === rightNode.id) return false;
+    	if (rightNode.id < newNode.id) this.nodes.splice(right + 1, 0, newNode);
+    	else this.nodes.splice(Math.max(right - 1, 0), 0, newNode);
 		return true;
 	}
 
