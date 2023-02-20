@@ -76,7 +76,7 @@ export class PropExpr extends Expr {
         }
 
         if (this.isSubjectProp) {
-            const fieldSubject: Subject | null = this.runtime.getFieldOfName(proppedValue as Subject, this.prop);
+            const fieldSubject: Subject | null = this.runtime.getField(this.prop, proppedValue as Subject);
             if (fieldSubject === null)
                 return new RuntimeError(this.ctx, "Field with name " + this.prop + " does not exist in this location scope.");
             return fieldSubject as Subject;

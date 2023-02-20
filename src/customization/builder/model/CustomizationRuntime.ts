@@ -198,12 +198,10 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
     }
 
-	public getFieldOfName(subject: Subject, fieldName: string): Subject | null {
-		const variable: JigsawVariable = this.frame.jigsawVariables.get(subject.id)!;
-		for (const [varFieldName, varFieldKey] of variable.variables)
-			if (varFieldName === fieldName)
-				return {id: varFieldKey};
-		return null
+	public getField(fieldName: string, subject?: Subject): Subject | null {
+		const variable: JigsawVariable = subject === undefined ? this.currentVariable : this.frame.jigsawVariables.get(subject.id)!;
+		if (variable.variables.has(fieldName)) return {id: variable.variables.get(fieldName)!};
+		return null;
 	}
 
 	public getChildrenOf(subject: Subject): Subject[] {
@@ -212,13 +210,6 @@ export class CustomizationRuntime extends CustSpecComponent {
 		for (const [_, fieldKey] of variable.variables)
 			result.push({id: fieldKey});
 		return result;
-	}
-
-	public getCurrentVariableField(fieldName: string): Subject | null {
-		for (const [varFieldName, fieldVarKey] of this.currentVariable.variables)
-			if (varFieldName === fieldName)
-				return {id: fieldVarKey};
-		return null;
 	}
 
 	public getVariableFieldOf(subject: Subject, fieldName: string): Subject | null {

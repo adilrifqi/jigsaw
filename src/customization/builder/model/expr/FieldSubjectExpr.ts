@@ -21,7 +21,7 @@ export class FieldSubjectExpr extends Expr {
     }
 
     public eval(): Object {
-        var result: Subject | null = this.runtime.getCurrentVariableField(this.fieldNames[0]);
+        var result: Subject | null = this.runtime.getField(this.fieldNames[0]);
         for (var i = 1; i < this.fieldNames.length && result !== null; i++)
             result = this.runtime.getVariableFieldOf(result, this.fieldNames[i]);
         if (result === null) return new RuntimeError(this.ctx, "The subject with the path with name " + this.fieldNames.toString() + " does not exist in this location scope.");
