@@ -4,6 +4,8 @@ export class StackFrame {
     signature: MethodSignature;
 
     jigsawVariables: Map<string, JigsawVariable> = new Map();
+    typeCollection: Map<string, Map<string, JigsawVariable>> = new Map();
+
     refKeyMap: Map<number, string> = new Map();
     seqRefMap: Map<number, number> = new Map();
 
@@ -60,7 +62,7 @@ export class StackFrame {
 
         if (!this.jigsawVariables.has(keyString)) {
             variable.id = keyString;
-            this.jigsawVariables.set(keyString, variable);
+            this.addVariable(keyString, variable);
 
             // Associate the ref with the variable
             if (variable.lazy) this.lazyRefKeyMap.set(variable.variablesReference, keyString);
@@ -109,6 +111,14 @@ export class StackFrame {
 
     public complete(): boolean {
         return this.seqRefMap.size == 0 && this.lazySeqRefMap.size == 0;
+    }
+
+    private addVariable(keyString: string, variable: JigsawVariable) {
+        const varType: string = variable.type;
+        if (!this.typeCollection.has(varType)) this.typeCollection.set(varType, new Map());
+
+        this.typeCollection.get(varType)!.set(keyString, variable);
+        this.jigsawVariables.set(keyString, variable);
     }
 }
 

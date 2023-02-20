@@ -8,6 +8,7 @@ import { CustSpecComponent } from "./CustSpecComponent";
 import { ArrayType } from "./expr/ArrayExpr";
 import { MapType } from "./expr/NewMapExpr";
 import { ValueType } from "./expr/ValueType";
+import { ClassLocation } from "./location/ClassLocation";
 import { Location, LocationType } from "./location/Location";
 import { MethodLocation } from "./location/MethodLocation";
 import { RTLocationScope, Variable } from "./RTLocationScope";
@@ -56,12 +57,19 @@ export class CustomizationRuntime extends CustSpecComponent {
 				const commandResult: RuntimeError | undefined = topStatement.execute();
 				if (commandResult) return commandResult;
 			} else if (topStatement instanceof Location) {
-				for (const [varKey, variable] of frame.jigsawVariables) {
-					const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topStatement);
-					// if (dispatchResult === null) break;
-					// else
-					if (dispatchResult instanceof RuntimeError) return dispatchResult;
-				}
+				if (topStatement instanceof ClassLocation) {
+					const typeString: string = topStatement.getName();
+					if (frame.typeCollection.has(typeString))
+						for (const [_, variable] of frame.typeCollection.get(typeString)!) {
+							const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topStatement);
+							if (dispatchResult instanceof RuntimeError) return dispatchResult;
+						}
+				} else
+					// Should never happen since all top locations should only be class locations
+					for (const [_, variable] of frame.jigsawVariables) {
+						const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topStatement);
+						if (dispatchResult instanceof RuntimeError) return dispatchResult;
+					}
 			}
 		}
 
