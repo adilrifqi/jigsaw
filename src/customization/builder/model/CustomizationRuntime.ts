@@ -50,6 +50,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.openLocationScope();
 
 		this.nodes.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+		this.edges.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 		const frame: StackFrame = DebugState.getInstance().getFrameByPos(stackPos)!;
 		this.frame = frame;
@@ -170,19 +171,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public getSubjectNode(subject: Subject): NodeInfo | null {
-		const id: string = subject.id;
-
-		let left: number = 0;
-  		let right: number = this.nodes.length - 1;
-  		while (left <= right) {
-    		const mid: number = Math.floor((left + right) / 2);
-			const currNode: NodeInfo = this.nodes[mid];
-    		if (currNode.id === id) return currNode;
-    		if (id < currNode.id) right = mid - 1;
-    		else left = mid + 1;
-  		}
-
-  		return null;
+		const getResult: NodeInfo | undefined = this.getNode(subject.id);
+		return getResult ? getResult : null;
 	}
 
 	public getCurrentSubject(): Subject {
@@ -347,15 +337,10 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public addEdge(newEdge: EdgeInfo): boolean {
-		var sourceFound: boolean = false;
-		var targetFound: boolean = false;
-		for (const node of this.nodes) {
-			sourceFound = sourceFound || newEdge.source === node.id;
-			targetFound = targetFound || newEdge.source === node.id;
-			if (sourceFound && targetFound) break;
-		}
+		var sourceFound: boolean = this.getNode(newEdge.source) !== undefined;
+		var targetFound: boolean = this.getNode(newEdge.target) !== undefined;
 		if (!sourceFound || !targetFound) return false;
-		this.edges.push(newEdge);
+		this.pushEdge(newEdge);
 		return true;
     }
 
@@ -447,10 +432,39 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	private getNode(id: string): NodeInfo | undefined {
-		for (var node of this.nodes)
-			if (node.id === id)
-				return node;
-		return undefined;
+		let left: number = 0;
+  		let right: number = this.nodes.length - 1;
+  		while (left <= right) {
+    		const mid: number = Math.floor((left + right) / 2);
+			const currNode: NodeInfo = this.nodes[mid];
+    		if (currNode.id === id) return currNode;
+    		if (id < currNode.id) right = mid - 1;
+    		else left = mid + 1;
+  		}
+
+  		return undefined;
+	}
+
+	private pushEdge(newEdge: EdgeInfo) {
+		var left: number = 0;
+    	var right: number = this.edges.length - 1;
+
+    	while (left < right) {
+    		const mid: number = Math.floor((left + right) / 2);
+    	    const midEdge: EdgeInfo = this.edges[mid];
+    	    const afterMidEdge: EdgeInfo = this.edges[mid + 1];
+
+        	if (midEdge.id <= newEdge.id && newEdge.id <= afterMidEdge.id) {
+        	    this.edges.splice(mid + 1, 0, newEdge);
+        	    return;
+        	}
+        	if (midEdge.id < newEdge.id) left = mid + 1;
+        	else right = mid - 1;
+    	}
+
+    	const rightEdge: EdgeInfo = this.edges[right];
+    	if (rightEdge.id <= newEdge.id) this.edges.splice(right + 1, 0, newEdge);
+    	else this.edges.splice(Math.max(right - 1, 0), 0, newEdge);
 	}
 
 	public getEdges(origin: NodeInfo, target: NodeInfo): EdgeInfo[] {
