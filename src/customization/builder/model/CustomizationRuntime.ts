@@ -433,13 +433,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public getNodesOfType(typeName: string): NodeInfo[] {
-		const result: NodeInfo[] = [];
-		for (var node of this.nodes) {
-			const titleInfo: VariableInfo | string = node.data.title;
-			if (typeof titleInfo !== 'string')
-				if (titleInfo.type === typeName)
-					result.push(node);
-		}
+		const result: NodeInfo[]= [];
+		const typeVars: Map<string, JigsawVariable> | undefined = this.frame.typeCollection.get(typeName);
+		if (typeVars)
+			for (const [varKey, variable] of typeVars) {
+				const varNode: NodeInfo | undefined = this.getNode(varKey);
+				if (varNode) result.push(varNode);
+			}
 		return result;
 	}
 
