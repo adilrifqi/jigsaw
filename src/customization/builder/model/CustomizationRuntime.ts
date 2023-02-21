@@ -22,9 +22,10 @@ export class CustomizationRuntime extends CustSpecComponent {
     private topStatements: Statement[] = [];
     private runtimeScopes: RTLocationScope[] = [];
 
+	private frame!: StackFrame;
 	private nodes: NodeInfo[] = [];
 	private edges: EdgeInfo[] = [];
-	private frame!: StackFrame;
+	private relations: Map<string, string[]> = new Map(); // Node id -> Edge ids
 
 	private currentLocation!: Location;
 	private currentVariable!: JigsawVariable;
@@ -42,15 +43,48 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.topStatements = newStatements;
 	}
 
+	private populateRelations() {
+		for (const edge of this.edges)
+			this.addToRelations(edge);
+	}
+
+	private addToRelations(edge: EdgeInfo) {
+		const sourceId: string = edge.source;
+		if (!this.relations.has(sourceId)) this.relations.set(sourceId, []);
+		this.relations.get(sourceId)!.push(edge.id);
+
+		const targetId: string = edge.target;
+		if (!this.relations.has(targetId)) this.relations.set(targetId, []);
+		this.relations.get(targetId)!.push(edge.id);
+	}
+
+	private removeFromRelations(edge: EdgeInfo) {
+		const edgeSourceId: string = edge.source;
+		const edgeTargetId: string = edge.target;
+
+		if (this.relations.has(edgeSourceId)) {
+			const nodeEdges: string[] = this.relations.get(edgeSourceId)!;
+			nodeEdges.splice(nodeEdges.indexOf(edge.id), 1);
+			if (nodeEdges.length == 0) this.relations.delete(edgeSourceId);
+		}
+		if (this.relations.has(edgeTargetId)) {
+			const nodeEdges: string[] = this.relations.get(edgeTargetId)!;
+			nodeEdges.splice(nodeEdges.indexOf(edge.id), 1);
+			if (nodeEdges.length == 0) this.relations.delete(edgeTargetId);
+		}
+	}
+
 	public applyCustomization(nodes: NodeInfo[] = [], edges: EdgeInfo[] = [], stackPos: number = 0): {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError {
 		this.nodes = nodes;
 		this.edges = edges;
+		this.relations = new Map();
 		this.runtimeScopes = [];
 		this.executedMethodLocations = [];
 		this.openLocationScope();
 
 		this.nodes.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 		this.edges.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+		this.populateRelations();
 
 		const frame: StackFrame = DebugState.getInstance().getFrameByPos(stackPos)!;
 		this.frame = frame;
@@ -352,27 +386,22 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public omitNode(node: NodeInfo): boolean {
-		var remNodeIndex: number = -1;
-		for (var i = 0; i < this.nodes.length; i++) {
-			if (this.nodes[i].id === node.id) {
-				remNodeIndex = i;
-				break;
-			}
-		}
+		var remNodeIndex: number = this.searchIdInSorted(node.id, this.nodes);
 		if (remNodeIndex > -1) {
-			const remNodeId: string = this.nodes[remNodeIndex].id;
-			const remEdgeIndices: number[] = [];
-			for (var i = 0; i < this.edges.length; i++) {
-				const edge: EdgeInfo = this.edges[i];
-				if (edge.source === remNodeId || edge.target === remNodeId)
-					remEdgeIndices.push(i);
-			}
+			const remNodeId: string = node.id;
+			const nodeRelations: string[] | undefined = this.relations.get(remNodeId);
 
-			const edgesTemp: EdgeInfo[] = [];
-			this.edges.forEach(edge => edgesTemp.push(Object.assign({}, edge)));
-			this.edges = [];
-			for (var i = 0; i < edgesTemp.length; i++)
-				if (!remEdgeIndices.includes(i)) this.edges.push(edgesTemp[i]);
+			if (nodeRelations) {
+				const relatedEdgesIds: string[] = [];
+				nodeRelations.forEach(val => relatedEdgesIds.push(val));
+				for (const relatedEdgeId of relatedEdgesIds) {
+					const edge: EdgeInfo = this.getEdge(relatedEdgeId)!;
+					this.removeFromRelations(edge);
+
+					const edgeIndex: number = this.searchIdInSorted(edge.id, this.edges);
+					this.edges.splice(edgeIndex, 1);
+				}
+			}
 
 			this.nodes.splice(remNodeIndex, 1);
 			return true;
@@ -445,7 +474,23 @@ export class CustomizationRuntime extends CustSpecComponent {
   		return undefined;
 	}
 
+	private getEdge(id: string): EdgeInfo | undefined {
+		let left: number = 0;
+  		let right: number = this.edges.length - 1;
+  		while (left <= right) {
+    		const mid: number = Math.floor((left + right) / 2);
+			const currEdge: EdgeInfo = this.edges[mid];
+    		if (currEdge.id === id) return currEdge;
+    		if (id < currEdge.id) right = mid - 1;
+    		else left = mid + 1;
+  		}
+
+  		return undefined;
+	}
+
 	private pushEdge(newEdge: EdgeInfo) {
+		this.addToRelations(newEdge);
+
 		var left: number = 0;
     	var right: number = this.edges.length - 1;
 
@@ -465,6 +510,23 @@ export class CustomizationRuntime extends CustSpecComponent {
     	const rightEdge: EdgeInfo = this.edges[right];
     	if (rightEdge.id <= newEdge.id) this.edges.splice(right + 1, 0, newEdge);
     	else this.edges.splice(Math.max(right - 1, 0), 0, newEdge);
+	}
+
+	private searchIdInSorted(id: string, list: {id: string}[]): number {
+		var remIndex: number = -1;
+		var left: number = 0;
+    	var right: number = list.length - 1;
+    	while (left <= right) {
+    		const mid: number = Math.floor((left + right) / 2);
+    	    const midElement: {id: string} = list[mid];
+			if (midElement.id === id) {
+				remIndex = mid;
+				break;
+			}
+			if (id < midElement.id) right = mid - 1;
+			else left = mid + 1;
+    	}
+		return remIndex;
 	}
 
 	public getEdges(origin: NodeInfo, target: NodeInfo): EdgeInfo[] {
