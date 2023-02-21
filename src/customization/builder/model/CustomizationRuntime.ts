@@ -416,15 +416,11 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public omitEdge(toOmit: EdgeInfo): boolean {
-		var toOmitIndex: number = -1;
-		for (var i = 0; i < this.edges.length; i++)
-			if (toOmit.id === this.edges[i].id) {
-				toOmitIndex = i;
-				break;
-			}
-		
-		if (toOmitIndex > -1) {
-			this.edges.splice(toOmitIndex, 1);
+		this.removeFromRelations(toOmit);
+
+		const edgeIndex: number = this.searchIdInSorted(toOmit.id, this.edges);
+		if (edgeIndex > -1) {
+			this.edges.splice(edgeIndex, 1);
 			return true;
 		} else return false;
 	}
