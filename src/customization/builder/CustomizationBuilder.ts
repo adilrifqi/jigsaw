@@ -1262,6 +1262,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                     if ((expr.type() as ArrayType).dimension > 0) break;
             case "label":
                 if (expr.type() == ValueType.EDGE && exprs.length == 0) break;
+            case "contains":
             case "append": {
                 const suffixedType: ValueType | ArrayType | MapType = expr.type();
                 if (suffixedType instanceof ArrayType) {
@@ -1272,21 +1273,26 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         : suffixedArrayType.type;
 
                     if (exprs.length == 1) {
-                        const newElementComp: CustSpecComponent = this.visit(exprs[0]);
-                        if (newElementComp instanceof ErrorComponent) return newElementComp;
-                        const newElementExpr: Expr = newElementComp as Expr;
-                        const newElementType: ValueType | ArrayType | MapType = newElementExpr.type();
+                        const argComp: CustSpecComponent = this.visit(exprs[0]);
+                        if (argComp instanceof ErrorComponent) return argComp;
+                        const argExpr: Expr = argComp as Expr;
+                        const argType: ValueType | ArrayType | MapType = argExpr.type();
                         var valid: boolean = false;
 
                         if (expectedType === undefined) valid = true;
-                        else if (!(expectedType instanceof ArrayType)) valid = JSON.stringify(newElementType) === JSON.stringify(expectedType);
+                        else if (!(expectedType instanceof ArrayType)) valid = JSON.stringify(argType) === JSON.stringify(expectedType);
                         else if (expectedType instanceof ArrayType) {
                             if (expectedType.type !== undefined)
-                                valid = JSON.stringify(newElementType) === JSON.stringify(expectedType);
-                            else if (newElementType instanceof ArrayType) {
-                                if (newElementType.type === undefined) valid = true;
-                                else valid = newElementType.dimension >= expectedType.dimension;
+                                valid = JSON.stringify(argType) === JSON.stringify(expectedType);
+                            else if (argType instanceof ArrayType) {
+                                if (argType.type === undefined) valid = true;
+                                else valid = argType.dimension >= expectedType.dimension;
                             }
+                        }
+
+                        if (valid) {
+                            argExprs.push(argExpr);
+                            break;
                         }
                     }
                 }
