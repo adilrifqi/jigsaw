@@ -435,14 +435,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         if (exprComp instanceof ErrorComponent) return exprComp;
         const expr: Expr = exprComp as Expr;
 
-        // if (declaredType == ValueType.NODE && expr.type() != ValueType.NODE && expr.type() !== null)
-        //     return new ErrorComponent(
-        //         new TypeErrorBuilder(ctx.expr(), [ValueType.NODE], expr.type()).toString()
-        //     );
-        // else if (declaredType == ValueType.EDGE && expr.type() != ValueType.EDGE && expr.type() !== null)
-        //     return new ErrorComponent(
-        //         new TypeErrorBuilder(ctx.expr(), [ValueType.EDGE], expr.type()).toString()
-        //     );
         if (declaredType instanceof ArrayType) {
             if (!(expr.type() instanceof ArrayType))
                 return new ErrorComponent(
@@ -1028,7 +1020,13 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     private validValueOfType(type: ValueType | ArrayType | MapType): boolean {
-        if (type instanceof MapType) return this.validValueOfType(type.keyType) && this.validValueOfType(type.valueType);
+        if (type instanceof MapType) {
+            const keyType: ValueType | ArrayType | MapType | undefined = type.keyType;
+            const valueType: ValueType | ArrayType | MapType | undefined = type.valueType;
+            if (keyType === undefined || valueType === undefined)
+                return keyType === undefined && valueType === undefined;
+            return this.validValueOfType(keyType) && this.validValueOfType(valueType);
+        }
         if (type instanceof ArrayType) {
             if (type.type === undefined) return false;
             return this.validValueOfType(type.type);

@@ -290,21 +290,51 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return null;
 	}
 
-	public getSubjectValue(subject: Subject): {value: Object, type: ValueType | ArrayType} | null {
+	public getSubjectValue(subject: Subject): {value: Object, type: ValueType | ArrayType | MapType} | null {
 		const variable: JigsawVariable | undefined = this.frame.jigsawVariables.get(subject.id);
 		if (variable) {
 			var typeString: string = variable.type;
-			if (variable.value.includes("size=") && variable.value.includes("List")) {
+			if (variable.value.includes("size=") && variable.value.includes("Map")) {
+				if (variable.value.includes("size=0")) return {value: new Map(), type: new MapType(undefined, undefined)};
+
+				const mapResult: Map<Object, Object | null> = new Map();
+				var keyType: ValueType | ArrayType | MapType | undefined;
+				var valueType: ValueType | ArrayType | MapType | undefined;
+				for (const [_, mapNodeKey] of variable.variables) {
+					const mapNodeVariable: JigsawVariable | undefined = this.frame.jigsawVariables.get(mapNodeKey);
+					if (mapNodeVariable === undefined) return null;
+
+					// Key retrieval
+					const nodeKey: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue({id: mapNodeVariable.variables.get("key")!});
+					if (nodeKey === null) return null;
+					if (keyType === undefined
+						|| keyType instanceof MapType && keyType.keyType === undefined
+						|| keyType instanceof ArrayType && keyType.type === undefined && nodeKey.type instanceof ArrayType && (nodeKey.type.type !== undefined || nodeKey.type.dimension > keyType.dimension))
+						keyType = nodeKey.type;
+
+					// Key retrieval
+					const nodeValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue({id: mapNodeVariable.variables.get("value")!});
+					if (nodeValue === null) return null;
+					if (valueType === undefined
+						|| valueType instanceof MapType && valueType.valueType === undefined
+						|| valueType instanceof ArrayType && valueType.type === undefined && nodeValue.type instanceof ArrayType && (nodeValue.type.type !== undefined || nodeValue.type.dimension > valueType.dimension))
+						valueType = nodeValue.type;
+
+					mapResult.set(nodeKey.value, nodeValue.value);
+				}
+
+				return {value: mapResult, type: new MapType(keyType, valueType)};
+			} else if (variable.value.includes("size=") && variable.value.includes("List")) {
 				if (variable.value.includes("size=0")) return {value: [], type: new ArrayType(undefined, 1)};
 
 				const arrayResult: Object[] = [];
-				var innerType: ValueType | ArrayType | undefined;
+				var innerType: ValueType | ArrayType | MapType | undefined;
 				for (const [_, elementKey] of variable.variables) {
-					const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: elementKey});
+					const fieldValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue({id: elementKey});
 					if (fieldValue === null) return null;
 					arrayResult.push(fieldValue.value);
 
-					const fieldValueType: ValueType | ArrayType = fieldValue.type;
+					const fieldValueType: ValueType | ArrayType | MapType = fieldValue.type;
 					if (innerType === undefined) innerType = fieldValueType;
 					else if (innerType instanceof ArrayType && innerType.type === undefined) {
 						const fieldValueArrayType: ArrayType = fieldValueType as ArrayType;
@@ -313,13 +343,13 @@ export class CustomizationRuntime extends CustSpecComponent {
 					}
 				}
 
-				const newDeepestType: ValueType | undefined = innerType! instanceof ArrayType ? innerType.type as (ValueType | undefined) : innerType!;
+				const newDeepestType: ValueType | MapType | undefined = innerType! instanceof ArrayType ? innerType.type as (ValueType | undefined) : innerType!;
 				const newDimension: number = innerType! instanceof ArrayType ? innerType.dimension + 1 : 1;
 				return {value: arrayResult, type: new ArrayType(newDeepestType, newDimension)};
 			} else if (typeString.endsWith("]")) {
 				const arrayResult: Object[] = [];
 				for (const [_, fieldKey] of variable.variables)  {
-					const fieldValue: {value: Object, type: ValueType | ArrayType} | null = this.getSubjectValue({id: fieldKey});
+					const fieldValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue({id: fieldKey});
 					if (fieldValue === null) return null;
 					arrayResult.push(fieldValue.value);
 				}

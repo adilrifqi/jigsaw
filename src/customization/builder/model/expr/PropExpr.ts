@@ -60,7 +60,7 @@ export class PropExpr extends Expr {
             case "containsKey":
                 return ValueType.BOOLEAN;
             case "get":
-                return (this.proppedExpr.type() as MapType).valueType;
+                return (this.proppedExpr.type() as MapType).valueType!;
             default:
                 return ValueType.NUM;
         }

@@ -3,9 +3,9 @@ import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
 export class MapType {
-    public readonly keyType: ValueType | ArrayType | MapType;
-    public readonly valueType: ValueType | ArrayType | MapType;
-    constructor(keyType: ValueType | ArrayType | MapType, valueType: ValueType | ArrayType | MapType) {
+    public readonly keyType: ValueType | ArrayType | MapType | undefined;
+    public readonly valueType: ValueType | ArrayType | MapType | undefined;
+    constructor(keyType: ValueType | ArrayType | MapType | undefined, valueType: ValueType | ArrayType | MapType | undefined) {
         this.keyType = keyType;
         this.valueType = valueType;
     }

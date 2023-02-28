@@ -40,21 +40,28 @@ export class ValueOfExpr extends Expr {
             }
         }
 
-        const subjectValue: {value: Object, type: ValueType | ArrayType} | null = this.runtime.getSubjectValue(subjectExprValue as Subject);
+        const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.runtime.getSubjectValue(subjectExprValue as Subject);
         if (subjectValue === null) return new RuntimeError(this.ctx, "Cannot get the value the subject of the variable of this type.");
 
-        const subjectValueType: ValueType | ArrayType = subjectValue.type;
-        if (subjectValueType instanceof ArrayType) {
-            if (this.declaredType instanceof ArrayType) {
-                if (subjectValueType.type !== undefined) {
-                    if (JSON.stringify(this.declaredType) !== JSON.stringify(subjectValue.type))
-                        return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
-                } else if (subjectValueType.dimension > this.declaredType.dimension)
-                    return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
-            } else return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
-        } else if (JSON.stringify(this.declaredType) !== JSON.stringify(subjectValue.type))
+        if (!this.validType(this.declaredType, subjectValue.type))
             return new RuntimeError(this.ctx, "The value " + subjectValue + " does not match the declared type " + this.declaredType);
 
         return subjectValue.value;
+    }
+
+    private validType(declaredType: ValueType | ArrayType | MapType, foundType: ValueType | ArrayType | MapType): boolean {
+        if (declaredType instanceof ArrayType) {
+            if (!(foundType instanceof ArrayType)) return false;
+            if (foundType.type !== undefined) {
+                if (JSON.stringify(this.declaredType) !== JSON.stringify(foundType.type)) return false;
+            } else if (foundType.dimension > declaredType.dimension) return false;
+            return true;
+        } else if (declaredType instanceof MapType) {
+            if (!(foundType instanceof MapType)) return false;
+            if (foundType.keyType === undefined && foundType.valueType === undefined) return true;
+            if (foundType.keyType === undefined || foundType.valueType === undefined) return false;
+            if (declaredType.keyType === undefined || declaredType.valueType === undefined) return false;
+            return this.validType(declaredType.keyType, foundType.keyType) && this.validType(declaredType.valueType!, foundType.valueType);
+        } else return declaredType == foundType;
     }
 }
