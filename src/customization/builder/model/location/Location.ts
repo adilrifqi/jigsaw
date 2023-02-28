@@ -1,6 +1,3 @@
-import { JigsawVariable } from "../../../../debugmodel/JigsawVariable";
-import { RuntimeError } from "../../error/RuntimeError";
-import { Command } from "../command/Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Statement } from "../Statement";
 
@@ -10,7 +7,7 @@ export abstract class Location extends Statement {
     private readonly runtime: CustomizationRuntime;
     
     protected parent?: Location;
-    private statements: Statement[] = [];
+    protected statements: Statement[] = [];
 
     private permanent: boolean = false;
 

@@ -136,6 +136,9 @@ export class CustomizationRuntime extends CustSpecComponent {
 							const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(variable, {class: variable.type}, topStatement);
 							if (dispatchResult instanceof RuntimeError) return dispatchResult;
 						}
+					else
+						for (const methodLocation of topStatement.getMethodLocations())
+							this.customizationDispatch(undefined, {}, methodLocation);
 				} else
 					// Should never happen since all top locations should only be class locations
 					for (const [_, variable] of frame.jigsawVariables) {
@@ -148,21 +151,23 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return {nodes: [...this.nodes.values()], edges: [...this.edges.values()]};
     }
 
-	private customizationDispatch(variable: JigsawVariable, interestNames: {class?: string, field?: string, method?: MethodSignature, local?: string}, location: Location): RuntimeError | null | undefined {
+	private customizationDispatch(variable: JigsawVariable | undefined, interestNames: {class?: string, field?: string, local?: string}, location: Location): RuntimeError | null | undefined {
 		switch (location.type()) {
 			case LocationType.CLASS:
+				if (variable === undefined) return undefined;
 				if (interestNames.class !== undefined && interestNames.class !== null)
 					return this.customizeLocation(variable, interestNames.class, location);
 				break;
 			case LocationType.FIELD:
+				if (variable === undefined) return undefined;
 				if (interestNames.field !== undefined && interestNames.field !== null)
 					return this.customizeLocation(variable, interestNames.field, location);
 				break;
 			case LocationType.METHOD:
-				if (interestNames.method)
-					return this.customizeMethod(location as MethodLocation);
-				break;
+				return this.customizeMethod(location as MethodLocation);
 			case LocationType.LOCAL:
+				if (variable === undefined) return undefined;
+
 				if (interestNames.local !== undefined && interestNames.local !== null)
 					return this.customizeLocation(variable, interestNames.local, location);
 				break;
@@ -212,7 +217,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 						for (const [fieldName, varsVarKey] of variable.variables) {
 							const varsVarVariable: JigsawVariable = this.frame.jigsawVariables.get(varsVarKey)!;
 							const dispatchResult: RuntimeError | null | undefined = this.customizationDispatch(varsVarVariable,
-								{class: varsVarVariable.type, field: fieldName, method: statement instanceof MethodLocation ? statement.signature : undefined}, statement);
+								{class: varsVarVariable.type, field: fieldName}, statement);
 							if (dispatchResult === null) break;
 							else if (dispatchResult instanceof RuntimeError) return dispatchResult;
 						}
