@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, CollectionForLoopContext, CommandContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldSubjectExprContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocalSubjectExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, SingleSubjectContext, StartContext, StatementContext, StringLitContext, SubjectExprContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -39,7 +39,6 @@ import { EdgesOfExpr } from './model/expr/EdgesOfExpr';
 import { HereExpr } from './model/expr/HereExpr';
 import { ParentsOfExpr } from './model/expr/ParentsOfExpr';
 import { ChildrenOfExpr } from './model/expr/ChildrenOfExpr';
-import { FieldSubjectExpr } from './model/expr/FieldSubjectExpr';
 import { PropExpr } from './model/expr/PropExpr';
 import { AdditionExpr } from './model/expr/AdditionExpr';
 import { ValueOfExpr } from './model/expr/ValueOfExpr';
@@ -50,7 +49,6 @@ import { ClassLocation } from './model/location/ClassLocation';
 import { FieldLocation } from './model/location/FieldLocation';
 import { MethodLocation } from './model/location/MethodLocation';
 import { LocalLocation } from './model/location/LocalLocation';
-import { LocalSubjectExpr } from './model/expr/LocalSubjectExpr';
 import { MethodSignature } from '../../debugmodel/StackFrame';
 import { Statement } from './model/Statement';
 import { ParentVarExpr } from './model/expr/ParentVarExpr';
@@ -62,6 +60,9 @@ import { CollectionForloopCommand } from './model/command/CollectionForLoopComma
 import { PlusPlusExpr } from './model/expr/PlusPlusExpr';
 import { PlusPlusCommand } from './model/command/PlusPlusCommand';
 import { ThrowingErrorListener } from './error/ThrowingErrorListener';
+import { SetImmutableShortcut } from './model/command/SetImmutableShortcut';
+import { SingleSubjectExpr } from './model/expr/SingleSubjectExpr';
+import { SubjectExpr } from './model/expr/SubjectExpr';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -646,6 +647,20 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new PlusPlusCommand(comp as PlusPlusExpr, this.locationStack.at(-1)!);
     }
 
+    visitShortcutCommand(ctx: ShortcutCommandContext): CustSpecComponent {
+        return this.visit(ctx.shortcut());
+    }
+
+    visitSetImmutableShortcut(ctx: SetImmutableShortcutContext): CustSpecComponent {
+        const targetSubjectComp: CustSpecComponent = this.visit(ctx.expr());
+        if (targetSubjectComp instanceof ErrorComponent) return targetSubjectComp;
+        const targetSubject: Expr = targetSubjectComp as Expr;
+        if (targetSubject.type() != ValueType.SUBJECT && JSON.stringify(targetSubject.type()) !== JSON.stringify(new ArrayType(ValueType.SUBJECT, 1)))
+            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], targetSubject.type()).toString());
+
+        return new SetImmutableShortcut(targetSubject, this.runtime, ctx);
+    }
+
     visitExpr(ctx: ExprContext): CustSpecComponent{
         return this.visit(ctx.disjunction());
     }
@@ -1034,16 +1049,39 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         else return type == ValueType.BOOLEAN || type == ValueType.NUM || type == ValueType.STRING;
     }
 
-    visitFieldSubjectExpr(ctx: FieldSubjectExprContext): CustSpecComponent {
-        const locIdNames: string[] = [];
-        for (const fieldLocId of ctx.fieldLocId())
-            locIdNames.push(fieldLocId.ID() ? fieldLocId.ID()!.toString() : fieldLocId.NUM_VALUE()!.toString());
-        return new FieldSubjectExpr(locIdNames, this.runtime, ctx);
+    visitSubjectExpr(ctx: SubjectExprContext): CustSpecComponent {
+        const singleSubjectComp: CustSpecComponent = this.visit(ctx.singleSubject());
+        if (singleSubjectComp instanceof ErrorComponent) return singleSubjectComp;
+        const singleSubjectExpr: SingleSubjectExpr = singleSubjectComp as SingleSubjectExpr;
+        const singleSubjectType: ValueType | ArrayType  = singleSubjectExpr.type();
+        if (singleSubjectType != ValueType.SUBJECT && !(singleSubjectType instanceof ArrayType && singleSubjectType.dimension == 1 && singleSubjectType.type == ValueType.SUBJECT))
+            return new ErrorComponent(new TypeErrorBuilder(ctx.singleSubject(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], singleSubjectType).toString());
+
+        const fieldChain: string[] = [];
+        for (const fieldLocId of ctx.fieldLocId()) {
+            const fieldName: string = fieldLocId.ID() ? fieldLocId.ID()!.toString() : fieldLocId.NUM_VALUE()!.toString();
+            fieldChain.push(fieldName);
+        }
+
+        if (fieldChain.length == 0) return singleSubjectExpr;
+
+        return new SubjectExpr(singleSubjectExpr, fieldChain, this.runtime, ctx);
     }
 
-    visitLocalSubjectExpr(ctx: LocalSubjectExprContext): CustSpecComponent {
-        const locIdName: string = ctx.localLocId().ID().toString();
-        return new LocalSubjectExpr(locIdName, this.runtime);
+    visitSingleSubject(ctx: SingleSubjectContext): CustSpecComponent {
+        if (ctx.classLocId()) {
+            if (this.locationStack.length > 0) return new ErrorComponent(new ErrorBuilder(ctx, "Class location declared inside a location.").toString());
+            return new SingleSubjectExpr(ctx.classLocId()!.ID().text, LocationType.CLASS, this.runtime, ctx);
+        }
+        else if (ctx.fieldLocId()) {
+            if (this.locationStack.length == 0 || !(this.locationStack.at(-1)! instanceof ClassLocation)) return new ErrorComponent(new ErrorBuilder(ctx, "Field location declared in a non-class location.").toString());
+            const fieldName: string = ctx.fieldLocId()!.ID() ? ctx.fieldLocId()!.ID()!.toString() : ctx.fieldLocId()!.NUM_VALUE()!.toString();
+            return new SingleSubjectExpr(fieldName, LocationType.FIELD, this.runtime, ctx);
+        } else if (ctx.localLocId()) {
+            if (this.locationStack.length == 0 || !(this.locationStack.at(-1)! instanceof MethodLocation)) return new ErrorComponent(new ErrorBuilder(ctx, "Local location declared in a non-method location.").toString());
+            return new SingleSubjectExpr(ctx.localLocId()!.ID().text, LocationType.LOCAL, this.runtime, ctx);
+        }
+        return new ErrorComponent(new ErrorBuilder(ctx, "Parser error: unknown type of location was provided").toString());
     }
 
     visitNodeOfExpr(ctx: NodeOfExprContext): CustSpecComponent {

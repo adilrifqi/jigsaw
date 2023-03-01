@@ -253,12 +253,12 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return {id: this.currentVariable.id};
 	}
 
-	public getParentsOf(subject: Subject): Subject[] {
-		const result: Subject[] = [];
+	public getParentsOf(subject: Subject): Map<string, Subject> {
+		const result: Map<string, Subject> = new Map();
 		const subjectVariable: JigsawVariable | undefined = this.frame.jigsawVariables.get(subject.id);
 		if (subjectVariable)
-			for (const parentVarKey of subjectVariable.parents)
-				result.push({id: parentVarKey});
+			for (const [fieldNameInParent, parentVarKey] of subjectVariable.parents)
+				result.set(fieldNameInParent, {id: parentVarKey});
 		return result;
     }
 
@@ -274,12 +274,6 @@ export class CustomizationRuntime extends CustSpecComponent {
 		for (const [_, fieldKey] of variable.variables)
 			result.push({id: fieldKey});
 		return result;
-	}
-
-	public getVariableFieldOf(subject: Subject, fieldName: string): Subject | null {
-		const variable: JigsawVariable = this.frame.jigsawVariables.get(subject.id)!;
-		if (variable.variables.has(fieldName)) return {id: variable.variables.get(fieldName)!};
-		return null;
 	}
 
 	public subjectValueIsNull(subject: Subject): boolean {
@@ -486,6 +480,14 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
 	}
 
+	public getSubjectsOfType(typeName: string): Subject[] {
+		const result: Subject[] = [];
+		if (this.frame.typeCollection.has(typeName))
+			for (const varKey of this.frame.typeCollection.get(typeName)!.keys())
+				result.push({id: varKey})
+		return result;
+	}
+
 	public getFieldNodesOfNodes(originNodes: NodeInfo[], fieldName: string): NodeInfo[] {
 		const result: NodeInfo[] = [];
 		for (var originNode of originNodes) {
@@ -526,6 +528,29 @@ export class CustomizationRuntime extends CustSpecComponent {
 			}
 
 		return result;
+	}
+
+	// ====================Customization Shortcuts====================
+	public setImmutable(targetSubjects: Subject[]) {
+		for (const targetSubject of targetSubjects) {
+			const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(targetSubject.id)!;
+			var rowValueString: string;
+			if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
+			else {
+				const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(targetSubject);
+				rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
+			}
+
+			const parentSubjects: Map<string, Subject> = this.getParentsOf(targetSubject);
+			for (const [fieldNameInParent, parentSubject] of parentSubjects) {
+				const parentNode: NodeInfo | undefined = this.getNode(parentSubject.id);
+				if (parentNode)
+					parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
+			}
+
+			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
+			if (targetNode) this.omitNode(targetNode);
+		}
 	}
 
 	// ====================Scope Methods====================

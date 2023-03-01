@@ -53,7 +53,7 @@ export class ValueOfExpr extends Expr {
         if (declaredType instanceof ArrayType) {
             if (!(foundType instanceof ArrayType)) return false;
             if (foundType.type !== undefined) {
-                if (JSON.stringify(this.declaredType) !== JSON.stringify(foundType.type)) return false;
+                if (JSON.stringify(declaredType) !== JSON.stringify(foundType)) return false;
             } else if (foundType.dimension > declaredType.dimension) return false;
             return true;
         } else if (declaredType instanceof MapType) {

@@ -31,6 +31,11 @@ semiLessCommand
     | OMIT expr                                         # OmitCommand
     | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR   # PlainPropCallCommand
     | plusPlus                                          # PlusPlusCommand
+    | shortcut                                          # ShortcutCommand
+    ;
+
+shortcut
+    : SET_IMMUTABLE expr    # SetImmutableShortcut // <field to set immutable>
     ;
 
 expr: disjunction;
@@ -77,8 +82,7 @@ primary
     | CHILDREN                              # ChildrenExpr
     | CHILDREN_OF expr                      # ChildrenOfExpr
     | VALUE_OF expr type                    # ValueOfExpr
-    | fieldLocId (DOT fieldLocId)*          # FieldSubjectExpr
-    | localLocId                            # LocalSubjectExpr
+    | singleSubject (DOT fieldLocId)*       # SubjectExpr
     | NODE_OF expr                          # NodeOfExpr
     | EDGES_OF expr expr                    # EdgesOfExpr
     | literal                               # LiteralExpr
@@ -102,6 +106,7 @@ classLocId  : CLASS ID;
 fieldLocId  : FIELD (ID | NUM_VALUE);
 methodLocId : METHOD ID LPAR (ID (LBRAC RBRAC)* (COMMA ID (LBRAC RBRAC)*)*)? RPAR;
 localLocId  : LOCAL ID;
+singleSubject   : classLocId | fieldLocId | localLocId;
 
 literal : numLit | stringLit | booleanLit ;
 
@@ -162,6 +167,8 @@ EDGE_TYPE   : 'Edge';
 SUBJECT_TYPE: 'Subject';
 MAP         : 'Map';
 NEW_MAP     : 'newMap';
+
+SET_IMMUTABLE   : 'setImmutable';
 
 COLON       : ':';
 SEMI        : ';';

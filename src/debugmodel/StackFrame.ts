@@ -24,10 +24,18 @@ export class StackFrame {
         this.signature = signature;
     }
 
-    public handleLazyFollowUp(seq: number, newVarsRef: number): boolean {
+    public handleLazyFollowUp(seq: number, newVarsRef: number, variableValue: string): boolean {
         if (this.lazySeqRefMap.has(seq)) {
             const originalVarsRef: number = this.lazySeqRefMap.get(seq)!;
             const varKey: string = this.lazyRefKeyMap.get(originalVarsRef)!;
+
+            const variable: JigsawVariable | undefined = this.jigsawVariables.get(varKey);
+            if (variable) {
+                const firstSpaceIndex: number = variableValue.indexOf(" ");
+                const stringRep: string = variableValue.substring(firstSpaceIndex + 2, variableValue.length - 1);
+                variable.stringRep = stringRep;
+            }
+
             this.refKeyMap.set(newVarsRef, varKey);
             this.lazySeqRefMap.delete(seq);
             return true;
@@ -58,8 +66,8 @@ export class StackFrame {
                     reffer.setVariable(variable.name, keyString);
 
                     // Set parent info to variable
-                    if (!this.jigsawVariables.has(keyString)) variable.addParent(reffer.id);
-                    else this.jigsawVariables.get(keyString)!.addParent(reffer.id);
+                    if (!this.jigsawVariables.has(keyString)) variable.addParent(variable.name, reffer.id);
+                    else this.jigsawVariables.get(keyString)!.addParent(variable.name, reffer.id);
                 }
             }
         }

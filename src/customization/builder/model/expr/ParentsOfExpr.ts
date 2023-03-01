@@ -23,6 +23,10 @@ export class ParentsOfExpr extends Expr {
         if (subjectExpr instanceof RuntimeError) return subjectExpr;
         if (subjectExpr === null) return [];
         const subject: Subject = subjectExpr as Subject;
-        return this.runtime.getParentsOf(subject);
+
+        const result: Subject[] = [];
+        for (const parentSubject of this.runtime.getParentsOf(subject).values())
+            result.push(parentSubject);
+        return result;
     }
 }

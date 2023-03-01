@@ -132,7 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
 							} else {
 								const seq: number = message["request_seq"];
 								const varsRef: number = variable["variablesReference"];
-								if (!DebugState.getInstance().handleLazyFollowUp(seq, varsRef))
+								if (!DebugState.getInstance().handleLazyFollowUp(seq, varsRef, variable["value"]))
 									handleVariableValueReplacement(message);
 								DebugState.getInstance().removeRequestSeqFromAllFrames(seq);
 							}
