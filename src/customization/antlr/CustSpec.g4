@@ -68,8 +68,9 @@ term: left=term TIMES right=negation
 negation: (MIN | NOT)? suffixed ;
 
 suffixed
-    : suffixed DOT (ID LPAR (expr (COMMA expr)*)? RPAR | fieldLocId)# PropSuffix
+    : suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR               # PropSuffix
     | suffixed LBRAC expr RBRAC                                     # ArrayAccessSuffix // TODO: Get Subject in array of subjects
+    | suffixed (DOT fieldLocId)+                                    # FieldChainSuffix
     | primary                                                       # PrimaryExpr
     ;
 
@@ -83,7 +84,7 @@ primary
     | CHILDREN                              # ChildrenExpr
     | CHILDREN_OF expr                      # ChildrenOfExpr
     | VALUE_OF expr type                    # ValueOfExpr
-    | singleSubject (DOT fieldLocId)*       # SubjectExpr
+    | singleSubject                         # SingleSubjectExpr
     | NODE_OF expr                          # NodeOfExpr
     | NODES_OF expr                         # NodesOfExpr
     | EDGES_OF expr expr                    # EdgesOfExpr

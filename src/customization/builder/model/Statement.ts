@@ -1,4 +1,3 @@
-import { RuntimeError } from "../error/RuntimeError";
 import { CustSpecComponent } from "./CustSpecComponent";
 import { Location } from "./location/Location";
 

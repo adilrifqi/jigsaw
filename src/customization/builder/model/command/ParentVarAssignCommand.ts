@@ -5,7 +5,6 @@ import { ArrayType } from "../expr/ArrayExpr";
 import { Expr } from "../expr/Expr";
 import { MapType } from "../expr/NewMapExpr";
 import { ValueType } from "../expr/ValueType";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class ParentVarAssignCommand extends Command {
@@ -16,8 +15,8 @@ export class ParentVarAssignCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(varName: string, upwardCount: number, expr: Expr, type: ValueType | ArrayType | MapType, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
-        super(location);
+    constructor(varName: string, upwardCount: number, expr: Expr, type: ValueType | ArrayType | MapType, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+        super();
         this.varName = varName;
         this.upwardCount = upwardCount;
         this.expr = expr;

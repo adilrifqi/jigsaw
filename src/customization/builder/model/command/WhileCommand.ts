@@ -2,7 +2,6 @@ import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "../expr/Expr";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class WhileCommand extends Command {
@@ -11,8 +10,8 @@ export class WhileCommand extends Command {
     private readonly ctx: ParserRuleContext;
     private readonly runtime: CustomizationRuntime;
 
-    constructor(condition: Expr, command: Command, ctx: ParserRuleContext, runtime: CustomizationRuntime, location?: Location) {
-        super(location);
+    constructor(condition: Expr, command: Command, ctx: ParserRuleContext, runtime: CustomizationRuntime) {
+        super();
         this.condition = condition;
         this.command = command;
         this.ctx = ctx;

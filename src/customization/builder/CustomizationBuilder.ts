@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, SingleSubjectContext, StartContext, StatementContext, StringLitContext, SubjectExprContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldChainSuffixContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, SingleSubjectContext, SingleSubjectExprContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -62,7 +62,7 @@ import { PlusPlusCommand } from './model/command/PlusPlusCommand';
 import { ThrowingErrorListener } from './error/ThrowingErrorListener';
 import { SetImmutableShortcut } from './model/command/SetImmutableShortcut';
 import { SingleSubjectExpr } from './model/expr/SingleSubjectExpr';
-import { SubjectExpr } from './model/expr/SubjectExpr';
+import { FieldChainExpr } from './model/expr/FieldChainExpr';
 import { NodesOfExpr } from './model/expr/NodesOfExpr';
 import { MergeShortcut } from './model/command/MergeShortcut';
 
@@ -272,7 +272,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
             );
 
-        return new ScopeCommand(commands, this.runtime, ctx, this.locationStack.at(-1));
+        return new ScopeCommand(commands, this.runtime, ctx);
     }
 
     visitIfCommand(ctx: IfCommandContext): CustSpecComponent {
@@ -299,11 +299,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             commands.push(commandComp as Command);
         }
 
-        if (this.locationStack.length == 0)
-            return new ErrorComponent(
-                new ErrorBuilder(ctx, "Type checker bug where the location stack is empty where it shouldn't be.").toString()
-            );
-        return new IfElseCommand(conditions, commands, ctx, this.locationStack.at(-1)!);
+        return new IfElseCommand(conditions, commands, ctx);
     }
 
     visitWhileCommand(ctx: WhileCommandContext): CustSpecComponent {
@@ -327,7 +323,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
             );
 
-        return new WhileCommand(expr, command, ctx, this.runtime, this.locationStack.at(-1));
+        return new WhileCommand(expr, command, ctx, this.runtime);
     }
 
     visitForCommand(ctx: ForCommandContext): CustSpecComponent {
@@ -384,7 +380,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
             );
 
-        return new ConditionForLoopCommand(forInit, expr, forUpdate, command, this.runtime, ctx, this.locationStack.at(-1));
+        return new ConditionForLoopCommand(forInit, expr, forUpdate, command, this.runtime, ctx);
     }
     visitForInit(ctx: ForInitContext): CustSpecComponent {return this.visit(ctx.semiLessCommand());}
     visitForUpdate(ctx: ForUpdateContext): CustSpecComponent {return this.visit(ctx.semiLessCommand());}
@@ -427,7 +423,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Type checker bug where location scopes are closed more times than they were opened.").toString()
             );
 
-        return new CollectionForloopCommand(declaredType, varName, expr, command, ctx, this.runtime, this.locationStack.at(-1));
+        return new CollectionForloopCommand(declaredType, varName, expr, command, ctx, this.runtime);
     }
 
     visitNewVarCommand(ctx: NewVarCommandContext): CustSpecComponent {
@@ -464,7 +460,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new ErrorBuilder(ctx, "Variable with name " + varName + " already exists in this scope.").toString()
             );
 
-        return new NewVarCommand(varName, expr, declaredType, this.runtime, ctx, this.locationStack.at(-1));
+        return new NewVarCommand(varName, expr, declaredType, this.runtime, ctx);
     }
 
     visitReassignCommand(ctx: ReassignCommandContext): CustSpecComponent {
@@ -489,7 +485,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [type!], expr.type()).toString()
             );
             
-        return new ReassignCommand(varName, expr, this.runtime, ctx, this.locationStack.at(-1));
+        return new ReassignCommand(varName, expr, this.runtime, ctx);
     }
 
     visitArrayIndexReassignCommand(ctx: ArrayIndexReassignCommandContext): CustSpecComponent {
@@ -538,7 +534,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             }
         }
 
-        return new ArrayIndexReassignCommand(arrayExpr, indexExprs, newValueExpr, this.runtime, ctx, this.locationStack.at(-1));
+        return new ArrayIndexReassignCommand(arrayExpr, indexExprs, newValueExpr, this.runtime, ctx);
     }
 
     visitParentVarAssignCommand(ctx: ParentVarAssignCommandContext): CustSpecComponent {
@@ -589,7 +585,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             if (JSON.stringify(foundType) !== JSON.stringify(expr.type()))
                 return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [foundType], expr.type()).toString());
 
-            return new ParentVarAssignCommand(varName, parentsWritten, expr, foundType, this.runtime, ctx, this.locationStack.at(-1));
+            return new ParentVarAssignCommand(varName, parentsWritten, expr, foundType, this.runtime, ctx);
         }
     }
 
@@ -612,7 +608,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], expr.type()).toString()
             );
 
-        return new AddCommand(expr, this.runtime, ctx, this.locationStack.at(-1));
+        return new AddCommand(expr, this.runtime, ctx);
     }
 
     visitOmitCommand(ctx: OmitCommandContext): CustSpecComponent {
@@ -634,19 +630,19 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], expr.type()).toString()
             );
 
-        return new OmitCommand(expr, this.runtime, ctx, this.locationStack.at(-1));
+        return new OmitCommand(expr, this.runtime, ctx);
     }
 
     visitPlainPropCallCommand(ctx: PlainPropCallCommandContext): CustSpecComponent {
         const propCall: Expr | ErrorComponent = this.processPropCall(ctx.suffixed(), ctx.ID(), ctx.expr(), ctx);
         if (propCall instanceof ErrorComponent) return propCall;
-        return new ExprCommand(propCall, this.locationStack.at(-1)!);
+        return new ExprCommand(propCall);
     }
 
     visitPlusPlusCommand(ctx: PlusPlusCommandContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.plusPlus());
         if (comp instanceof ErrorBuilder) return comp;
-        return new PlusPlusCommand(comp as PlusPlusExpr, this.locationStack.at(-1)!);
+        return new PlusPlusCommand(comp as PlusPlusExpr);
     }
 
     visitShortcutCommand(ctx: ShortcutCommandContext): CustSpecComponent {
@@ -897,20 +893,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
     }
 
     visitPropSuffix(ctx: PropSuffixContext): CustSpecComponent {
-        if (ctx.ID()) return this.processPropCall(ctx.suffixed(), ctx.ID()!, ctx.expr(), ctx);
-        else {
-            const comp: CustSpecComponent = this.visit(ctx.suffixed()!);
-            if (comp instanceof ErrorComponent) return comp;
-            const expr: Expr = comp as Expr;
-
-            if (expr.type() != ValueType.SUBJECT)
-                return new ErrorComponent(
-                    new TypeErrorBuilder(ctx, [ValueType.SUBJECT], expr.type()).toString()
-                );
-
-            const locIdName: string = ctx.fieldLocId()!.ID() ? ctx.fieldLocId()!.ID()!.toString() : ctx.fieldLocId()!.NUM_VALUE()!.toString();
-            return new PropExpr(expr, locIdName, [], this.runtime, ctx, true);
-        }
+        return this.processPropCall(ctx.suffixed(), ctx.ID(), ctx.expr(), ctx);
     }
 
     visitArrayAccessSuffix(ctx: ArrayAccessSuffixContext): CustSpecComponent {
@@ -938,6 +921,25 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             );
 
         return new ArrayAccessExpr(arrayExpr, expr, ctx);
+    }
+
+    visitFieldChainSuffix(ctx: FieldChainSuffixContext): CustSpecComponent {
+        const suffixedComp: CustSpecComponent = this.visit(ctx.suffixed());
+        if (suffixedComp instanceof ErrorComponent) return suffixedComp;
+        const suffixedExpr: Expr = suffixedComp as Expr;
+        const suffixedType: ValueType | ArrayType | MapType  = suffixedExpr.type();
+        if (suffixedType != ValueType.SUBJECT && !(suffixedType instanceof ArrayType && suffixedType.dimension == 1 && suffixedType.type == ValueType.SUBJECT))
+            return new ErrorComponent(new TypeErrorBuilder(ctx.suffixed(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], suffixedType).toString());
+
+        const fieldChain: string[] = [];
+        for (const fieldLocId of ctx.fieldLocId()) {
+            const fieldName: string = fieldLocId.ID() ? fieldLocId.ID()!.toString() : fieldLocId.NUM_VALUE()!.toString();
+            fieldChain.push(fieldName);
+        }
+
+        if (fieldChain.length == 0) return suffixedExpr;
+
+        return new FieldChainExpr(suffixedExpr, fieldChain, this.runtime, ctx);
     }
 
     visitPrimaryExpr(ctx: PrimaryExprContext): CustSpecComponent {
@@ -1047,6 +1049,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new ValueOfExpr(expr, declaredType, this.runtime, ctx);
     }
 
+    visitSingleSubjectExpr(ctx: SingleSubjectExprContext): CustSpecComponent {
+        return this.visit(ctx.singleSubject());
+    }
+
     private validValueOfType(type: ValueType | ArrayType | MapType): boolean {
         if (type instanceof MapType) {
             const keyType: ValueType | ArrayType | MapType | undefined = type.keyType;
@@ -1060,25 +1066,6 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return this.validValueOfType(type.type);
         }
         else return type == ValueType.BOOLEAN || type == ValueType.NUM || type == ValueType.STRING;
-    }
-
-    visitSubjectExpr(ctx: SubjectExprContext): CustSpecComponent {
-        const singleSubjectComp: CustSpecComponent = this.visit(ctx.singleSubject());
-        if (singleSubjectComp instanceof ErrorComponent) return singleSubjectComp;
-        const singleSubjectExpr: SingleSubjectExpr = singleSubjectComp as SingleSubjectExpr;
-        const singleSubjectType: ValueType | ArrayType  = singleSubjectExpr.type();
-        if (singleSubjectType != ValueType.SUBJECT && !(singleSubjectType instanceof ArrayType && singleSubjectType.dimension == 1 && singleSubjectType.type == ValueType.SUBJECT))
-            return new ErrorComponent(new TypeErrorBuilder(ctx.singleSubject(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], singleSubjectType).toString());
-
-        const fieldChain: string[] = [];
-        for (const fieldLocId of ctx.fieldLocId()) {
-            const fieldName: string = fieldLocId.ID() ? fieldLocId.ID()!.toString() : fieldLocId.NUM_VALUE()!.toString();
-            fieldChain.push(fieldName);
-        }
-
-        if (fieldChain.length == 0) return singleSubjectExpr;
-
-        return new SubjectExpr(singleSubjectExpr, fieldChain, this.runtime, ctx);
     }
 
     visitSingleSubject(ctx: SingleSubjectContext): CustSpecComponent {

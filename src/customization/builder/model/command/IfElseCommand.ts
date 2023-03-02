@@ -9,8 +9,8 @@ export class IfElseCommand extends Command {
     private readonly commands: Command[];
     private readonly ctx: ParserRuleContext;
 
-    constructor(conditions: Expr[], commands: Command[], ctx: ParserRuleContext, location?: Location) {
-        super(location);
+    constructor(conditions: Expr[], commands: Command[], ctx: ParserRuleContext) {
+        super();
         this.conditions = conditions;
         this.commands = commands;
         this.ctx = ctx;

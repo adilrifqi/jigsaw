@@ -1,7 +1,6 @@
 import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime } from "../CustomizationRuntime";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class ScopeCommand extends Command {
@@ -9,8 +8,8 @@ export class ScopeCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(commands: Command[], runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
-        super(location);
+    constructor(commands: Command[], runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+        super();
         this.commands = commands;
         this.runtime = runtime;
         this.ctx = ctx;

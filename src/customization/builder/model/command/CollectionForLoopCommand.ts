@@ -6,9 +6,7 @@ import { ArrayType } from "../expr/ArrayExpr";
 import { Expr } from "../expr/Expr";
 import { IntLitExpr } from "../expr/IntLitExpr";
 import { MapType } from "../expr/NewMapExpr";
-import { NumExpr } from "../expr/NumExpr";
 import { ValueType } from "../expr/ValueType";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 import { NewVarCommand } from "./NewVarCommand";
 
@@ -20,8 +18,8 @@ export class CollectionForloopCommand extends Command {
     private readonly ctx: ParserRuleContext;
     private readonly runtime: CustomizationRuntime;
 
-    constructor(varType: ValueType | ArrayType | MapType, varName: string, arrayExpr: Expr, command: Command, ctx: ParserRuleContext, runtime: CustomizationRuntime, location?: Location) {
-        super(location);
+    constructor(varType: ValueType | ArrayType | MapType, varName: string, arrayExpr: Expr, command: Command, ctx: ParserRuleContext, runtime: CustomizationRuntime) {
+        super();
         this.varType = varType;
         this.varName = varName;
         this.arrayExpr = arrayExpr;
@@ -40,7 +38,7 @@ export class CollectionForloopCommand extends Command {
             if (!this.runtime.openVariableScope())
                 return new RuntimeError(this.ctx, "For some reason, a new variable scope cannot be opened.");
 
-            const newVarCommand: NewVarCommand = new NewVarCommand(this.varName, new ArrayAccessExpr(this.arrayExpr, new IntLitExpr(i), this.ctx), this.varType, this.runtime, this.ctx, this.parent);
+            const newVarCommand: NewVarCommand = new NewVarCommand(this.varName, new ArrayAccessExpr(this.arrayExpr, new IntLitExpr(i), this.ctx), this.varType, this.runtime, this.ctx);
             const newVarCommandResult: RuntimeError | undefined = newVarCommand.execute();
             if (newVarCommandResult) return newVarCommandResult;
 

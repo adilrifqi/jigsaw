@@ -1,6 +1,5 @@
 import { Command } from "./Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
-import { Location } from "../location/Location";
 import { Expr } from "../expr/Expr";
 import { RuntimeError } from "../../error/RuntimeError";
 import { ParserRuleContext } from "antlr4ts";
@@ -14,8 +13,8 @@ export class ReassignCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
-        super(location);
+    constructor(varName: string, expr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+        super();
         this.varName = varName;
         this.expr = expr;
         this.runtime = runtime;

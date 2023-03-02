@@ -1,13 +1,12 @@
 import { RuntimeError } from "../../error/RuntimeError";
 import { Expr } from "../expr/Expr";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class ExprCommand extends Command {
     private readonly expr: Expr;
 
-    constructor(expr: Expr, location?: Location) {
-        super(location);
+    constructor(expr: Expr) {
+        super();
         this.expr = expr;
     }
 

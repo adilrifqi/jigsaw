@@ -5,7 +5,6 @@ import { ArrayType } from "../expr/ArrayExpr";
 import { Expr } from "../expr/Expr";
 import { MapType } from "../expr/NewMapExpr";
 import { ValueType } from "../expr/ValueType";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class ArrayIndexReassignCommand extends Command {
@@ -15,8 +14,8 @@ export class ArrayIndexReassignCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(arrayExpr: Expr, indexExprs: Expr[], newValueExpr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
-        super(location);
+    constructor(arrayExpr: Expr, indexExprs: Expr[], newValueExpr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+        super();
         this.arrayExpr = arrayExpr;
         this.indexExprs = indexExprs;
         this.newValueExpr = newValueExpr;

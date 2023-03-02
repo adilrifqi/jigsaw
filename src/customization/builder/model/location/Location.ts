@@ -75,18 +75,6 @@ export abstract class Location extends Statement {
         return this.permanent;
     }
 
-    // public execute(variable?: JigsawVariable): RuntimeError | undefined {
-    //     // TODO: Do something with the variable
-    //     this.runtime.openLocationScope();
-
-    //     for (var command of this.commands) {
-    //         const commandResult: RuntimeError | undefined = command.execute();
-    //         if (commandResult) return commandResult;
-    //     }
-
-    //     this.runtime.closeLocationScope();
-    //     return undefined;
-    // }
 }
 
 export enum LocationType {

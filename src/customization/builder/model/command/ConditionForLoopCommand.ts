@@ -2,7 +2,6 @@ import { ParserRuleContext } from "antlr4ts";
 import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "../expr/Expr";
-import { Location } from "../location/Location";
 import { Command } from "./Command";
 
 export class ConditionForLoopCommand extends Command {
@@ -13,8 +12,8 @@ export class ConditionForLoopCommand extends Command {
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext
 
-    constructor(forInit: Command | undefined, condition: Expr, forUpdate: Command | undefined, command: Command, runtime: CustomizationRuntime, ctx: ParserRuleContext, location?: Location) {
-        super(location);
+    constructor(forInit: Command | undefined, condition: Expr, forUpdate: Command | undefined, command: Command, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+        super();
         this.forInit = forInit;
         this.condition = condition;
         this.forUpdate = forUpdate;

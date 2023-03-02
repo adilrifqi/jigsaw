@@ -3,35 +3,34 @@ import { RuntimeError } from "../../error/RuntimeError";
 import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
 import { ArrayType } from "./ArrayExpr";
 import { Expr } from "./Expr";
-import { SingleSubjectExpr } from "./SingleSubjectExpr";
 import { ValueType } from "./ValueType";
 
-export class SubjectExpr extends Expr {
-    private readonly singleSubjectExpr: SingleSubjectExpr;
+export class FieldChainExpr extends Expr {
+    private readonly suffixedExpr: Expr;
     private readonly fieldChain: string[];
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
 
-    constructor(singleSubjectExpr: SingleSubjectExpr, fieldChain: string[], runtime: CustomizationRuntime, ctx: ParserRuleContext) {
+    constructor(suffixedExpr: Expr, fieldChain: string[], runtime: CustomizationRuntime, ctx: ParserRuleContext) {
         super();
-        this.singleSubjectExpr = singleSubjectExpr;
+        this.suffixedExpr = suffixedExpr;
         this.fieldChain = fieldChain;
         this.runtime = runtime;
         this.ctx = ctx;
     }
 
     public type(): ValueType | ArrayType {
-        return this.singleSubjectExpr.type();
+        return this.suffixedExpr.type() as ValueType | ArrayType;
     }
 
     public eval(): Object {
-        const singleSubjectResult: Object = this.singleSubjectExpr.eval();
-        if (singleSubjectResult instanceof RuntimeError) return singleSubjectResult;
-        const wasArray: boolean = Array.isArray(singleSubjectResult);
-        const singleSubject: Subject[] = wasArray ? singleSubjectResult as Subject[] : [singleSubjectResult as Subject];
+        const suffixedResult: Object = this.suffixedExpr.eval() as Object;
+        if (suffixedResult instanceof RuntimeError) return suffixedResult;
+        const wasArray: boolean = Array.isArray(suffixedResult);
+        const suffixed: Subject[] = wasArray ? suffixedResult as Subject[] : [suffixedResult as Subject];
 
         const results: Subject[] = [];
-        for (const currentSubject of singleSubject) {
+        for (const currentSubject of suffixed) {
             var result: Subject | null = currentSubject;
             for (var i = 0; i < this.fieldChain.length && result !== null; i++) {
                 result = this.runtime.getField(this.fieldChain[i], result);
