@@ -1,7 +1,7 @@
 import { ParserRuleContext } from "antlr4ts";
 import { EdgeInfo, NodeInfo } from "../../../../debugmodel/DiagramInfo";
 import { RuntimeError } from "../../error/RuntimeError";
-import { CustomizationRuntime } from "../CustomizationRuntime";
+import { CustomizationRuntime, Subject } from "../CustomizationRuntime";
 import { ArrayType } from "../expr/ArrayExpr";
 import { Expr } from "../expr/Expr";
 import { MapType } from "../expr/NewMapExpr";
@@ -31,12 +31,16 @@ export class OmitCommand extends Command {
                 return new RuntimeError(this.ctx, "For some reason, the detected dimension for the omit command is not 1, but is instead " + arrayType.dimension);
             else if (arrayType.type == ValueType.NODE)
                 this.runtime.omitNodes(value as NodeInfo[]);
-            else this.runtime.omitEdges(value as EdgeInfo[]);
+            else if (arrayType.type == ValueType.EDGE)
+                this.runtime.omitEdges(value as EdgeInfo[]);
+            else this.runtime.omitSubjectsNodes(value as Subject[]);
         } else {
             if (value !== null && value !== undefined) {
                 if (this.expr.type() == ValueType.NODE)
                     this.runtime.omitNode(value as NodeInfo);
-                else this.runtime.omitEdge(value as EdgeInfo);
+                else if (this.expr.type() == ValueType.EDGE)
+                    this.runtime.omitEdge(value as EdgeInfo);
+                else this.runtime.omitSubjectNode(value as Subject);
             }
         }
 

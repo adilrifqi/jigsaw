@@ -467,6 +467,19 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return allSucces;
 	}
 
+	public omitSubjectNode(subject: Subject): boolean {
+		const subjectNode: NodeInfo | undefined = this.getNode(subject.id);
+		if (subjectNode) return this.omitNode(subjectNode);
+		return true;
+	}
+
+	public omitSubjectsNodes(subjects: Subject[]): boolean {
+		var allSuccess: boolean = true;
+		for (const subject of subjects)
+			allSuccess = allSuccess && this.omitSubjectNode(subject);
+		return allSuccess;
+	}
+
 	public getNodesOfType(typeName: string): NodeInfo[] {
 		const result: NodeInfo[]= [];
 		const typeVars: Map<string, JigsawVariable> | undefined = this.frame.typeCollection.get(typeName);
@@ -499,7 +512,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
 	}
 
-	private getNode(id: string): NodeInfo | undefined {
+	public getNode(id: string): NodeInfo | undefined {
 		return this.nodes.get(id);
 	}
 

@@ -598,10 +598,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
         if (exprType instanceof ArrayType) {
             const arrayType: ArrayType = exprType as ArrayType;
-            if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
+            if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE && arrayType.type != ValueType.SUBJECT))
                 mistype = true;
         } else if (exprType instanceof MapType) mistype = true;
-        else if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
+        else if (exprType != ValueType.NODE && exprType != ValueType.EDGE && exprType != ValueType.SUBJECT) mistype = true;
 
         if (mistype)
             return new ErrorComponent(
@@ -620,14 +620,14 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
         if (exprType instanceof ArrayType) {
             const arrayType: ArrayType = exprType as ArrayType;
-            if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE))
+            if (arrayType.dimension != 1 || (arrayType.type != ValueType.NODE && arrayType.type != ValueType.EDGE && arrayType.type != ValueType.SUBJECT))
                 mistype = true;
         } else if (exprType instanceof MapType) mistype = true;
-        else if (exprType != ValueType.NODE && exprType != ValueType.EDGE) mistype = true;
+        else if (exprType != ValueType.NODE && exprType != ValueType.EDGE && exprType != ValueType.SUBJECT) mistype = true;
 
         if (mistype)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], expr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, ValueType.SUBJECT, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1), ValueType.SUBJECT], expr.type()).toString()
             );
 
         return new OmitCommand(expr, this.runtime, ctx);
@@ -973,17 +973,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const firstComp: CustSpecComponent = this.visit(ctx.expr(0));
         if (firstComp instanceof ErrorComponent) return firstComp;
         const firstExpr: Expr = firstComp as Expr;
-        if (firstExpr.type() != ValueType.NODE)
+        if (firstExpr.type() != ValueType.NODE && firstExpr.type() != ValueType.SUBJECT)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE], firstExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE, ValueType.SUBJECT], firstExpr.type()).toString()
             );
 
         const secondComp: CustSpecComponent = this.visit(ctx.expr(1));
         if (secondComp instanceof ErrorComponent) return secondComp;
         const secondExpr: Expr = secondComp as Expr;
-        if (secondExpr.type() != ValueType.NODE)
+        if (secondExpr.type() != ValueType.NODE && secondExpr.type() != ValueType.SUBJECT)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], secondExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE, ValueType.SUBJECT], secondExpr.type()).toString()
             );
 
         const thirdComp: CustSpecComponent = this.visit(ctx.expr(2));
@@ -994,7 +994,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(1), [ValueType.STRING], thirdExpr.type()).toString()
             );
         
-        return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr, ctx);
+        return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr, ctx, this.runtime);
     }
 
     visitParentsExpr(ctx: ParentsExprContext): CustSpecComponent {
@@ -1111,17 +1111,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         const firstComp: CustSpecComponent = this.visit(ctx.expr(0));
         if (firstComp instanceof ErrorComponent) return firstComp;
         const firstExpr: Expr = firstComp as Expr;
-        if (firstExpr.type() != ValueType.NODE)
+        if (firstExpr.type() != ValueType.NODE && firstExpr.type() != ValueType.SUBJECT)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE], firstExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(0), [ValueType.NODE, ValueType.SUBJECT], firstExpr.type()).toString()
             );
 
         const secondComp: CustSpecComponent = this.visit(ctx.expr(1));
         if (secondComp instanceof ErrorComponent) return secondComp;
         const secondExpr: Expr = secondComp as Expr;
-        if (secondExpr.type() != ValueType.NODE)
+        if (secondExpr.type() != ValueType.NODE && firstExpr.type() != ValueType.SUBJECT)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE], secondExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE, ValueType.SUBJECT], secondExpr.type()).toString()
             );
 
         return new EdgesOfExpr(firstExpr, secondExpr, this.runtime, ctx);
