@@ -84,6 +84,7 @@ primary
     | VALUE_OF expr type                    # ValueOfExpr
     | singleSubject (DOT fieldLocId)*       # SubjectExpr
     | NODE_OF expr                          # NodeOfExpr
+    | NODES_OF expr                         # NodesOfExpr
     | EDGES_OF expr expr                    # EdgesOfExpr
     | literal                               # LiteralExpr
     | LPAR expr RPAR                        # ParExpr
@@ -146,6 +147,7 @@ PARENTS_OF  : 'parentsOf';
 CHILDREN    : 'children';
 CHILDREN_OF : 'childrenOf';
 NODE_OF     : 'nodeOf';
+NODES_OF    : 'nodesOf';
 EDGES_OF    : 'edgesOf';
 VALUE_OF    : 'valueOf';
 NEW_NODE    : 'newNode';

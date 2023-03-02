@@ -33,7 +33,7 @@ export class SubjectExpr extends Expr {
         const results: Subject[] = [];
         for (const currentSubject of singleSubject) {
             var result: Subject | null = currentSubject;
-            for (var i = 1; i < this.fieldChain.length && result !== null; i++) {
+            for (var i = 0; i < this.fieldChain.length && result !== null; i++) {
                 result = this.runtime.getField(this.fieldChain[i], result);
                 if (result === null) return new RuntimeError(this.ctx, "The subject with the path with name " + this.fieldChain[i] + " does not exist in this location scope.");
             }

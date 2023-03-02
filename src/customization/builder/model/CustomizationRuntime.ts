@@ -505,6 +505,16 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return this.nodes.get(id);
 	}
 
+	public getNodes(ids: string[]): (NodeInfo | null)[] {
+		const result: (NodeInfo | null)[] = [];
+		for (const id of ids) {
+			const node: NodeInfo | undefined = this.getNode(id);
+			if (node) result.push(node);
+			else result.push(null);
+		}
+		return result;
+	}
+
 	private getEdge(id: string): EdgeInfo | undefined {
 		return this.edges.get(id);
 	}
