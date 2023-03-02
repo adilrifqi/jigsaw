@@ -12,3 +12,8 @@ export type EdgeInfo = {
 	label: string,
 	type: string
 };
+
+export function rowToString(rowInfo: VariableInfo | string): string {
+	if (typeof rowInfo === 'string') return rowInfo;
+	return rowInfo.name + "(" + rowInfo.type + "): " + rowInfo.value;
+}

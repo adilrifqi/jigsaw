@@ -35,7 +35,8 @@ semiLessCommand
     ;
 
 shortcut
-    : SET_IMMUTABLE expr    # SetImmutableShortcut // <field to set immutable>
+    : SET_IMMUTABLE expr    # SetImmutableShortcut // <subject(s) to set immutable>
+    | MERGE expr            # MergeShortcut // <subject(s) to merge to parents>
     ;
 
 expr: disjunction;
@@ -171,6 +172,7 @@ MAP         : 'Map';
 NEW_MAP     : 'newMap';
 
 SET_IMMUTABLE   : 'setImmutable';
+MERGE           : 'merge';
 
 COLON       : ':';
 SEMI        : ';';

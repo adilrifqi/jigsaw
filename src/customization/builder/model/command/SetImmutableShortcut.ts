@@ -7,13 +7,11 @@ import { Command } from "./Command";
 export class SetImmutableShortcut extends Command {
     private readonly targetSubjectExpr: Expr; // Accepts subject or list of subjects
     private readonly runtime: CustomizationRuntime;
-    private readonly ctx: ParserRuleContext;
 
     constructor(targetSubjectExpr: Expr, runtime: CustomizationRuntime, ctx: ParserRuleContext) {
         super();
         this.targetSubjectExpr = targetSubjectExpr;
         this.runtime = runtime;
-        this.ctx = ctx;
     }
 
     public execute(): RuntimeError | undefined {

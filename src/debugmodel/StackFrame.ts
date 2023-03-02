@@ -66,8 +66,8 @@ export class StackFrame {
                     reffer.setVariable(variable.name, keyString);
 
                     // Set parent info to variable
-                    if (!this.jigsawVariables.has(keyString)) variable.addParent(variable.name, reffer.id);
-                    else this.jigsawVariables.get(keyString)!.addParent(variable.name, reffer.id);
+                    if (!this.jigsawVariables.has(keyString)) variable.addParent(reffer.id, variable.name);
+                    else this.jigsawVariables.get(keyString)!.addParent(reffer.id, variable.name);
                 }
             }
         }

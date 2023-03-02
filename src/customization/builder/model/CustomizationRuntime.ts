@@ -1,5 +1,5 @@
 import { DebugState } from "../../../debugmodel/DebugState";
-import { EdgeInfo, NodeInfo, VariableInfo } from "../../../debugmodel/DiagramInfo";
+import { EdgeInfo, NodeInfo, rowToString, VariableInfo } from "../../../debugmodel/DiagramInfo";
 import { JigsawVariable } from "../../../debugmodel/JigsawVariable";
 import { MethodSignature, StackFrame } from "../../../debugmodel/StackFrame";
 import { RuntimeError } from "../error/RuntimeError";
@@ -253,13 +253,11 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return {id: this.currentVariable.id};
 	}
 
-	public getParentsOf(subject: Subject): Map<string, Subject> {
+	public getParentsOf(subject: Subject): Set<[string, string]> {
 		const result: Map<string, Subject> = new Map();
 		const subjectVariable: JigsawVariable | undefined = this.frame.jigsawVariables.get(subject.id);
-		if (subjectVariable)
-			for (const [fieldNameInParent, parentVarKey] of subjectVariable.parents)
-				result.set(fieldNameInParent, {id: parentVarKey});
-		return result;
+		if (subjectVariable) return subjectVariable.parents;
+		else return new Set();
     }
 
 	public getField(fieldName: string, subject?: Subject): Subject | null {
@@ -551,15 +549,32 @@ export class CustomizationRuntime extends CustSpecComponent {
 				rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
 			}
 
-			const parentSubjects: Map<string, Subject> = this.getParentsOf(targetSubject);
-			for (const [fieldNameInParent, parentSubject] of parentSubjects) {
-				const parentNode: NodeInfo | undefined = this.getNode(parentSubject.id);
+			const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
+			for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
+				const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
 				if (parentNode)
 					parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
 			}
 
 			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
 			if (targetNode) this.omitNode(targetNode);
+		}
+	}
+
+	public merge(targetSubjects: Subject[]) {
+		for (const targetSubject of targetSubjects) {
+			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
+			if (targetNode) {
+				const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
+				for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
+					const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
+					if (parentNode)
+						for (const row of targetNode.data.rows)
+							parentNode.data.rows.push("(" + fieldNameInParent + ") " + rowToString(row));
+				}
+
+				this.omitNode(targetNode);
+			}
 		}
 	}
 

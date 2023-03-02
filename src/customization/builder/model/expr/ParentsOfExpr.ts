@@ -25,8 +25,8 @@ export class ParentsOfExpr extends Expr {
         const subject: Subject = subjectExpr as Subject;
 
         const result: Subject[] = [];
-        for (const parentSubject of this.runtime.getParentsOf(subject).values())
-            result.push(parentSubject);
+        for (const [parentVarKey, _] of this.runtime.getParentsOf(subject))
+            result.push({id: parentVarKey});
         return result;
     }
 }

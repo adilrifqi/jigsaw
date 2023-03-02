@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, SingleSubjectContext, StartContext, StatementContext, StringLitContext, SubjectExprContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { AddCommandContext, ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, SingleSubjectContext, StartContext, StatementContext, StringLitContext, SubjectExprContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -64,6 +64,7 @@ import { SetImmutableShortcut } from './model/command/SetImmutableShortcut';
 import { SingleSubjectExpr } from './model/expr/SingleSubjectExpr';
 import { SubjectExpr } from './model/expr/SubjectExpr';
 import { NodesOfExpr } from './model/expr/NodesOfExpr';
+import { MergeShortcut } from './model/command/MergeShortcut';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -660,6 +661,17 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], targetSubject.type()).toString());
 
         return new SetImmutableShortcut(targetSubject, this.runtime, ctx);
+    }
+
+    visitMergeShortcut(ctx: MergeShortcutContext): CustSpecComponent {
+        const mergedComp: CustSpecComponent = this.visit(ctx.expr());
+        if (mergedComp instanceof ErrorComponent) return mergedComp;
+        const mergedExpr: Expr = mergedComp as Expr;
+        const mergedType: ValueType | ArrayType | MapType = mergedExpr.type();
+        if (mergedType != ValueType.SUBJECT && !(mergedType instanceof ArrayType && mergedType.type == ValueType.SUBJECT && mergedType.dimension == 1))
+            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], mergedType).toString());
+
+        return new MergeShortcut(mergedExpr, this.runtime);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{
