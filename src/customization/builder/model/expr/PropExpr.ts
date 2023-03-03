@@ -212,7 +212,10 @@ export class PropExpr extends Expr {
                     const value: Object | null = this.args[1].eval();
                     if (value instanceof RuntimeError) return value;
 
-                    map.set(key, value);
+                    const filtered: Object[] = Array.from(map.keys()).filter(e => JSON.stringify(key) === JSON.stringify(e));
+                    const actualKey: Object = filtered.length > 0 ? filtered[0] : key;
+                    
+                    map.set(actualKey, value);
                     return map.size;
                 }
                 case "containsKey": {
@@ -224,7 +227,7 @@ export class PropExpr extends Expr {
                     if (keyValue instanceof RuntimeError) return keyValue;
                     const key: Object = keyValue as Object;
 
-                    return map.has(key);
+                    return Array.from(map.keys()).filter(e => JSON.stringify(e) === JSON.stringify(key)).length > 0;
                 }
                 case "get": {
                     if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the size of a null map.");
@@ -235,7 +238,8 @@ export class PropExpr extends Expr {
                     if (keyValue instanceof RuntimeError) return keyValue;
                     const key: Object = keyValue as Object;
 
-                    if (map.has(key)) return map.get(key) as Object | null;
+                    const filtered: Object[] = Array.from(map.keys()).filter(e => JSON.stringify(e) === JSON.stringify(key));
+                    if (filtered.length > 0) return map.get(filtered[0]) as Object | null;
                     else return null;
                 }
                 default:
