@@ -177,7 +177,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 					panel = vscode.window.createWebviewPanel(
 						'showReactFlow',
-						'React Flow Sample View',
+						'JIGSAW State Visualization',
 						vscode.ViewColumn.One,
 						{
 							enableScripts: true,
