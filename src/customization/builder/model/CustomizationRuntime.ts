@@ -103,6 +103,22 @@ export class CustomizationRuntime extends CustSpecComponent {
 		this.sortedInsertion(this.shownRelations.get(targetId)!, edge.id);
 	}
 
+	private removeFromAllRelations(edge: EdgeInfo) {
+		const edgeSourceId: string = edge.source;
+		const edgeTargetId: string = edge.target;
+
+		if (this.allRelations.has(edgeSourceId)) {
+			const nodeEdges: string[] = this.allRelations.get(edgeSourceId)!;
+			nodeEdges.splice(nodeEdges.indexOf(edge.id), 1);
+			if (nodeEdges.length == 0) this.allRelations.delete(edgeSourceId);
+		}
+		if (this.allRelations.has(edgeTargetId)) {
+			const nodeEdges: string[] = this.allRelations.get(edgeTargetId)!;
+			nodeEdges.splice(nodeEdges.indexOf(edge.id), 1);
+			if (nodeEdges.length == 0) this.allRelations.delete(edgeTargetId);
+		}
+	}
+
 	private removeFromShownRelations(edge: EdgeInfo) {
 		const edgeSourceId: string = edge.source;
 		const edgeTargetId: string = edge.target;
@@ -534,6 +550,25 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return allSucces;
 	}
 
+	public omitNodeFromAll(node: NodeInfo): boolean {
+		const removeResult: boolean = this.allNodes.delete(node.id);
+		if (removeResult) {
+			const nodeRelations: string[] | undefined = this.allRelations.get(node.id);
+
+			if (nodeRelations) {
+				const relatedEdgesIds: string[] = [];
+				nodeRelations.forEach(val => relatedEdgesIds.push(val));
+				for (const relatedEdgeId of relatedEdgesIds) {
+					const edge: EdgeInfo = this.allEdges.get(relatedEdgeId)!;
+					this.removeFromAllRelations(edge);
+
+					this.allEdges.delete(edge.id);
+				}
+			}
+		}
+		return removeResult;
+	}
+
 	public omitSubjectNode(subject: Subject): boolean {
 		const subjectNode: NodeInfo | undefined = this.shownNodes.get(subject.id);
 		if (subjectNode) return this.omitNode(subjectNode);
@@ -627,44 +662,46 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	// ====================Customization Shortcuts====================
 	public setImmutable(targetSubjects: Subject[]) {
-		// TODO: Update
-		// for (const targetSubject of targetSubjects) {
-		// 	const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(targetSubject.id)!;
-		// 	var rowValueString: string;
-		// 	if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
-		// 	else {
-		// 		const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(targetSubject);
-		// 		rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
-		// 	}
+		for (const targetSubject of targetSubjects) {
+			const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(targetSubject.id)!;
+			var rowValueString: string;
+			if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
+			else {
+				const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(targetSubject);
+				rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
+			}
 
-		// 	const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
-		// 	for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
-		// 		const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
-		// 		if (parentNode)
-		// 			parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
-		// 	}
+			const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
+			for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
+				const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
+				if (parentNode)
+					parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
+			}
 
-		// 	const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
-		// 	if (targetNode) this.omitNode(targetNode);
-		// }
+			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
+			if (targetNode) {
+				this.omitNode(targetNode);
+				this.omitNodeFromAll(targetNode);
+			}
+		}
 	}
 
 	public merge(targetSubjects: Subject[]) {
-		// TODO: Update
-		// for (const targetSubject of targetSubjects) {
-		// 	const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
-		// 	if (targetNode) {
-		// 		const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
-		// 		for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
-		// 			const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
-		// 			if (parentNode)
-		// 				for (const row of targetNode.data.rows)
-		// 					parentNode.data.rows.push("(" + fieldNameInParent + ") " + rowToString(row));
-		// 		}
+		for (const targetSubject of targetSubjects) {
+			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
+			if (targetNode) {
+				const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
+				for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
+					const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
+					if (parentNode)
+						for (const row of targetNode.data.rows)
+							parentNode.data.rows.push("(" + fieldNameInParent + ") " + rowToString(row));
+				}
 
-		// 		this.omitNode(targetNode);
-		// 	}
-		// }
+				this.omitNode(targetNode);
+				this.omitNodeFromAll(targetNode);
+			}
+		}
 	}
 
 	// ====================Scope Methods====================
