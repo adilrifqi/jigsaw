@@ -28,7 +28,9 @@ semiLessCommand
     | expr (LBRAC expr RBRAC)+ ASS expr                 # ArrayIndexReassignCommand
     | (PARENT DOT)+ ID ASS expr                         # ParentVarAssignCommand
     | SHOW expr                                         # ShowCommand
+    | SHOW_ALL                                          # ShowAllCommand
     | OMIT expr                                         # OmitCommand
+    | OMIT_ALL                                          # OmitAllCommand
     | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR   # PlainPropCallCommand
     | plusPlus                                          # PlusPlusCommand
     | shortcut                                          # ShortcutCommand
@@ -141,7 +143,9 @@ PARAM   : 'p:';
 LOCAL   : 'l:';
 
 SHOW        : 'show';
+SHOW_ALL    : 'showAll';
 OMIT        : 'omit';
+OMIT_ALL    : 'omitAll';
 HERE        : 'here';
 PARENT      : 'parent';
 PARENTS     : 'parents';

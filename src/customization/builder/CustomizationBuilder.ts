@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldChainSuffixContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, ShowCommandContext, SingleSubjectContext, SingleSubjectExprContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldChainSuffixContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitAllCommandContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, ShowAllCommandContext, ShowCommandContext, SingleSubjectContext, SingleSubjectExprContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/StringLitExpr';
@@ -65,6 +65,8 @@ import { SingleSubjectExpr } from './model/expr/SingleSubjectExpr';
 import { FieldChainExpr } from './model/expr/FieldChainExpr';
 import { NodesOfExpr } from './model/expr/NodesOfExpr';
 import { MergeShortcut } from './model/command/MergeShortcut';
+import { ShowAllCommand } from './model/command/ShowAllCommand';
+import { OmitAllCommand } from './model/command/OmitAllCommand';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -611,6 +613,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new ShowCommand(expr, this.runtime, ctx);
     }
 
+    visitShowAllCommand(ctx: ShowAllCommandContext): CustSpecComponent {
+        return new ShowAllCommand(this.runtime);
+    }
+
     visitOmitCommand(ctx: OmitCommandContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
@@ -631,6 +637,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             );
 
         return new OmitCommand(expr, this.runtime, ctx);
+    }
+
+    visitOmitAllCommand(ctx: OmitAllCommandContext): CustSpecComponent {
+        return new OmitAllCommand(this.runtime);
     }
 
     visitPlainPropCallCommand(ctx: PlainPropCallCommandContext): CustSpecComponent {

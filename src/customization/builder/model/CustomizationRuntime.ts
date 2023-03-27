@@ -427,6 +427,18 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	// ====================Customization Methods====================
+	public showAll() {
+		this.shownNodes = new Map(this.allNodes);
+		this.shownEdges = new Map(this.allEdges);
+		this.shownRelations = new Map(this.allRelations);
+	}
+
+	public omitAll() {
+		this.shownNodes.clear();
+		this.shownEdges.clear();
+		this.shownRelations.clear();
+	}
+
 	public addNode(newNode: NodeInfo): boolean {
 		if (this.allNodes.has(newNode.id)) return false;
 		this.allNodes.set(newNode.id, newNode);
