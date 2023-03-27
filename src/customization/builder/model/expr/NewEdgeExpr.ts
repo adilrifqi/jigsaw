@@ -42,12 +42,15 @@ export class NewEdgeExpr extends Expr {
         if (labelExprValue instanceof RuntimeError) return labelExprValue;
         const label: string = labelExprValue as string;
 
-        return {
+        const result: EdgeInfo = {
             id: source.id + "-" + target.id,
             source: source.id,
             target: target.id,
             label: label,
             type: 'floating'
         };
+
+        this.runtime.addEdge(result);
+        return result;
     }
 }

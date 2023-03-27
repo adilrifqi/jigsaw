@@ -23,9 +23,11 @@ export class CustomizationRuntime extends CustSpecComponent {
     private runtimeScopes: RTLocationScope[] = [];
 
 	private frame!: StackFrame;
-	private nodes: Map<string, NodeInfo> = new Map();
-	private edges: Map<string, EdgeInfo> = new Map();
-	private relations: Map<string, string[]> = new Map(); // Node id -> Edge ids
+	private allNodes: Map<string, NodeInfo> = new Map(); private shownNodes: Map<string, NodeInfo> = new Map();
+	private allEdges: Map<string, EdgeInfo> = new Map(); private shownEdges: Map<string, EdgeInfo> = new Map();
+
+	private allRelations: Map<string, string[]> = new Map(); // Node id -> Edge ids
+	private shownRelations: Map<string, string[]> = new Map(); // Node id -> Edge ids
 
 	private currentLocation!: Location;
 	private currentVariable!: JigsawVariable;
@@ -39,13 +41,21 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
 	}
 
+	private clearGraph() {
+		this.allNodes.clear(); this.shownNodes.clear();
+		this.allEdges.clear(); this.shownEdges.clear();
+		this.allRelations.clear(); this.shownRelations.clear();
+	}
+
 	public setTopStatements(newStatements: Statement[]) {
 		this.topStatements = newStatements;
 	}
 
-	private populateRelations() {
-		for (const [_, edge] of this.edges)
-			this.addToRelations(edge);
+	private setupRelations() {
+		for (const [_, edge] of this.allEdges) {
+			this.addToAllRelations(edge);
+			this.addToShownRelations(edge);
+		}
 	}
 
 	private sortedInsertion(strings: string[], newString: string): boolean {
@@ -73,53 +83,68 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return true;
 	}
 
-	private addToRelations(edge: EdgeInfo) {
+	private addToAllRelations(edge: EdgeInfo) {
 		const sourceId: string = edge.source;
-		if (!this.relations.has(sourceId)) this.relations.set(sourceId, []);
-		this.sortedInsertion(this.relations.get(sourceId)!, edge.id);
+		if (!this.allRelations.has(sourceId)) this.allRelations.set(sourceId, []);
+		this.sortedInsertion(this.allRelations.get(sourceId)!, edge.id);
 
 		const targetId: string = edge.target;
-		if (!this.relations.has(targetId)) this.relations.set(targetId, []);
-		this.sortedInsertion(this.relations.get(targetId)!, edge.id);
+		if (!this.allRelations.has(targetId)) this.allRelations.set(targetId, []);
+		this.sortedInsertion(this.allRelations.get(targetId)!, edge.id);
 	}
 
-	private removeFromRelations(edge: EdgeInfo) {
+	private addToShownRelations(edge: EdgeInfo) {
+		const sourceId: string = edge.source;
+		if (!this.shownRelations.has(sourceId)) this.shownRelations.set(sourceId, []);
+		this.sortedInsertion(this.shownRelations.get(sourceId)!, edge.id);
+
+		const targetId: string = edge.target;
+		if (!this.shownRelations.has(targetId)) this.shownRelations.set(targetId, []);
+		this.sortedInsertion(this.shownRelations.get(targetId)!, edge.id);
+	}
+
+	private removeFromShownRelations(edge: EdgeInfo) {
 		const edgeSourceId: string = edge.source;
 		const edgeTargetId: string = edge.target;
 
-		if (this.relations.has(edgeSourceId)) {
-			const nodeEdges: string[] = this.relations.get(edgeSourceId)!;
+		if (this.shownRelations.has(edgeSourceId)) {
+			const nodeEdges: string[] = this.shownRelations.get(edgeSourceId)!;
 			nodeEdges.splice(nodeEdges.indexOf(edge.id), 1);
-			if (nodeEdges.length == 0) this.relations.delete(edgeSourceId);
+			if (nodeEdges.length == 0) this.shownRelations.delete(edgeSourceId);
 		}
-		if (this.relations.has(edgeTargetId)) {
-			const nodeEdges: string[] = this.relations.get(edgeTargetId)!;
+		if (this.shownRelations.has(edgeTargetId)) {
+			const nodeEdges: string[] = this.shownRelations.get(edgeTargetId)!;
 			nodeEdges.splice(nodeEdges.indexOf(edge.id), 1);
-			if (nodeEdges.length == 0) this.relations.delete(edgeTargetId);
+			if (nodeEdges.length == 0) this.shownRelations.delete(edgeTargetId);
 		}
 	}
 
 	private setupNodes(nodes: NodeInfo[]) {
-		this.nodes = new Map();
-		for (const node of nodes)
-			this.nodes.set(node.id, node);
+		this.allNodes = new Map();
+		this.shownNodes = new Map();
+		for (const node of nodes) {
+			this.allNodes.set(node.id, node);
+			this.shownNodes.set(node.id, node);
+		}
 	}
 
 	private setupEdges(edges: EdgeInfo[]) {
-		this.edges = new Map();
-		for (const edge of edges)
-			this.edges.set(edge.id, edge);
+		this.allEdges = new Map();
+		this.shownEdges = new Map();
+		for (const edge of edges) {
+			this.allEdges.set(edge.id, edge);
+			this.shownEdges.set(edge.id, edge);
+		}
 	}
 
 	public applyCustomization(nodes: NodeInfo[] = [], edges: EdgeInfo[] = [], stackPos: number = 0): {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError {
 		this.setupNodes(nodes);
 		this.setupEdges(edges);
-		this.relations = new Map();
 		this.runtimeScopes = [];
 		this.executedMethodLocations = [];
 		this.openLocationScope();
 
-		this.populateRelations();
+		this.setupRelations();
 
 		const frame: StackFrame = DebugState.getInstance().getFrameByPos(stackPos)!;
 		this.frame = frame;
@@ -148,7 +173,9 @@ export class CustomizationRuntime extends CustSpecComponent {
 			}
 		}
 
-		return {nodes: [...this.nodes.values()], edges: [...this.edges.values()]};
+		const result: {nodes: NodeInfo[], edges: EdgeInfo[]} = {nodes: [...this.shownNodes.values()], edges: [...this.shownEdges.values()]};
+		this.clearGraph();
+		return result;
     }
 
 	private customizationDispatch(variable: JigsawVariable | undefined, interestNames: {class?: string, field?: string, local?: string}, location: Location): RuntimeError | null | undefined {
@@ -245,7 +272,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public getSubjectNode(subject: Subject): NodeInfo | null {
-		const getResult: NodeInfo | undefined = this.getNode(subject.id);
+		const getResult: NodeInfo | undefined = this.allNodes.get(subject.id);
 		return getResult ? getResult : null;
 	}
 
@@ -401,8 +428,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	// ====================Customization Methods====================
 	public addNode(newNode: NodeInfo): boolean {
-		if (this.nodes.has(newNode.id)) return false;
-		this.nodes.set(newNode.id, newNode);
+		if (this.allNodes.has(newNode.id)) return false;
+		this.allNodes.set(newNode.id, newNode);
 		return true;
 	}
 
@@ -414,10 +441,10 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public addEdge(newEdge: EdgeInfo): boolean {
-		var sourceFound: boolean = this.getNode(newEdge.source) !== undefined;
-		var targetFound: boolean = this.getNode(newEdge.target) !== undefined;
+		var sourceFound: boolean = this.allNodes.get(newEdge.source) !== undefined;
+		var targetFound: boolean = this.allNodes.get(newEdge.target) !== undefined;
 		if (!sourceFound || !targetFound) return false;
-		this.pushEdge(newEdge);
+		this.pushEdgeToAll(newEdge);
 		return true;
     }
 
@@ -428,19 +455,47 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return allSuccess;
 	}
 
+	public showNode(node: NodeInfo): boolean {
+		if (this.shownNodes.has(node.id)) return false;
+		this.shownNodes.set(node.id, node);
+		return true;
+	}
+
+	public showNodes(newNodes: NodeInfo[]): boolean {
+		var allSuccess: boolean = true;
+		for (const newNode of newNodes)
+			allSuccess = allSuccess && this.showNode(newNode);
+		return allSuccess;
+	}
+
+	public showEdge(newEdge: EdgeInfo): boolean {
+		var sourceFound: boolean = this.shownEdges.get(newEdge.source) !== undefined;
+		var targetFound: boolean = this.shownNodes.get(newEdge.target) !== undefined;
+		if (!sourceFound || !targetFound) return false;
+		this.pushEdgeToShown(newEdge);
+		return true;
+    }
+
+	public showEdges(newEdges: EdgeInfo[]): boolean {
+		var allSuccess: boolean = true;
+		for (const newEdge of newEdges)
+			allSuccess = allSuccess && this.showEdge(newEdge);
+		return allSuccess;
+	}
+
 	public omitNode(node: NodeInfo): boolean {
-		const removeResult: boolean = this.nodes.delete(node.id);
+		const removeResult: boolean = this.shownNodes.delete(node.id);
 		if (removeResult) {
-			const nodeRelations: string[] | undefined = this.relations.get(node.id);
+			const nodeRelations: string[] | undefined = this.shownRelations.get(node.id);
 
 			if (nodeRelations) {
 				const relatedEdgesIds: string[] = [];
 				nodeRelations.forEach(val => relatedEdgesIds.push(val));
 				for (const relatedEdgeId of relatedEdgesIds) {
-					const edge: EdgeInfo = this.getEdge(relatedEdgeId)!;
-					this.removeFromRelations(edge);
+					const edge: EdgeInfo = this.shownEdges.get(relatedEdgeId)!;
+					this.removeFromShownRelations(edge);
 
-					this.edges.delete(edge.id);
+					this.shownEdges.delete(edge.id);
 				}
 			}
 		}
@@ -455,8 +510,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public omitEdge(toOmit: EdgeInfo): boolean {
-		const removeResult: boolean = this.edges.delete(toOmit.id);
-		if (removeResult) this.removeFromRelations(toOmit);
+		const removeResult: boolean = this.shownEdges.delete(toOmit.id);
+		if (removeResult) this.removeFromShownRelations(toOmit);
 		return removeResult;
 	}
 
@@ -468,7 +523,7 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public omitSubjectNode(subject: Subject): boolean {
-		const subjectNode: NodeInfo | undefined = this.getNode(subject.id);
+		const subjectNode: NodeInfo | undefined = this.shownNodes.get(subject.id);
 		if (subjectNode) return this.omitNode(subjectNode);
 		return true;
 	}
@@ -484,8 +539,8 @@ export class CustomizationRuntime extends CustSpecComponent {
 		const result: NodeInfo[]= [];
 		const typeVars: Map<string, JigsawVariable> | undefined = this.frame.typeCollection.get(typeName);
 		if (typeVars)
-			for (const [varKey, variable] of typeVars) {
-				const varNode: NodeInfo | undefined = this.getNode(varKey);
+			for (const [varKey, _] of typeVars) {
+				const varNode: NodeInfo | undefined = this.allNodes.get(varKey);
 				if (varNode) result.push(varNode);
 			}
 		return result;
@@ -506,44 +561,47 @@ export class CustomizationRuntime extends CustSpecComponent {
 			if (!variable) continue;
 			const fieldKey: string | undefined = variable.variables.get(fieldName);
 			if (fieldKey === undefined || fieldKey === null) continue;
-			const correspondingNode: NodeInfo | undefined = this.getNode(fieldKey);
+			const correspondingNode: NodeInfo | undefined = this.allNodes.get(fieldKey);
 			if (correspondingNode) result.push(correspondingNode);
 		}
 		return result;
 	}
 
 	public getNode(id: string): NodeInfo | undefined {
-		return this.nodes.get(id);
+		return this.allNodes.get(id);
 	}
 
 	public getNodes(ids: string[]): (NodeInfo | null)[] {
 		const result: (NodeInfo | null)[] = [];
 		for (const id of ids) {
-			const node: NodeInfo | undefined = this.getNode(id);
+			const node: NodeInfo | undefined = this.allNodes.get(id);
 			if (node) result.push(node);
 			else result.push(null);
 		}
 		return result;
 	}
 
-	private getEdge(id: string): EdgeInfo | undefined {
-		return this.edges.get(id);
+	private pushEdgeToAll(newEdge: EdgeInfo) {
+		if (this.allEdges.has(newEdge.id)) return false;
+		this.addToAllRelations(newEdge);
+		this.allEdges.set(newEdge.id, newEdge);
+		return true;
 	}
 
-	private pushEdge(newEdge: EdgeInfo) {
-		if (this.edges.has(newEdge.id)) return false;
-		this.addToRelations(newEdge);
-		this.edges.set(newEdge.id, newEdge);
+	private pushEdgeToShown(newEdge: EdgeInfo) {
+		if (this.shownEdges.has(newEdge.id)) return false;
+		this.addToShownRelations(newEdge);
+		this.shownEdges.set(newEdge.id, newEdge);
 		return true;
 	}
 
 	public getEdges(origin: NodeInfo, target: NodeInfo): EdgeInfo[] {
-		const relations: string[] | undefined = this.relations.get(origin.id);
+		const relations: string[] | undefined = this.allRelations.get(origin.id);
 
 		const result: EdgeInfo[] = [];
 		if (relations)
 			for (const edgeId of relations) {
-				const edge: EdgeInfo | undefined = this.getEdge(edgeId);
+				const edge: EdgeInfo | undefined = this.allEdges.get(edgeId);
 				if (edge && edge.source === origin.id && edge.target === target.id)
 					result.push(edge);
 			}
@@ -553,42 +611,44 @@ export class CustomizationRuntime extends CustSpecComponent {
 
 	// ====================Customization Shortcuts====================
 	public setImmutable(targetSubjects: Subject[]) {
-		for (const targetSubject of targetSubjects) {
-			const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(targetSubject.id)!;
-			var rowValueString: string;
-			if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
-			else {
-				const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(targetSubject);
-				rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
-			}
+		// TODO: Update
+		// for (const targetSubject of targetSubjects) {
+		// 	const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(targetSubject.id)!;
+		// 	var rowValueString: string;
+		// 	if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
+		// 	else {
+		// 		const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(targetSubject);
+		// 		rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
+		// 	}
 
-			const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
-			for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
-				const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
-				if (parentNode)
-					parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
-			}
+		// 	const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
+		// 	for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
+		// 		const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
+		// 		if (parentNode)
+		// 			parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
+		// 	}
 
-			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
-			if (targetNode) this.omitNode(targetNode);
-		}
+		// 	const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
+		// 	if (targetNode) this.omitNode(targetNode);
+		// }
 	}
 
 	public merge(targetSubjects: Subject[]) {
-		for (const targetSubject of targetSubjects) {
-			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
-			if (targetNode) {
-				const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
-				for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
-					const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
-					if (parentNode)
-						for (const row of targetNode.data.rows)
-							parentNode.data.rows.push("(" + fieldNameInParent + ") " + rowToString(row));
-				}
+		// TODO: Update
+		// for (const targetSubject of targetSubjects) {
+		// 	const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
+		// 	if (targetNode) {
+		// 		const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
+		// 		for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
+		// 			const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
+		// 			if (parentNode)
+		// 				for (const row of targetNode.data.rows)
+		// 					parentNode.data.rows.push("(" + fieldNameInParent + ") " + rowToString(row));
+		// 		}
 
-				this.omitNode(targetNode);
-			}
-		}
+		// 		this.omitNode(targetNode);
+		// 	}
+		// }
 	}
 
 	// ====================Scope Methods====================

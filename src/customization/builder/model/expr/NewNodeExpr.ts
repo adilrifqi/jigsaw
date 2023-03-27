@@ -1,13 +1,17 @@
+import { NodeInfo } from "../../../../debugmodel/DiagramInfo";
 import { RuntimeError } from "../../error/RuntimeError";
+import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Expr } from "./Expr";
 import { ValueType } from "./ValueType";
 
 export class NewNodeExpr extends Expr {
     private readonly nameExpr: Expr;
+    private readonly runtime: CustomizationRuntime;
 
-    constructor(expr: Expr) {
+    constructor(expr: Expr, runtime: CustomizationRuntime) {
         super();
         this.nameExpr = expr;
+        this.runtime = runtime;
     }
     
     public type(): ValueType {
@@ -19,7 +23,7 @@ export class NewNodeExpr extends Expr {
         if (exprValue instanceof RuntimeError) return exprValue;
         const name: string = exprValue as string;
 
-        return {
+        const result: NodeInfo =  {
             id: name,
             position: {x: 0, y:0},
             type: 'object',
@@ -28,5 +32,8 @@ export class NewNodeExpr extends Expr {
                 rows: []
             }
         };
+
+        this.runtime.addNode(result);
+        return result;
     }
 }

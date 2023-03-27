@@ -8,7 +8,7 @@ import { MapType } from "../expr/NewMapExpr";
 import { ValueType } from "../expr/ValueType";
 import { Command } from "./Command";
 
-export class AddCommand extends Command {
+export class ShowCommand extends Command {
     private readonly expr: Expr;
     private readonly runtime: CustomizationRuntime;
     private readonly ctx: ParserRuleContext;
@@ -30,12 +30,12 @@ export class AddCommand extends Command {
             if (arrayType.dimension != 1)
                 return new RuntimeError(this.ctx, "For some reason, the detected dimension for the add command is not 1, but is instead " + arrayType.dimension);
             else if (arrayType.type == ValueType.NODE)
-                this.runtime.addNodes(value as NodeInfo[]);
-            else this.runtime.addEdges(value as EdgeInfo[]);
+                this.runtime.showNodes(value as NodeInfo[]);
+            else this.runtime.showEdges(value as EdgeInfo[]);
         } else if (value !== null && value !== undefined) {
             if (this.expr.type() == ValueType.NODE)
-                this.runtime.addNode(value as NodeInfo);
-            else this.runtime.addEdge(value as EdgeInfo);
+                this.runtime.showNode(value as NodeInfo);
+            else this.runtime.showEdge(value as EdgeInfo);
         }
 
         return undefined;
