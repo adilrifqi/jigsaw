@@ -41,6 +41,8 @@ export class PropExpr extends Expr {
                 return ValueType.NUM;
             case "setTitle":
                 return ValueType.STRING;
+            case "isShown":
+                return ValueType.BOOLEAN;
             case "title":
                 return ValueType.STRING;
             case "addRow":
@@ -124,6 +126,11 @@ export class PropExpr extends Expr {
 
                     node.data.title = newLabel;
                     return newLabel;
+                }
+                case "isShown": {
+                    if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");
+                    const node: NodeInfo = proppedValue as NodeInfo;
+                    return this.runtime.nodeIsShown(node);
                 }
                 case "title": {
                     if (proppedValue === null) return new RuntimeError(this.ctx, "Cannot get the title of a null value.");

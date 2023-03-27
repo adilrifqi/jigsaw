@@ -609,6 +609,10 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return result;
 	}
 
+	public nodeIsShown(node: NodeInfo): boolean {
+		return this.shownNodes.get(node.id) !== undefined;
+	}
+
 	// ====================Customization Shortcuts====================
 	public setImmutable(targetSubjects: Subject[]) {
 		// TODO: Update

@@ -1368,6 +1368,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                         }
                     }
             }
+            case "isShown":
             case "title":
                 if (expr.type() == ValueType.NODE && exprs.length == 0) break;
             case "addRow": {
