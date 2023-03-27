@@ -1,6 +1,6 @@
 import { ParserRuleContext } from "antlr4ts";
-import { ArrayType } from "../model/expr/ArrayExpr";
-import { MapType } from "../model/expr/NewMapExpr";
+import { ArrayType } from "../model/expr/collection/ArrayExpr";
+import { MapType } from "../model/expr/collection/NewMapExpr";
 import { ValueType } from "../model/expr/ValueType";
 import { ErrorBuilder } from "./ErrorBuilder";
 

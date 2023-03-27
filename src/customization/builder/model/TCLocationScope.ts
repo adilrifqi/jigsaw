@@ -1,5 +1,5 @@
-import { ArrayType } from "./expr/ArrayExpr";
-import { MapType } from "./expr/NewMapExpr";
+import { ArrayType } from "./expr/collection/ArrayExpr";
+import { MapType } from "./expr/collection/NewMapExpr";
 import { ValueType } from "./expr/ValueType";
 
 export class TCLocationScope {

@@ -1,6 +1,6 @@
 import { CustSpecComponent } from "../CustSpecComponent";
-import { ArrayType } from "./ArrayExpr";
-import { MapType } from "./NewMapExpr";
+import { ArrayType } from "./collection/ArrayExpr";
+import { MapType } from "./collection/NewMapExpr";
 import { ValueType } from "./ValueType";
 
 export abstract class Expr extends CustSpecComponent {

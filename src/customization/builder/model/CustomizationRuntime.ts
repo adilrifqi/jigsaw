@@ -1,12 +1,12 @@
 import { DebugState } from "../../../debugmodel/DebugState";
 import { EdgeInfo, NodeInfo, rowToString, VariableInfo } from "../../../debugmodel/DiagramInfo";
 import { JigsawVariable } from "../../../debugmodel/JigsawVariable";
-import { MethodSignature, StackFrame } from "../../../debugmodel/StackFrame";
+import { StackFrame } from "../../../debugmodel/StackFrame";
 import { RuntimeError } from "../error/RuntimeError";
-import { Command } from "./command/Command";
+import { Command } from "./command/language/Command";
 import { CustSpecComponent } from "./CustSpecComponent";
-import { ArrayType } from "./expr/ArrayExpr";
-import { MapType } from "./expr/NewMapExpr";
+import { ArrayType } from "./expr/collection/ArrayExpr";
+import { MapType } from "./expr/collection/NewMapExpr";
 import { ValueType } from "./expr/ValueType";
 import { ClassLocation } from "./location/ClassLocation";
 import { Location, LocationType } from "./location/Location";

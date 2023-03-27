@@ -1,5 +1,4 @@
 import { MethodSignature } from "../../../../debugmodel/StackFrame";
-import { Command } from "../command/Command";
 import { CustomizationRuntime } from "../CustomizationRuntime";
 import { Statement } from "../Statement";
 import { Location, LocationType } from "./Location";
