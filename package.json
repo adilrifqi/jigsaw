@@ -4,7 +4,7 @@
   "description": "Java Visual Debugger with a Customizable View",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.71.0"
+    "vscode": "^1.76.2"
   },
   "categories": [
     "Other"
