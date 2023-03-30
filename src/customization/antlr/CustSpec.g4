@@ -27,19 +27,13 @@ semiLessCommand
     | ID ASS expr                                       # ReassignCommand
     | expr (LBRAC expr RBRAC)+ ASS expr                 # ArrayIndexReassignCommand
     | (PARENT DOT)+ ID ASS expr                         # ParentVarAssignCommand
-    | SHOW expr                                         # ShowCommand
-    | SHOW_ALL                                          # ShowAllCommand
-    | OMIT expr                                         # OmitCommand
-    | OMIT_ALL                                          # OmitAllCommand
     | suffixed DOT ID LPAR (expr (COMMA expr)*)? RPAR   # PlainPropCallCommand
     | plusPlus                                          # PlusPlusCommand
-    | shortcut                                          # ShortcutCommand
+    | exprCust                                          # CustExprCommand
+    | commandCust                                       # CustCommand
     ;
 
-shortcut
-    : SET_IMMUTABLE expr    # SetImmutableShortcut // <subject(s) to set immutable>
-    | MERGE expr            # MergeShortcut // <subject(s) to merge to parents>
-    ;
+commandCust : SHOW_ALL | OMIT_ALL ;
 
 expr: disjunction;
 
@@ -78,18 +72,10 @@ suffixed
 
 primary
     : ID                                    # IdExpr
-    | NEW_NODE expr                         # NewNodeExpr
-    | NEW_EDGE expr expr expr               # NewEdgeExpr
-    | PARENTS                               # ParentsExpr
-    | PARENTS_OF expr                       # ParentsOfExpr
-    | HERE                                  # HereExpr
-    | CHILDREN                              # ChildrenExpr
-    | CHILDREN_OF expr                      # ChildrenOfExpr
+    | diagramElement                        # DiagramElementExpr
+    | subjectRule                           # SubjectExpr
+    | exprCust                              # CustExpr
     | VALUE_OF expr type                    # ValueOfExpr
-    | singleSubject                         # SingleSubjectExpr
-    | NODE_OF expr                          # NodeOfExpr
-    | NODES_OF expr                         # NodesOfExpr
-    | EDGES_OF expr expr                    # EdgesOfExpr
     | literal                               # LiteralExpr
     | LPAR expr RPAR                        # ParExpr
     | LBRAC (expr (COMMA expr)*)? RBRAC     # ArrayExpr
@@ -97,6 +83,35 @@ primary
     | IS_NULL expr                          # IsNullExpr
     | NEW_MAP LESS type COMMA type GREATER  # NewMapExpr
     | plusPlus                              # PlusPlusExpr
+    ;
+
+exprCust
+    : SHOW expr                             # ShowCustExpr
+    | OMIT expr                             # OmitCustExpr
+    | shortcut                              # ShortcutCustExpr
+    ;
+
+shortcut
+    : INLINE expr   # InlineShortcut // <subject(s) or node(s) to inline to other nodes>. Returns affected nodes.
+    | MERGE expr    # MergeShortcut // <subject(s) or node(s) to merge to parents>. Returns outgoing nodes.
+    | REFMERGE expr # RefMergeShortcut // Same as MERGE
+    ;
+
+diagramElement
+    : NEW_NODE expr                         # NewNodeExpr
+    | NEW_EDGE expr expr expr               # NewEdgeExpr
+    | NODE_OF expr                          # NodeOfExpr
+    | NODES_OF expr                         # NodesOfExpr
+    | EDGES_OF expr expr                    # EdgesOfExpr
+    ;
+
+subjectRule
+    : PARENTS                               # ParentsExpr
+    | PARENTS_OF expr                       # ParentsOfExpr
+    | HERE                                  # HereExpr
+    | CHILDREN                              # ChildrenExpr
+    | CHILDREN_OF expr                      # ChildrenOfExpr
+    | singleSubject                         # SingleSubjectExpr
     ;
 
 plusPlus
@@ -176,8 +191,9 @@ SUBJECT_TYPE: 'Subject';
 MAP         : 'Map';
 NEW_MAP     : 'newMap';
 
-SET_IMMUTABLE   : 'setImmutable';
-MERGE           : 'merge';
+INLINE  : 'inline';
+MERGE   : 'merge';
+REFMERGE: 'refMerge';
 
 COLON       : ':';
 SEMI        : ';';

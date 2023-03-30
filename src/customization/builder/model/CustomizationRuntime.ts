@@ -483,35 +483,54 @@ export class CustomizationRuntime extends CustSpecComponent {
 		return allSuccess;
 	}
 
-	public showNode(node: NodeInfo): boolean {
-		if (this.shownNodes.has(node.id)) return false;
-		this.shownNodes.set(node.id, node);
-		return true;
+	public showDispatch(object: Subject | NodeInfo | EdgeInfo | null): NodeInfo | EdgeInfo | null {
+		if (object === null) return null;
+		if (object.hasOwnProperty("source")) return this.showEdge(object as EdgeInfo);
+		if (object.hasOwnProperty("position")) return this.showNode(object as NodeInfo);
+
+		const subjectNode: NodeInfo | null = this.getSubjectNode(object);
+		if (subjectNode === null) return null;
+		return this.showNode(subjectNode);
 	}
 
-	public showNodes(newNodes: NodeInfo[]): boolean {
-		var allSuccess: boolean = true;
+	public showNode(node: NodeInfo): NodeInfo {
+		if (!this.shownNodes.has(node.id)) this.shownNodes.set(node.id, node);
+		return node;
+	}
+
+	public showNodes(newNodes: NodeInfo[]): NodeInfo[] {
+		const result: NodeInfo[] = [];
 		for (const newNode of newNodes)
-			allSuccess = allSuccess && this.showNode(newNode);
-		return allSuccess;
+			result.push(this.showNode(newNode));
+		return result;
 	}
 
-	public showEdge(newEdge: EdgeInfo): boolean {
-		var sourceFound: boolean = this.shownEdges.get(newEdge.source) !== undefined;
+	public showEdge(newEdge: EdgeInfo): EdgeInfo | null {
+		var sourceFound: boolean = this.shownNodes.get(newEdge.source) !== undefined;
 		var targetFound: boolean = this.shownNodes.get(newEdge.target) !== undefined;
-		if (!sourceFound || !targetFound) return false;
+		if (!sourceFound || !targetFound) return null;
 		this.pushEdgeToShown(newEdge);
-		return true;
+		return newEdge;
     }
 
-	public showEdges(newEdges: EdgeInfo[]): boolean {
-		var allSuccess: boolean = true;
+	public showEdges(newEdges: EdgeInfo[]): (EdgeInfo | null)[] {
+		const result: (EdgeInfo | null)[] = [];
 		for (const newEdge of newEdges)
-			allSuccess = allSuccess && this.showEdge(newEdge);
-		return allSuccess;
+			result.push(this.showEdge(newEdge));
+		return result;
 	}
 
-	public omitNode(node: NodeInfo): boolean {
+	public omitDispatch(object: NodeInfo | EdgeInfo | Subject | null): NodeInfo | EdgeInfo | null {
+		if (object === null) return object;
+		if (object.hasOwnProperty("source")) return this.omitEdge(object as EdgeInfo);
+		if (object.hasOwnProperty("position")) return this.omitNode(object as NodeInfo);
+
+		const subjectNode: NodeInfo | null = this.getSubjectNode(object);
+		if (subjectNode === null) return subjectNode;
+		return this.omitNode(subjectNode);
+	}
+
+	public omitNode(node: NodeInfo): NodeInfo {
 		const removeResult: boolean = this.shownNodes.delete(node.id);
 		if (removeResult) {
 			const nodeRelations: string[] | undefined = this.shownRelations.get(node.id);
@@ -527,27 +546,27 @@ export class CustomizationRuntime extends CustSpecComponent {
 				}
 			}
 		}
-		return removeResult;
+		return node;
 	}
 
-	public omitNodes(nodes: NodeInfo[]): boolean {
-		var allSuccess: boolean = true;
+	public omitNodes(nodes: NodeInfo[]): NodeInfo[] {
+		const result: NodeInfo[] = [];
 		for (const node of nodes)
-			allSuccess = allSuccess && this.omitNode(node);
-		return allSuccess;
+			result.push(this.omitNode(node));
+		return result;
 	}
 
-	public omitEdge(toOmit: EdgeInfo): boolean {
+	public omitEdge(toOmit: EdgeInfo): EdgeInfo {
 		const removeResult: boolean = this.shownEdges.delete(toOmit.id);
 		if (removeResult) this.removeFromShownRelations(toOmit);
-		return removeResult;
+		return toOmit;
 	}
 
-	public omitEdges(edges: EdgeInfo[]): boolean {
-		var allSucces: boolean = true;
+	public omitEdges(edges: EdgeInfo[]): EdgeInfo[] {
+		const result: EdgeInfo[] = [];
 		for (const edge of edges)
-			allSucces = allSucces && this.omitEdge(edge);
-		return allSucces;
+			result.push(this.omitEdge(edge));
+		return result;
 	}
 
 	public omitNodeFromAll(node: NodeInfo): boolean {
@@ -567,19 +586,6 @@ export class CustomizationRuntime extends CustSpecComponent {
 			}
 		}
 		return removeResult;
-	}
-
-	public omitSubjectNode(subject: Subject): boolean {
-		const subjectNode: NodeInfo | undefined = this.shownNodes.get(subject.id);
-		if (subjectNode) return this.omitNode(subjectNode);
-		return true;
-	}
-
-	public omitSubjectsNodes(subjects: Subject[]): boolean {
-		var allSuccess: boolean = true;
-		for (const subject of subjects)
-			allSuccess = allSuccess && this.omitSubjectNode(subject);
-		return allSuccess;
 	}
 
 	public getNodesOfType(typeName: string): NodeInfo[] {
@@ -661,47 +667,96 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	// ====================Customization Shortcuts====================
-	public setImmutable(targetSubjects: Subject[]) {
-		for (const targetSubject of targetSubjects) {
-			const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(targetSubject.id)!;
+	public inlineShownNodes(targets: (NodeInfo | null)[] | Subject[]): NodeInfo[] {
+		const affectedNodes: Set<NodeInfo> = new Set();
+		for (const target of targets) {
+			if (target === null) continue;
+
+			const wasSubject: boolean = !target.hasOwnProperty("position");
+			const node: NodeInfo | null = wasSubject ? this.getSubjectNode(target) : target as NodeInfo;
+			if (node === null) continue; // Should never happen
+			if (!this.shownNodes.has(node.id)) continue; // If the node is not shown, then no shown nodes would be affected
+
 			var rowValueString: string;
-			if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
-			else {
-				const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(targetSubject);
-				rowValueString = subjectValue !== null ? rowValueString = JSON.stringify(subjectValue.value) : JSON.stringify(null);
+			if (wasSubject) {
+				const targetVariable: JigsawVariable = this.frame.jigsawVariables.get(node.id)!;
+				if (targetVariable.stringRep !== undefined) rowValueString = targetVariable.stringRep;
+				else {
+					const subjectValue: {value: Object, type: ValueType | ArrayType | MapType} | null = this.getSubjectValue(target as Subject);
+					rowValueString = subjectValue !== null ? JSON.stringify(subjectValue.value) : "<Object has no representable string>";
+				}
+			} else rowValueString = node.id;
+
+			const nodeEdgeIds: string[] | undefined = this.shownRelations.get(node.id);
+			if (!nodeEdgeIds) continue;
+			for (const nodeEdgeId of nodeEdgeIds) {
+				const nodeEdge: EdgeInfo | undefined = this.shownEdges.get(nodeEdgeId);
+				if (!nodeEdge || nodeEdge.target !== node.id) continue; // The current node should be the target
+
+				const sourceNode: NodeInfo | undefined = this.shownNodes.get(nodeEdge.source);
+				if (!sourceNode) continue;
+				affectedNodes.add(sourceNode);
+
+				sourceNode.data.rows.push(nodeEdge.label + ": " + rowValueString);
 			}
 
-			const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
-			for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
-				const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
-				if (parentNode)
-					parentNode.data.rows.push(fieldNameInParent + ": " + rowValueString);
-			}
-
-			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
-			if (targetNode) {
-				this.omitNode(targetNode);
-				this.omitNodeFromAll(targetNode);
-			}
+			this.omitNode(node);
 		}
+
+		return Array.from(affectedNodes.values());
 	}
 
-	public merge(targetSubjects: Subject[]) {
-		for (const targetSubject of targetSubjects) {
-			const targetNode: NodeInfo | undefined = this.getNode(targetSubject.id);
-			if (targetNode) {
-				const parentSubjects: Set<[string, string]> = this.getParentsOf(targetSubject);
-				for (const [parentVarKey, fieldNameInParent] of parentSubjects) {
-					const parentNode: NodeInfo | undefined = this.getNode(parentVarKey);
-					if (parentNode)
-						for (const row of targetNode.data.rows)
-							parentNode.data.rows.push("(" + fieldNameInParent + ") " + rowToString(row));
+	public mergeShownNodes(targets: (NodeInfo | null)[] | Subject[], isRefMerge: boolean): NodeInfo[] {
+		const newTargetNodes: Set<NodeInfo> = new Set();
+		for (const target of targets) {
+			if (target === null) continue;
+
+			const wasSubject: boolean = !target.hasOwnProperty("position");
+			const node: NodeInfo | null = wasSubject ? this.getSubjectNode(target) : target as NodeInfo;
+			if (node === null) continue; // Should never happen
+			if (!this.shownNodes.has(node.id)) continue; // If the node is not shown, then no shown nodes would be affected
+
+			const outgoingNodes: Map<NodeInfo, string> = new Map();
+			const incomingNodes: NodeInfo[] = [];
+			const nodeEdgeIds: string[] | undefined = this.shownRelations.get(node.id);
+			if (!nodeEdgeIds) continue;
+			for (const nodeEdgeId of nodeEdgeIds) {
+				const nodeEdge: EdgeInfo | undefined = this.shownEdges.get(nodeEdgeId);
+				if (!nodeEdge) continue;
+
+				if (nodeEdge.source === node.id) { // outgoing
+					const outgoingNode: NodeInfo | undefined = this.shownNodes.get(nodeEdge.target);
+					if (outgoingNode) outgoingNodes.set(outgoingNode, nodeEdge.label);
+				} else if (nodeEdge.target === node.id) { // incoming
+					const incomingNode: NodeInfo | undefined = this.shownNodes.get(nodeEdge.source);
+					if (!incomingNode) continue;
+					incomingNodes.push(incomingNode);
+
+					if (!isRefMerge)
+						for (const row of node.data.rows)
+							incomingNode.data.rows.push("(" + nodeEdge.label + ") " + rowToString(row));
+				}
+			}
+
+			for (const incomingNode of incomingNodes)
+				for (const [outgoingNode, outgoingLabel] of outgoingNodes) {
+					const newEdge: EdgeInfo = {
+						id: "(" + node.id + ") " + incomingNode.id + "-" + outgoingNode.id,
+						source: incomingNode.id,
+						target: outgoingNode.id,
+						label: outgoingLabel,
+						type: 'floating'
+					};
+					this.addEdge(newEdge);
+					this.showEdge(newEdge);
 				}
 
-				this.omitNode(targetNode);
-				this.omitNodeFromAll(targetNode);
-			}
+			this.omitNode(node);
+			for (const [outgoingNode, _] of outgoingNodes)
+				newTargetNodes.add(outgoingNode);
 		}
+
+		return Array.from(newTargetNodes.values());
 	}
 
 	// ====================Scope Methods====================

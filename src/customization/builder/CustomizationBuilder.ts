@@ -1,7 +1,7 @@
 import { CustSpecVisitor } from '../antlr/parser/src/customization/antlr/CustSpecVisitor';
 import { AbstractParseTreeVisitor } from 'antlr4ts/tree/AbstractParseTreeVisitor'
 import { CustSpecComponent } from './model/CustSpecComponent';
-import { ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustLocationContext, CustSpecParser, DecGetExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldChainSuffixContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitAllCommandContext, OmitCommandContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, ScopeCommandContext, SemiCommandContext, SetImmutableShortcutContext, ShortcutCommandContext, ShowAllCommandContext, ShowCommandContext, SingleSubjectContext, SingleSubjectExprContext, StartContext, StatementContext, StringLitContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
+import { ArrayAccessSuffixContext, ArrayExprContext, ArrayIndexReassignCommandContext, BooleanLitContext, ChildrenExprContext, ChildrenOfExprContext, ClassLocIdContext, CollectionForLoopContext, CommandCustContext, ComparisonContext, ConditionForLoopContext, ConjunctionContext, CustCommandContext, CustExprCommandContext, CustExprContext, CustLocationContext, CustSpecParser, DecGetExprContext, DiagramElementExprContext, DisjunctionContext, EdgesOfExprContext, ExprContext, FieldChainSuffixContext, ForCommandContext, ForInitContext, ForUpdateContext, GetDecExprContext, GetIncExprContext, HereExprContext, IdExprContext, IfCommandContext, IncGetExprContext, InlineShortcutContext, IsNullExprContext, LiteralContext, LiteralExprContext, LocIdContext, MergeShortcutContext, MethodLocIdContext, NegationContext, NewEdgeExprContext, NewMapExprContext, NewNodeExprContext, NewVarCommandContext, NodeOfExprContext, NodesOfExprContext, NumLitContext, OmitCustExprContext, ParentsExprContext, ParentsOfExprContext, ParentVarAssignCommandContext, ParentVarExprContext, ParExprContext, PlainPropCallCommandContext, PlusPlusCommandContext, PlusPlusExprContext, PrimaryExprContext, PropSuffixContext, ReassignCommandContext, RefMergeShortcutContext, ScopeCommandContext, SemiCommandContext, ShortcutCustExprContext, ShowCustExprContext, SingleSubjectContext, SingleSubjectExprContext, StartContext, StatementContext, StringLitContext, SubjectExprContext, SuffixedContext, SumContext, TermContext, TypeContext, ValueOfExprContext, WhileCommandContext } from '../antlr/parser/src/customization/antlr/CustSpecParser';
 import { BooleanLitExpr } from './model/expr/bool/BooleanLitExpr';
 import { ErrorComponent } from './model/ErrorComponent';
 import { StringLitExpr } from './model/expr/string/StringLitExpr';
@@ -30,7 +30,6 @@ import { NewNodeExpr } from './model/expr/diagram/NewNodeExpr';
 import { VarRefExpr } from './model/expr/ref/VarRefExpr';
 import { NewVarCommand } from './model/command/language/NewVarCommand';
 import { ReassignCommand } from './model/command/language/ReassignCommand';
-import { ShowCommand } from './model/command/diagram/ShowCommand';
 import { NodeOfExpr } from './model/expr/diagram/NodeOfExpr';
 import { ArrayExpr, ArrayType } from './model/expr/collection/ArrayExpr';
 import { ArrayAccessExpr } from './model/expr/collection/ArrayAccessExpr';
@@ -59,14 +58,16 @@ import { CollectionForloopCommand } from './model/command/language/CollectionFor
 import { PlusPlusExpr } from './model/expr/num/PlusPlusExpr';
 import { PlusPlusCommand } from './model/command/language/PlusPlusCommand';
 import { ThrowingErrorListener } from './error/ThrowingErrorListener';
-import { SetImmutableShortcut } from './model/command/diagram/SetImmutableShortcut';
 import { SingleSubjectExpr } from './model/expr/subject/SingleSubjectExpr';
 import { FieldChainExpr } from './model/expr/subject/FieldChainExpr';
 import { NodesOfExpr } from './model/expr/diagram/NodesOfExpr';
-import { MergeShortcut } from './model/command/diagram/MergeShortcut';
 import { ShowAllCommand } from './model/command/diagram/ShowAllCommand';
 import { OmitAllCommand } from './model/command/diagram/OmitAllCommand';
-import { OmitCommand } from './model/command/diagram/OmitCommand';
+import { ShowCustExpr } from './model/expr/customization/ShowCustExpr';
+import { OmitCustExpr } from './model/expr/customization/OmitCustExpr';
+import { CustExprCommand } from './model/command/diagram/CustExprCommand';
+import { InlineShortcutExpr } from './model/expr/customization/InlineShortcutExpr';
+import { MergeShortcutExpr } from './model/expr/customization/MergeShortcutExpr';
 
 
 // TODO: Implement the value retrieval for more complex data structures (currently boolean, number, string, and arrays)
@@ -591,7 +592,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         }
     }
 
-    visitShowCommand(ctx: ShowCommandContext): CustSpecComponent {
+    visitShowCustExpr(ctx: ShowCustExprContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
@@ -607,17 +608,14 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
 
         if (mistype)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], expr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, ValueType.SUBJECT,
+                    new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1), new ArrayType(ValueType.SUBJECT, 1)], expr.type()).toString()
             );
 
-        return new ShowCommand(expr, this.runtime, ctx);
+        return new ShowCustExpr(expr, this.runtime, ctx);
     }
 
-    visitShowAllCommand(ctx: ShowAllCommandContext): CustSpecComponent {
-        return new ShowAllCommand(this.runtime);
-    }
-
-    visitOmitCommand(ctx: OmitCommandContext): CustSpecComponent {
+    visitOmitCustExpr(ctx: OmitCustExprContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
         if (comp instanceof ErrorComponent) return comp;
         const expr: Expr = comp as Expr;
@@ -636,11 +634,11 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.EDGE, ValueType.SUBJECT, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1), ValueType.SUBJECT], expr.type()).toString()
             );
 
-        return new OmitCommand(expr, this.runtime, ctx);
+        return new OmitCustExpr(expr, this.runtime, ctx);
     }
 
-    visitOmitAllCommand(ctx: OmitAllCommandContext): CustSpecComponent {
-        return new OmitAllCommand(this.runtime);
+    visitShortcutCustExpr(ctx: ShortcutCustExprContext): CustSpecComponent {
+        return this.visit(ctx.shortcut());
     }
 
     visitPlainPropCallCommand(ctx: PlainPropCallCommandContext): CustSpecComponent {
@@ -655,29 +653,86 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         return new PlusPlusCommand(comp as PlusPlusExpr);
     }
 
-    visitShortcutCommand(ctx: ShortcutCommandContext): CustSpecComponent {
-        return this.visit(ctx.shortcut());
+    visitCustExprCommand(ctx: CustExprCommandContext): CustSpecComponent {
+        const exprCustComp: CustSpecComponent = this.visit(ctx.exprCust());
+        if (exprCustComp instanceof ErrorComponent) return exprCustComp;
+        const exprCustExpr: Expr = exprCustComp as Expr;
+        const exprCustExprType: ValueType | ArrayType | MapType = exprCustExpr.type();
+        var mistype: boolean = false
+
+        if (exprCustExprType instanceof ArrayType) {
+            if (exprCustExprType.dimension != 1 || exprCustExprType.type != ValueType.SUBJECT && exprCustExprType.type != ValueType.NODE && exprCustExprType.type != ValueType.EDGE)
+                mistype = true;
+        }
+        else if (exprCustExprType != ValueType.SUBJECT && exprCustExprType != ValueType.NODE && exprCustExprType != ValueType.EDGE)
+            mistype = true;
+
+        if (mistype)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.exprCust(), [ValueType.NODE, ValueType.EDGE, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.EDGE, 1)], exprCustExprType).toString()
+            );
+
+        return new CustExprCommand(exprCustExpr);
     }
 
-    visitSetImmutableShortcut(ctx: SetImmutableShortcutContext): CustSpecComponent {
-        const targetSubjectComp: CustSpecComponent = this.visit(ctx.expr());
-        if (targetSubjectComp instanceof ErrorComponent) return targetSubjectComp;
-        const targetSubject: Expr = targetSubjectComp as Expr;
-        if (targetSubject.type() != ValueType.SUBJECT && JSON.stringify(targetSubject.type()) !== JSON.stringify(new ArrayType(ValueType.SUBJECT, 1)))
-            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], targetSubject.type()).toString());
+    visitCustCommand(ctx: CustCommandContext): CustSpecComponent {
+        return this.visit(ctx.commandCust());
+    }
 
-        return new SetImmutableShortcut(targetSubject, this.runtime, ctx);
+    visitCommandCust(ctx: CommandCustContext): CustSpecComponent {
+        return ctx.SHOW_ALL() ? new ShowAllCommand(this.runtime) : new OmitAllCommand(this.runtime);
+    }
+
+    visitInlineShortcut(ctx: InlineShortcutContext): CustSpecComponent {
+        const targetComp: CustSpecComponent = this.visit(ctx.expr());
+        if (targetComp instanceof ErrorComponent) return targetComp;
+        const targetExpr: Expr = targetComp as Expr;
+        const targetExprType: ValueType | ArrayType | MapType = targetExpr.type();
+        var mistype: boolean = false;
+
+        if (targetExprType instanceof ArrayType) {
+            if (targetExprType.dimension != 1 || targetExprType.type != ValueType.SUBJECT && targetExprType.type != ValueType.NODE)
+                mistype = true;
+        }
+        else if (targetExprType != ValueType.SUBJECT && targetExprType != ValueType.NODE)
+            mistype = true;
+
+        if (mistype)
+            return new ErrorComponent(
+                new TypeErrorBuilder(ctx.expr(), [ValueType.NODE, ValueType.SUBJECT, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.SUBJECT, 1)], targetExprType).toString()
+            );
+
+        return new InlineShortcutExpr(targetExpr, this.runtime);
     }
 
     visitMergeShortcut(ctx: MergeShortcutContext): CustSpecComponent {
-        const mergedComp: CustSpecComponent = this.visit(ctx.expr());
-        if (mergedComp instanceof ErrorComponent) return mergedComp;
-        const mergedExpr: Expr = mergedComp as Expr;
-        const mergedType: ValueType | ArrayType | MapType = mergedExpr.type();
-        if (mergedType != ValueType.SUBJECT && !(mergedType instanceof ArrayType && mergedType.type == ValueType.SUBJECT && mergedType.dimension == 1))
-            return new ErrorComponent(new TypeErrorBuilder(ctx.expr(), [ValueType.SUBJECT, new ArrayType(ValueType.SUBJECT, 1)], mergedType).toString());
+        return this.handleMergeShortcut(ctx.expr(), false);
+    }
 
-        return new MergeShortcut(mergedExpr, this.runtime);
+    visitRefMergeShortcut(ctx: RefMergeShortcutContext): CustSpecComponent {
+        return this.handleMergeShortcut(ctx.expr(), true);
+    }
+
+    handleMergeShortcut(expr: ExprContext, isRefMerge: boolean): CustSpecComponent {
+        const targetComp: CustSpecComponent = this.visit(expr);
+        if (targetComp instanceof ErrorComponent) return targetComp;
+        const targetExpr: Expr = targetComp as Expr;
+        const targetExprType: ValueType | ArrayType | MapType = targetExpr.type();
+        var mistype: boolean = false;
+
+        if (targetExprType instanceof ArrayType) {
+            if (targetExprType.dimension != 1 || targetExprType.type != ValueType.SUBJECT && targetExprType.type != ValueType.NODE)
+                mistype = true;
+        }
+        else if (targetExprType != ValueType.SUBJECT && targetExprType != ValueType.NODE)
+            mistype = true;
+
+        if (mistype)
+            return new ErrorComponent(
+                new TypeErrorBuilder(expr, [ValueType.NODE, ValueType.SUBJECT, new ArrayType(ValueType.NODE, 1), new ArrayType(ValueType.SUBJECT, 1)], targetExprType).toString()
+            );
+
+        return new MergeShortcutExpr(targetExpr, this.runtime, isRefMerge);
     }
 
     visitExpr(ctx: ExprContext): CustSpecComponent{
@@ -966,6 +1021,10 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
         
         return new VarRefExpr(varName, type, this.runtime, ctx);
     }
+
+    visitDiagramElementExpr(ctx: DiagramElementExprContext): CustSpecComponent {
+        return this.visit(ctx.diagramElement());
+    }
     
     visitNewNodeExpr(ctx: NewNodeExprContext): CustSpecComponent {
         const comp: CustSpecComponent = this.visit(ctx.expr());
@@ -1135,6 +1194,14 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             );
 
         return new EdgesOfExpr(firstExpr, secondExpr, this.runtime, ctx);
+    }
+
+    visitSubjectExpr(ctx: SubjectExprContext): CustSpecComponent {
+        return this.visit(ctx.subjectRule());
+    }
+
+    visitCustExpr(ctx: CustExprContext): CustSpecComponent {
+        return this.visit(ctx.exprCust());
     }
 
     visitLiteralExpr(ctx: LiteralExprContext): CustSpecComponent {
