@@ -99,7 +99,7 @@ shortcut
 
 diagramElement
     : NEW_NODE expr                         # NewNodeExpr
-    | NEW_EDGE expr expr expr               # NewEdgeExpr
+    | NEW_EDGE expr expr expr?              # NewEdgeExpr
     | NODE_OF expr                          # NodeOfExpr
     | NODES_OF expr                         # NodesOfExpr
     | EDGES_OF expr expr                    # EdgesOfExpr

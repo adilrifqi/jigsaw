@@ -1055,12 +1055,12 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
                 new TypeErrorBuilder(ctx.expr(1), [ValueType.NODE, ValueType.SUBJECT], secondExpr.type()).toString()
             );
 
-        const thirdComp: CustSpecComponent = this.visit(ctx.expr(2));
+        const thirdComp: CustSpecComponent = ctx.expr().length > 2 ? this.visit(ctx.expr(2)) : new StringLitExpr("");
         if (thirdComp instanceof ErrorComponent) return thirdComp;
         const thirdExpr: Expr = thirdComp as Expr;
         if (thirdExpr.type() != ValueType.STRING)
             return new ErrorComponent(
-                new TypeErrorBuilder(ctx.expr(1), [ValueType.STRING], thirdExpr.type()).toString()
+                new TypeErrorBuilder(ctx.expr(2), [ValueType.STRING], thirdExpr.type()).toString()
             );
         
         return new NewEdgeExpr(firstExpr, secondExpr, thirdExpr, ctx, this.runtime);
