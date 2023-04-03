@@ -32,11 +32,32 @@ export function activate(context: vscode.ExtensionContext) {
 		const frameId: string = args[1]["frameId"];
         const frameIdSplitColon: string[] = frameId.split(':');
         const stackPos: number = +frameIdSplitColon[frameIdSplitColon.length - 2];
+		DebugState.getInstance().stackPos = stackPos;
 
 		const graphResult: {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError | string = getFrameGraph(stackPos);
 		if (typeof graphResult === "string") vscode.window.showErrorMessage(graphResult);
 		else if (graphResult instanceof RuntimeError) vscode.window.showErrorMessage(graphResult.toString());
 		else panel?.webview.postMessage({"command": "data", "body": graphResult});
+	})
+
+	// Recompile Customizations
+	vscode.commands.registerCommand('jigsaw.recompile', (...args: any[]) => {
+		if (!panel) vscode.window.showErrorMessage("Visual debugger view not opened.");
+
+		// TODO: Read the spec file
+		vscode.workspace.openTextDocument(vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "spec.jig")).then((document) => {
+			const spec: string = document.getText();
+			const newRuntime: CustomizationRuntime | ErrorComponent = new CustomizationBuilder().buildCustomization(spec);
+
+			if (newRuntime instanceof ErrorComponent) vscode.window.showErrorMessage(newRuntime.getMessage());
+			else {
+				custRuntime = newRuntime;
+				const graphResult: {nodes: NodeInfo[], edges: EdgeInfo[]} | RuntimeError | string = getFrameGraph(DebugState.getInstance().stackPos);
+				if (typeof graphResult === "string") vscode.window.showErrorMessage(graphResult);
+				else if (graphResult instanceof RuntimeError) vscode.window.showErrorMessage(graphResult.toString());
+				else panel?.webview.postMessage({command: "data", body: graphResult});
+			}
+		});
 	})
 
 	// Keep track to not requests for the first frames of stacks so as not to send duplicates
@@ -184,6 +205,7 @@ export function activate(context: vscode.ExtensionContext) {
 							retainContextWhenHidden: true
 						}
 					);
+					panel.onDidDispose(() => panel = undefined);
 					panel.webview.html = getWebviewContent(panel.webview, context.extensionUri);
 				}
 			});

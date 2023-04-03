@@ -30,6 +30,10 @@
       {
         "command": "stackFrames.visualizeFrame",
         "title": "Visualize"
+      },
+      {
+        "command": "jigsaw.recompile",
+        "title": "Recompile Customizations"
       }
     ],
     "menus": {

@@ -13,6 +13,7 @@ export class DebugState {
     // #endregion
 
     callStack: Map<number, StackFrame> = new Map(); // frameId -> StackFrame
+    stackPos: number = 0;
     private currentSmallestFrameId: number = -1;
 
     private scopesSeqToFrameId: Map<number, number> = new Map();
@@ -140,6 +141,7 @@ export class DebugState {
 
 
     public clear() {
+        this.stackPos = 0;
         this.callStack.clear();
         this.currentSmallestFrameId = -1;
         
