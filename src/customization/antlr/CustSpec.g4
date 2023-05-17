@@ -58,6 +58,7 @@ sum : left=sum PLUS right=term
 
 term: left=term TIMES right=negation
     | left=term DIV right=negation
+    | left=term MOD right=negation
     | negation
     ;
 
@@ -212,6 +213,7 @@ PLUS        : '+';
 MIN         : '-';
 TIMES       : '*';
 DIV         : '/';
+MOD         : '%';
 NOT         : '!';
 OR          : '||';
 AND         : '&&';

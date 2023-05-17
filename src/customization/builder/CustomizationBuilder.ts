@@ -929,7 +929,7 @@ export class CustomizationBuilder extends AbstractParseTreeVisitor<CustSpecCompo
             return new BinaryNumOp(
                 leftExpr,
                 rightExpr,
-                ctx.TIMES() != undefined ? NumOp.MULT : NumOp.DIV,
+                ctx.TIMES() != undefined ? NumOp.MULT : (ctx.DIV() != undefined ? NumOp.DIV : NumOp.MOD),
                 ctx
             );
         }

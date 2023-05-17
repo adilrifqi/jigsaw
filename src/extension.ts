@@ -73,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			return {
 				onWillReceiveMessage(message) {
-					console.log(`> ${JSON.stringify(message, undefined, 2)}`)
+					// console.log(`> ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					if (message["command"] == "scopes") {
@@ -92,7 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				},
 				onDidSendMessage(message) {
-					console.log(`< ${JSON.stringify(message, undefined, 2)}`)
+					// console.log(`< ${JSON.stringify(message, undefined, 2)}`)
 					panel?.webview.postMessage(message);
 
 					// Store the id of the first frame to not send multiple requests. Send requests for the rest

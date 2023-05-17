@@ -494,7 +494,15 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	public showNode(node: NodeInfo): NodeInfo {
-		if (!this.shownNodes.has(node.id)) this.shownNodes.set(node.id, node);
+		if (!this.shownNodes.has(node.id)) {
+			this.shownNodes.set(node.id, node);
+			const relatedEdgeIds: string[] | undefined = this.allRelations.get(node.id);
+			if (relatedEdgeIds)
+				for (const relatedEdgeId of relatedEdgeIds) {
+					const edge: EdgeInfo | undefined = this.allEdges.get(relatedEdgeId);
+					if (edge) this.showEdge(edge);
+				}
+		}
 		return node;
 	}
 
@@ -642,10 +650,9 @@ export class CustomizationRuntime extends CustSpecComponent {
 	}
 
 	private pushEdgeToShown(newEdge: EdgeInfo) {
-		if (this.shownEdges.has(newEdge.id)) return false;
+		if (this.shownEdges.has(newEdge.id)) return;
 		this.addToShownRelations(newEdge);
 		this.shownEdges.set(newEdge.id, newEdge);
-		return true;
 	}
 
 	public getEdges(origin: NodeInfo, target: NodeInfo): EdgeInfo[] {
