@@ -28,7 +28,7 @@ function ObjectNode (
                 </p>);
         }
         return (
-            <div className="object-node">
+            <div className="object-node" style={{borderWidth:3, borderColor:"black"}}>
                 <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
                 <p className="title">{title}</p>
                 <hr/>
@@ -38,7 +38,7 @@ function ObjectNode (
         );
     } else {
         return (
-            <div className="object-node">
+            <div className="object-node" style={{borderWidth:3, borderColor:"black"}}>
                 <Handle type="target" position={targetPosition} isConnectable={isConnectable} />
                 <p className="title">{title}</p>
                 <Handle type="source" position={sourcePosition} isConnectable={isConnectable} />

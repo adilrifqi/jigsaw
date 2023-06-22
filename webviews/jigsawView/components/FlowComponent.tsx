@@ -145,7 +145,7 @@ export function FlowComponent() {
             edgeTypes={edgeTypes}
               fitView>
                 <Controls/>
-                <Background/>
+                {/* <Background/> */}
               </ReactFlow>
         </div>
     );
