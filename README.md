@@ -1,71 +1,71 @@
-# jigsaw README
+# JIGSAW
 
-This is the README for your extension "jigsaw". After writing up a brief description, we recommend including the following sections.
+Program State Visualizer with User Defined Representation Conversion
 
-## Features
+## Description
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+JIGSAW is a VSCode extension that helps in debugging Java programs by providing convertible visual representations. It has two main features:
+* **Visualization:**<br/>
+Displaying an additional representation of the debuggee Java program in the form of a graph; where nodes are Java objects are edges are references between them.
+* **User-Defined Representation Conversion:**<br/>
+The program state can be made to be represented in a different manner that allows for concise program comprehension. The behavior of such conversions is defined through a DSL with metaprogramming features that provide context.
 
-For example if there is an image subfolder under your extension project workspace:
+<!-- What else to add in the description? -->
 
-\!\[feature X\]\(images/feature-x.png\)
+## Getting Started
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### Prerequisites
 
-## Requirements
+* [Visual Studio Code](https://code.visualstudio.com/)
+* [node.js and npm](https://nodejs.org/en). Look [here](https://github.com/Microsoft/vscode/wiki/How-to-Contribute#prerequisites) for the recommended version for usage with VSCode
+* [Java](https://www.java.com/en/)
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+### Installing
 
-## Extension Settings
+* `git clone https://github.com/adilrifqi/jigsaw.git`
+* `code jigsaw`
+* `npm install` in the newly opened VSCode window terminal
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### Usage
 
-For example:
+* Press `F5` on a VSCode window with the JIGSAW project open. This will open a new VSCode window with JIGSAW installed.
+* ...
 
-This extension contributes the following settings:
+To be continued...
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+<!-- ### Example Usage
 
-## Known Issues
+## Help
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+Any advise for common problems or issues.
+```
+command to run if program contains helper info
+```
 
-## Release Notes
+## Authors
 
-Users appreciate release notes as you update your extension.
+Contributors names and contact info
 
-### 1.0.0
+ex. Dominique Pizzie  
+ex. [@DomPizzie](https://twitter.com/dompizzie)
 
-Initial release of ...
+## Version History
 
-### 1.0.1
+* 0.2
+    * Various bug fixes and optimizations
+    * See [commit change]() or See [release history]()
+* 0.1
+    * Initial Release
 
-Fixed issue #.
+## License
 
-### 1.1.0
+This project is licensed under the [NAME HERE] License - see the LICENSE.md file for details
 
-Added features X, Y, and Z.
+## Acknowledgments
 
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Inspiration, code snippets, etc.
+* [awesome-readme](https://github.com/matiassingers/awesome-readme)
+* [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
+* [dbader](https://github.com/dbader/readme-template)
+* [zenorocha](https://gist.github.com/zenorocha/4526327)
+* [fvcproductions](https://gist.github.com/fvcproductions/1bfc2d4aecb01a834b46) -->
